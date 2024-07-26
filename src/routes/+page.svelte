@@ -1,8 +1,9 @@
 <script>
 	import CaseDropdown from '$lib/CaseDropdown.svelte';
+	import Navigation from '$lib/navigation.svelte';
 </script>
 
 <main>
-	<h1>WMS Uren Registratie</h1>
+	<Navigation />
 	<CaseDropdown />
 </main>

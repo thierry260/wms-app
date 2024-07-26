@@ -1,45 +1,189 @@
 <script>
 	import { onMount } from 'svelte';
+	import Select from 'svelte-select';
+	import { writable } from 'svelte/store';
 
 	let dossiers = [];
-	let selectedDossier = '';
+	let selectedDossier = null;
+	let datum = '';
+	let tijdsduur = '00:15';
+	let uitvoerder = 'Toon'; // Default value
+	let omschrijving = '';
+	let billable = true;
+	let locatie = 'Kick offices'; // Default value
+	let isAuthenticated = writable(false);
 
-	// Dit is een barebones manier om data te fetchen
+	// Dropdown options for uitvoerder
+	const uitvoerderOptions = [
+		{ label: 'Michel', value: 'Michel' },
+		{ label: 'Toon', value: 'Toon' }
+	];
+
 	onMount(async () => {
 		try {
-			const response = await fetch('URL_TO_YOUR_GOOGLE_SHEET_API');
-			const data = await response.json();
-			dossiers = data; // Pas dit aan naar de juiste datavorm
+			// Set datum to today's date
+			const today = new Date().toISOString().split('T')[0];
+			datum = today;
+
+			const authResponse = await fetch('http://localhost:3000/auth/status');
+			const authData = await authResponse.json();
+			isAuthenticated.set(authData.loggedIn);
+
+			if (authData.loggedIn) {
+				const response = await fetch(
+					'https://docs.google.com/spreadsheets/d/e/2PACX-1vTfVcgXOBqLXiRnfzhPn1TromUgfe2eYNcpS3plbzmEv8Hz-wXKdpYZpBuWiP0LGp_-E19RMA5LKEOS/pub?gid=1197686602&single=true&output=csv'
+				);
+				const csvText = await response.text();
+				dossiers = parseCSV(csvText);
+				console.log('Dossiers:', dossiers);
+			}
 		} catch (error) {
-			console.error('Error fetching dossiers:', error);
+			console.error('Error fetching data:', error);
 		}
 	});
 
-	function handleSelect(event) {
-		selectedDossier = event.target.value;
+	function parseCSV(text) {
+		const rows = text.trim().split('\n').slice(1); // Remove empty rows and header
+		return rows
+			.map((row) => {
+				const cols = row.split(',');
+				return {
+					id: cols[0]?.trim(), // Use optional chaining and trim
+					name: cols[2]?.trim() // Use optional chaining and trim
+				};
+			})
+			.filter((dossier) => dossier.id && dossier.name); // Filter out empty dossiers and ids
+	}
+
+	$: console.log('Selected Dossier:', selectedDossier);
+
+	async function handleSubmit() {
+		if (!selectedDossier) {
+			alert('Selecteer een dossier');
+			return;
+		}
+
+		// Split tijdsduur into uur and min
+		const min = tijdsduur.split(':')[1];
+		const uur = tijdsduur.split(':')[0];
+		const totaal = (parseInt(min) / 60 + parseInt(uur)).toFixed(2);
+
+		// Prepare the row object to be sent
+		const row = {
+			dossiernaam: selectedDossier.name,
+			datum,
+			omschrijving,
+			min,
+			uur,
+			totaal,
+			billable: billable ? 'Ja' : 'Nee',
+			uitvoerder,
+			locatie
+		};
+
+		// Log the row object to be sent to the server
+		console.log('Sending row data to server:', row);
+
+		try {
+			// Send the POST request to the server
+			const response = await fetch('http://localhost:3000/addRow', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(row)
+			});
+
+			if (response.ok) {
+				alert('Row added successfully');
+			} else {
+				// Capture and log error text from server response
+				const errorText = await response.text();
+				console.error('Error response:', errorText);
+				alert('Error adding row');
+			}
+		} catch (error) {
+			console.error('Error submitting form:', error);
+			alert('Error submitting form');
+		}
+	}
+
+	function handleLogin() {
+		window.location.href = 'http://localhost:3000/auth/google';
+	}
+
+	function handleLogout() {
+		window.location.href = 'http://localhost:3000/logout';
+	}
+
+	function handleFocus(event) {
+		event.target.select();
 	}
 </script>
 
-<div>
-	<label for="dossier-dropdown">Select a Dossier:</label>
-	<select
-		id="dossier-dropdown"
-		class="dropdown"
-		bind:value={selectedDossier}
-		on:change={handleSelect}
-	>
-		<option value="" disabled selected>Select a dossier</option>
-		{#each dossiers as dossier}
-			<option value={dossier.id}>{dossier.name}</option>
-		{/each}
-	</select>
-</div>
+{#if $isAuthenticated}
+	<!-- <button on:click={handleLogout}>Logout</button> -->
+	<div class="hour_specs" id="caseDropdown">
+		<div class="head">
+			<h2 class="mb_0">Urenregistratie</h2>
+		</div>
+		<form on:submit|preventDefault={handleSubmit}>
+			<div class="content">
+				<div class="form">
+					<fieldset>
+						<legend>Data invoeren</legend>
+						<label class="add_row_field full-width spacing_bottom">
+							<Select
+								items={dossiers}
+								bind:value={selectedDossier}
+								getOptionLabel={(option) => option.name}
+								getOptionValue={(option) => option.id}
+								placeholder="Dossier zoeken"
+								on:select={(event) => {
+									const selected = event.detail;
+									selectedDossier = selected;
+								}}
+							/>
+						</label>
 
-<style lang="scss">
-	/* Voeg hier je SASS/CSS styling toe */
-	.dropdown {
-		width: 100%;
-		padding: 0.5em;
-		font-size: 1em;
-	}
-</style>
+						<div class="add_row_field_columns">
+							<label class="add_row_field">
+								<input type="date" bind:value={datum} on:focus={handleFocus} />
+								<span>Datum *</span>
+							</label>
+
+							<label class="add_row_field">
+								<input type="time" bind:value={tijdsduur} on:focus={handleFocus} />
+								<span>Tijdsduur *</span>
+							</label>
+
+							<label class="add_row_field">
+								<input type="text" bind:value={locatie} on:focus={handleFocus} />
+								<span>Locatie</span>
+							</label>
+
+							<label class="add_row_field spacing_bottom">
+								<input type="text" bind:value={uitvoerder} on:focus={handleFocus} />
+								<span>Uitvoerder *</span>
+							</label>
+						</div>
+
+						<label class="add_row_field full-width">
+							<textarea bind:value={omschrijving} on:focus={handleFocus}></textarea>
+							<span>Omschrijving *</span>
+						</label>
+					</fieldset>
+				</div>
+			</div>
+			<div class="actions">
+				<label class="add_row_field consent">
+					<input type="checkbox" bind:checked={billable} />
+					<span>Billable</span>
+				</label>
+				<button type="submit">Submit</button>
+			</div>
+		</form>
+	</div>
+{:else}
+	<!-- <button on:click={handleLogin}>Login with Google</button> -->
+{/if}
