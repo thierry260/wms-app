@@ -32,6 +32,7 @@
 		"body-parser": "^1.20.2",
 		"cookie-session": "^2.1.0",
 		"cors": "^2.8.5",
+		"date-fns": "^3.6.0",
 		"dotenv": "^16.4.5",
 		"express": "^4.19.2",
 		"google-auth-library": "^9.11.0",
@@ -41,7 +42,6 @@
 		"passport-google-oauth20": "^2.0.0",
 		"phosphor-svelte": "^2.0.1",
 		"select": "^1.1.2",
-		"svelte-carousel": "^1.0.25",
 		"svelte-preprocess": "^6.0.2",
 		"svelte-select": "^4.3.0"
 	}

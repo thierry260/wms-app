@@ -1,10 +1,11 @@
 <script>
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
+	import { parse, startOfWeek, endOfWeek, isAfter, isBefore, isValid } from 'date-fns';
 
 	const logs = writable([]);
 	const totalRevenue = writable(0);
-	const loading = writable(true); // Voeg een loading state toe
+	const loading = writable(true);
 
 	onMount(async () => {
 		try {
@@ -13,14 +14,48 @@
 				throw new Error('Network response was not ok');
 			}
 			const data = await response.json();
-			logs.set(data.logs);
-			totalRevenue.set(data.totalRevenue);
+
+			const thisWeekLogs = filterLogsForThisWeek(data.logs);
+			logs.set(thisWeekLogs);
+
+			const revenue = thisWeekLogs.reduce((acc, log) => acc + parseFloat(calculateRevenue(log)), 0);
+			totalRevenue.set(revenue.toFixed(2));
 		} catch (error) {
 			console.error('Error fetching logs:', error);
 		} finally {
-			loading.set(false); // Zet de loading state naar false wanneer de data is geladen
+			loading.set(false);
 		}
 	});
+
+	function filterLogsForThisWeek(logs) {
+		const now = new Date();
+		const startDate = startOfWeek(now, { weekStartsOn: 1 }); // Start of this week (Monday)
+		const endDate = endOfWeek(now, { weekStartsOn: 1 }); // End of this week (Sunday)
+		endDate.setHours(23, 59, 59, 999); // Set end of the day for Sunday
+
+		console.log('Start of week:', startDate); // Log the start date of the week
+		console.log('End of week:', endDate); // Log the end date of the week
+
+		return logs.filter((log) => {
+			let logDate = parse(log.datum, 'dd-MM-yyyy', new Date());
+			if (!isValid(logDate)) {
+				logDate = parse(log.datum, 'yyyy-MM-dd', new Date());
+			}
+			if (!isValid(logDate)) {
+				console.log('Invalid log date:', log.datum);
+				return false;
+			}
+			logDate.setHours(0, 0, 0, 0); // Normalize the log date to midnight for accurate comparison
+
+			console.log('Log date:', logDate, 'Start date:', startDate, 'End date:', endDate); // Log each log date and start/end date
+
+			// Correct comparison for inclusive date range
+			return (
+				(isAfter(logDate, startDate) || logDate.getTime() === startDate.getTime()) &&
+				(isBefore(logDate, endDate) || logDate.getTime() === endDate.getTime())
+			);
+		});
+	}
 
 	function calculateRevenue(log) {
 		const uur = parseFloat(log.uur) || 0;
@@ -39,10 +74,11 @@
 			<h2>Gelogde gegevens van deze week</h2>
 			<div class="logs-container">
 				<ul>
-					{#each $logs.reverse() as log}
+					{#each $logs as log}
 						<li>
 							<div class="log-header">
-								<strong>{log.dossiernaam}</strong> - {log.uur} uur ({calculateRevenue(log)} euro)
+								<strong>{log.dossiernaam}</strong>
+								{log.uur}:{log.min} (€{calculateRevenue(log)})
 							</div>
 							<p>{log.omschrijving}</p>
 							{#if log.billable === 'Ja'}
@@ -68,7 +104,7 @@
 	.card {
 		background-color: #fff;
 		padding: 20px;
-		border-radius: 10px;
+		border-radius: var(--border-radius);
 		box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 		width: 80%;
 		max-width: 600px;

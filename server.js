@@ -11,7 +11,7 @@ const app = express();
 const port = 3000;
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
-const SHEET_ID = '1bNgNJkLMarP85MclxNYQzzEzQGUCGTstduZh4XZ1b9Q';
+const SHEET_ID = '1Mr3a1ISyqdLGV4VKWrJIfME7ET0__wMpRVfCaZ8wEq0';
 const SHEET_RANGE = 'Urenregistratie!A:I';
 
 const oAuth2Client = new OAuth2Client(
@@ -140,29 +140,25 @@ app.get('/getLogs', async (req, res) => {
             return res.status(404).send('No data found.');
         }
 
-        const startOfWeek = getStartOfWeek();
         let logs = [];
         let totalRevenue = 0;
 
-        // Loop through the rows and filter the logs from this week
+        // Loop through the rows and prepare logs
         rows.forEach(row => {
-            const datum = new Date(row[1]);
-            if (datum >= startOfWeek) {
-                logs.push({
-                    dossiernaam: row[0],
-                    datum: row[1],
-                    omschrijving: row[2],
-                    min: row[3] || '0',
-                    uur: row[4] || '0',
-                    totaal: row[5] || '0.00',
-                    billable: row[6],
-                    uitvoerder: row[7],
-                    locatie: row[8],
-                });
+            logs.push({
+                dossiernaam: row[0],
+                datum: row[1],
+                omschrijving: row[2],
+                min: row[3] || '0',
+                uur: row[4] || '0',
+                totaal: row[5] || '0.00',
+                billable: row[6],
+                uitvoerder: row[7],
+                locatie: row[8],
+            });
 
-                if (row[6] === 'Ja') {
-                    totalRevenue += parseFloat(row[5]);
-                }
+            if (row[6] === 'Ja') {
+                totalRevenue += parseFloat(row[5].replace(',', '.'));
             }
         });
 
