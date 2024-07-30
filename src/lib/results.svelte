@@ -1,11 +1,25 @@
 <script>
 	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
-	import { parse, startOfWeek, endOfWeek, isAfter, isBefore, isValid } from 'date-fns';
+	import { writable, derived, get } from 'svelte/store';
+	import {
+		parse,
+		startOfWeek,
+		endOfWeek,
+		isAfter,
+		isBefore,
+		isValid,
+		addWeeks,
+		subWeeks,
+		format,
+		isSameWeek
+	} from 'date-fns';
+	import { CaretCircleLeft, CaretCircleRight } from 'phosphor-svelte';
 
 	const logs = writable([]);
 	const totalRevenue = writable(0);
 	const loading = writable(true);
+	const currentWeek = writable(new Date());
+	let allLogs = [];
 
 	onMount(async () => {
 		try {
@@ -14,12 +28,8 @@
 				throw new Error('Network response was not ok');
 			}
 			const data = await response.json();
-
-			const thisWeekLogs = filterLogsForThisWeek(data.logs);
-			logs.set(thisWeekLogs);
-
-			const revenue = thisWeekLogs.reduce((acc, log) => acc + parseFloat(calculateRevenue(log)), 0);
-			totalRevenue.set(revenue.toFixed(2));
+			allLogs = data.logs;
+			updateLogsForCurrentWeek();
 		} catch (error) {
 			console.error('Error fetching logs:', error);
 		} finally {
@@ -27,14 +37,18 @@
 		}
 	});
 
-	function filterLogsForThisWeek(logs) {
-		const now = new Date();
-		const startDate = startOfWeek(now, { weekStartsOn: 1 }); // Start of this week (Monday)
-		const endDate = endOfWeek(now, { weekStartsOn: 1 }); // End of this week (Sunday)
-		endDate.setHours(23, 59, 59, 999); // Set end of the day for Sunday
+	function updateLogsForCurrentWeek() {
+		const currentDate = get(currentWeek);
+		const thisWeekLogs = filterLogsForThisWeek(allLogs, currentDate);
+		logs.set(thisWeekLogs);
+		const revenue = thisWeekLogs.reduce((acc, log) => acc + parseFloat(calculateRevenue(log)), 0);
+		totalRevenue.set(revenue.toFixed(2));
+	}
 
-		console.log('Start of week:', startDate); // Log the start date of the week
-		console.log('End of week:', endDate); // Log the end date of the week
+	function filterLogsForThisWeek(logs, currentWeekDate) {
+		const startDate = startOfWeek(currentWeekDate, { weekStartsOn: 1 }); // Start of the specified week (Monday)
+		const endDate = endOfWeek(currentWeekDate, { weekStartsOn: 1 }); // End of the specified week (Sunday)
+		endDate.setHours(23, 59, 59, 999); // Set end of the day for Sunday
 
 		return logs.filter((log) => {
 			let logDate = parse(log.datum, 'dd-MM-yyyy', new Date());
@@ -46,8 +60,6 @@
 				return false;
 			}
 			logDate.setHours(0, 0, 0, 0); // Normalize the log date to midnight for accurate comparison
-
-			console.log('Log date:', logDate, 'Start date:', startDate, 'End date:', endDate); // Log each log date and start/end date
 
 			// Correct comparison for inclusive date range
 			return (
@@ -64,6 +76,27 @@
 		const revenue = log.billable === 'Ja' ? (totaalUren * 250).toFixed(2) : '0.00';
 		return revenue;
 	}
+
+	function navigateWeek(direction, event) {
+		event.stopPropagation(); // Stop the event propagation
+		console.log('navigation', direction); // Add this line to see if the function is triggered
+
+		currentWeek.update((currentDate) => {
+			const newDate = direction === 'next' ? addWeeks(currentDate, 1) : subWeeks(currentDate, 1);
+			updateLogsForCurrentWeek(); // Update logs after setting the new week
+			return newDate;
+		});
+	}
+
+	const formattedCurrentWeek = derived(currentWeek, ($currentWeek) => {
+		updateLogsForCurrentWeek(); // Ensure logs update whenever currentWeek changes
+		return `${format(startOfWeek($currentWeek, { weekStartsOn: 1 }), 'dd-MM-yyyy')} tot ${format(endOfWeek($currentWeek, { weekStartsOn: 1 }), 'dd-MM-yyyy')}`;
+	});
+
+	const isCurrentWeek = derived(currentWeek, ($currentWeek) => {
+		const now = new Date();
+		return isSameWeek($currentWeek, now, { weekStartsOn: 1 });
+	});
 </script>
 
 <main>
@@ -71,7 +104,8 @@
 		{#if $loading}
 			<p class="loading-text">Laden...</p>
 		{:else}
-			<h2>Gelogde gegevens van deze week</h2>
+			<h2>Totaal omzet deze week: €{$totalRevenue}</h2>
+			<p>Gelogde taken:</p>
 			<div class="logs-container">
 				<ul>
 					{#each $logs as log}
@@ -80,15 +114,27 @@
 								<strong>{log.dossiernaam}</strong>
 								{log.uur}:{log.min} (€{calculateRevenue(log)})
 							</div>
-							<p>{log.omschrijving}</p>
+							<p class="description">{log.omschrijving}</p>
 							{#if log.billable === 'Ja'}
 								<span class="billable-icon">€</span>
 							{/if}
+							<p class="date">{log.datum}</p>
 						</li>
 					{/each}
 				</ul>
 			</div>
-			<p>Totaal omzet deze week: €{$totalRevenue}</p>
+
+			<div class="week-navigation">
+				<span class="prev_week" on:click={(event) => navigateWeek('prev', event)}
+					><CaretCircleLeft size={20} class="chevron" /></span
+				>
+				<span class="week-date"><p class="formatted_current_week">{$formattedCurrentWeek}</p></span>
+				<span
+					class="next_week"
+					on:click={$isCurrentWeek ? null : (event) => navigateWeek('next', event)}
+					class:disabled={$isCurrentWeek}><CaretCircleRight size={20} class="chevron" /></span
+				>
+			</div>
 		{/if}
 	</div>
 </main>
@@ -112,6 +158,7 @@
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
+		min-height: 100%;
 	}
 
 	h2 {
@@ -157,14 +204,53 @@
 
 	.billable-icon {
 		font-weight: bold;
-		color: green;
+		color: var(--text);
 		position: absolute;
 		bottom: 10px;
 		right: 10px;
+		font-size: 0.8em;
 	}
 
 	.loading-text {
 		font-size: 1.5rem;
 		color: var(--text-light);
+	}
+
+	.week-navigation {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		align-items: center;
+	}
+
+	.chevron {
+		cursor: pointer;
+		font-size: 2rem;
+		margin: 0 10px;
+	}
+
+	.week-date {
+		font-size: 1.2rem;
+		font-weight: bold;
+	}
+
+	.disabled {
+		color: grey;
+		cursor: not-allowed;
+	}
+
+	.date {
+		color: var(--text);
+		font-size: 0.8em;
+	}
+
+	.description {
+		margin-top: 0;
+		padding: 0;
+	}
+
+	.formatted_current_week {
+		color: var(--text);
 	}
 </style>
