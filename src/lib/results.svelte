@@ -112,7 +112,10 @@
 						<li>
 							<div class="log-header">
 								<strong>{log.dossiernaam}</strong>
-								{log.uur}:{log.min} (€{calculateRevenue(log)})
+								<div>
+									{log.uur}:{log.min}
+									<span class="total-revenue-single">(€{calculateRevenue(log)})</span>
+								</div>
 							</div>
 							<p class="description">{log.omschrijving}</p>
 							{#if log.billable === 'Ja'}
@@ -185,7 +188,7 @@
 		padding: 10px;
 		border: 1px solid #ddd;
 		border-radius: 5px;
-		position: relative; /* Maak ruimte voor het billable icoon */
+		position: relative;
 	}
 
 	li p {
@@ -251,5 +254,11 @@
 
 	.formatted_current_week {
 		color: var(--text);
+	}
+	.total-revenue-single {
+		color: var(--text);
+		font-style: italic;
+		font-size: 0.8em;
+		vertical-align: top;
 	}
 </style>
