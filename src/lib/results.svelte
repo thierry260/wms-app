@@ -203,7 +203,6 @@
 	}
 
 	.billable-icon {
-		font-weight: bold;
 		color: var(--text);
 		position: absolute;
 		bottom: 10px;

@@ -81,20 +81,29 @@ app.post('/addRow', async (req, res) => {
     try {
         const sheets = google.sheets({ version: 'v4', auth: authClient });
 
-        // Prepare the row data
+        // Calculate the new row number to use in the formula
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SHEET_ID,
+            range: 'Urenregistratie!A:A',
+        });
+
+        const currentRow = response.data.values.length + 1;  // This will give us the next row number
+        const totalFormula = `=E${currentRow}+D${currentRow}/60`;  // Creating the formula for the new row
+
+        // Prepare the row data with the formula
         const rowData = [
             dossiernaam || 'N/A',
             datum || 'N/A',
             omschrijving || 'N/A',
             min || '0',
             uur || '0',
-            totaal || '0.00',
+            totalFormula,  // Use the formula instead of a calculated value
             billable || 'N/A',
             uitvoerder || 'N/A',
             locatie || 'N/A'
         ];
 
-        const response = await sheets.spreadsheets.values.append({
+        await sheets.spreadsheets.values.append({
             spreadsheetId: SHEET_ID,
             range: SHEET_RANGE,
             valueInputOption: 'USER_ENTERED',
@@ -102,8 +111,6 @@ app.post('/addRow', async (req, res) => {
                 values: [rowData],
             },
         });
-
-        console.log('Google Sheets API response:', response.data);
 
         res.status(200).send('Row added successfully');
     } catch (error) {
