@@ -10,6 +10,7 @@
 	let xStart = 0;
 	let translateX = writable(0);
 	let isAuthenticated = writable(false);
+	let updateLogs = writable(false); // Add writable store to trigger logs update
 
 	const pages = [
 		{ component: CaseDropdown, name: 'Urenregistratie' },
@@ -21,6 +22,10 @@
 			const authResponse = await fetch('http://localhost:3000/auth/status');
 			const authData = await authResponse.json();
 			isAuthenticated.set(authData.loggedIn);
+			// Add event listener for updateLogs event
+			window.addEventListener('updateLogs', (event) => {
+				updateLogs.set(true);
+			});
 		} catch (error) {
 			console.error('Error checking authentication status:', error);
 		}
@@ -87,6 +92,26 @@
 		translateX.set(0);
 	}
 
+	function handleRowAdded() {
+		updateLogs.set(true); // Trigger logs update
+		fetchAndUpdateLogs(); // Call the function to fetch and update logs
+	}
+
+	async function fetchAndUpdateLogs() {
+		try {
+			const response = await fetch('http://localhost:3000/getLogs');
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+			const data = await response.json();
+			// Dispatch an event or use a store to update logs in Result component
+			const event = new CustomEvent('updateLogs', { detail: data.logs });
+			window.dispatchEvent(event);
+		} catch (error) {
+			console.error('Error fetching logs:', error);
+		}
+	}
+
 	$: carouselStyle = `transform: translateX(calc(-${$currentIndex * 100}% + ${$translateX}px)); transition: ${dragging ? 'none' : 'transform 0.3s ease-in-out'}`;
 
 	$: $currentIndex; // Ensure reactivity
@@ -106,7 +131,7 @@
 		{#each pages as { component: PageComponent }, i}
 			<div class="carousel-item">
 				{#if $isAuthenticated}
-					<svelte:component this={PageComponent} />
+					<svelte:component this={PageComponent} {updateLogs} on:rowAdded={handleRowAdded} />
 				{:else}
 					<p>Please log in to view this page.</p>
 				{/if}

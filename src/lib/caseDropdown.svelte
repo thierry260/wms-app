@@ -1,5 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
 	import Select from 'svelte-select';
 	import { writable } from 'svelte/store';
 
@@ -10,8 +10,9 @@
 	let uitvoerder = 'Toon'; // Default value
 	let omschrijving = '';
 	let billable = true;
-	let locatie = 'Kick offices'; // Default value
+	let locatie = ''; // Default value
 	let isAuthenticated = writable(false);
+	const dispatch = createEventDispatcher(); // Add event dispatcher
 
 	// Dropdown options for uitvoerder
 	const uitvoerderOptions = [
@@ -96,6 +97,16 @@
 
 			if (response.ok) {
 				alert('Row added successfully');
+				dispatch('rowAdded'); // Dispatch event when row is added
+
+				// Reset form fields
+				selectedDossier = null;
+				datum = new Date().toISOString().split('T')[0];
+				tijdsduur = '00:15';
+				uitvoerder = 'Toon';
+				omschrijving = '';
+				billable = true;
+				locatie = 'Kick offices';
 			} else {
 				// Capture and log error text from server response
 				const errorText = await response.text();

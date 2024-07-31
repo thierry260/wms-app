@@ -28,8 +28,14 @@
 				throw new Error('Network response was not ok');
 			}
 			const data = await response.json();
-			allLogs = data.logs;
+			allLogs = data.logs.reverse();
 			updateLogsForCurrentWeek();
+
+			// Add event listener for updateLogs event
+			window.addEventListener('updateLogs', (event) => {
+				allLogs = event.detail;
+				updateLogsForCurrentWeek();
+			});
 		} catch (error) {
 			console.error('Error fetching logs:', error);
 		} finally {
