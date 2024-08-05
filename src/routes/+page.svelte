@@ -170,7 +170,7 @@
 		display: flex;
 		justify-content: space-around;
 		background-color: #fff;
-		padding: 10px 0;
+		/* padding: 10px 0; */
 		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 		position: fixed;
 		width: 100%;
@@ -186,9 +186,13 @@
 		color: var(--text);
 		cursor: pointer;
 		transition: color 0.3s ease;
+		padding-block: 25px;
+		border-bottom: 2px solid transparent;
+		border-radius: 0;
 	}
 
 	.bottom-nav button.active {
 		color: var(--primary);
+		border-color: var(--primary);
 	}
 </style>

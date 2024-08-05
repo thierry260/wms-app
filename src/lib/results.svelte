@@ -157,17 +157,12 @@
 	}
 
 	.card {
-		background-color: #fff;
-		padding: 20px;
-		border-radius: var(--border-radius);
-		box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-		width: 80%;
-		max-width: 600px;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		min-height: 100%;
+		width: calc(100% - 20px);
 	}
 
 	h2 {

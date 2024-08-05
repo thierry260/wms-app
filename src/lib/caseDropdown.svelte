@@ -5,6 +5,7 @@
 
 	let dossiers = [];
 	let selectedDossier = null;
+	let selectedDossierName = '';
 	let datum = '';
 	let tijdsduur = '00:15';
 	let uitvoerder = 'Toon'; // Default value
@@ -134,7 +135,7 @@
 
 {#if $isAuthenticated}
 	<!-- <button on:click={handleLogout}>Logout</button> -->
-	<div class="hour_specs" id="caseDropdown">
+	<div class="card hour_specs" id="caseDropdown">
 		<div class="head">
 			<h2 class="mb_0">Urenregistratie</h2>
 		</div>
@@ -146,13 +147,15 @@
 						<label class="add_row_field full-width spacing_bottom">
 							<Select
 								items={dossiers}
-								bind:value={selectedDossier}
+								bind:value={selectedDossierName}
 								getOptionLabel={(option) => option.name}
 								getOptionValue={(option) => option.id}
 								placeholder="Dossier zoeken"
 								on:select={(event) => {
 									const selected = event.detail;
 									selectedDossier = selected;
+									selectedDossierName = selectedDossier.name;
+									console.log(selectedDossier);
 								}}
 							/>
 						</label>
@@ -189,9 +192,9 @@
 			<div class="actions">
 				<label class="add_row_field consent">
 					<input type="checkbox" bind:checked={billable} />
-					<span>Billable</span>
+					<span>Facturabel</span>
 				</label>
-				<button type="submit">Submit</button>
+				<button type="submit">Registreren</button>
 			</div>
 		</form>
 	</div>
