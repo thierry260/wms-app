@@ -14,12 +14,16 @@
 		isSameWeek
 	} from 'date-fns';
 	import { CaretCircleLeft, CaretCircleRight } from 'phosphor-svelte';
+	import Popup from './Popup.svelte'; // Import Popup component
 
 	const logs = writable([]);
 	const totalRevenue = writable(0);
 	const loading = writable(true);
 	const currentWeek = writable(new Date());
 	let allLogs = [];
+	let showPopup = writable(false);
+	let currentLog = writable(null);
+	let longPressTimer;
 
 	onMount(async () => {
 		try {
@@ -94,6 +98,23 @@
 		});
 	}
 
+	function handleMouseDown(log) {
+		longPressTimer = setTimeout(() => handleLongPress(log), 1000);
+	}
+
+	function handleMouseUp() {
+		clearTimeout(longPressTimer);
+	}
+
+	function handleMouseLeave() {
+		clearTimeout(longPressTimer);
+	}
+
+	function handleLongPress(log) {
+		currentLog.set(log);
+		showPopup.set(true);
+	}
+
 	const formattedCurrentWeek = derived(currentWeek, ($currentWeek) => {
 		updateLogsForCurrentWeek(); // Ensure logs update whenever currentWeek changes
 		return `${format(startOfWeek($currentWeek, { weekStartsOn: 1 }), 'dd-MM-yyyy')} tot ${format(endOfWeek($currentWeek, { weekStartsOn: 1 }), 'dd-MM-yyyy')}`;
@@ -110,12 +131,16 @@
 		{#if $loading}
 			<p class="loading-text">Laden...</p>
 		{:else}
-			<h2>Weekomzet: €{$totalRevenue}</h2>
+			<h2>Week: €{$totalRevenue}</h2>
 			<p>Gelogde taken:</p>
 			<div class="logs-container">
 				<ul>
 					{#each $logs as log}
-						<li>
+						<li
+							on:mousedown={() => handleMouseDown(log)}
+							on:mouseup={handleMouseUp}
+							on:mouseleave={handleMouseLeave}
+						>
 							<div class="log-header">
 								<strong>{log.dossiernaam}</strong>
 								<div>
@@ -144,6 +169,17 @@
 					class:disabled={$isCurrentWeek}><CaretCircleRight size={20} /></span
 				>
 			</div>
+		{/if}
+
+		{#if $showPopup}
+			<Popup
+				message="Do you want to edit this log?"
+				onConfirm={() => {
+					showPopup.set(false);
+					console.log('HOERRRRR');
+				}}
+				onCancel={() => showPopup.set(false)}
+			/>
 		{/if}
 	</div>
 </main>
