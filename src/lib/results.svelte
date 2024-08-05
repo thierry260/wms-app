@@ -150,7 +150,6 @@
 
 <style>
 	main {
-		padding: 20px;
 		display: flex;
 		justify-content: center;
 		align-items: center;
@@ -162,7 +161,6 @@
 		justify-content: center;
 		align-items: center;
 		min-height: 100%;
-		width: calc(100% - 20px);
 	}
 
 	h2 {
