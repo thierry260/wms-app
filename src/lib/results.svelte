@@ -110,7 +110,7 @@
 		{#if $loading}
 			<p class="loading-text">Laden...</p>
 		{:else}
-			<h2>Totaal omzet deze week: €{$totalRevenue}</h2>
+			<h2>Weekomzet: €{$totalRevenue}</h2>
 			<p>Gelogde taken:</p>
 			<div class="logs-container">
 				<ul>
@@ -135,13 +135,13 @@
 
 			<div class="week-navigation">
 				<span class="prev_week" on:click={(event) => navigateWeek('prev', event)}
-					><CaretCircleLeft size={20} class="chevron" /></span
+					><CaretCircleLeft size={20} /></span
 				>
 				<span class="week-date"><p class="formatted_current_week">{$formattedCurrentWeek}</p></span>
 				<span
 					class="next_week"
 					on:click={$isCurrentWeek ? null : (event) => navigateWeek('next', event)}
-					class:disabled={$isCurrentWeek}><CaretCircleRight size={20} class="chevron" /></span
+					class:disabled={$isCurrentWeek}><CaretCircleRight size={20} /></span
 				>
 			</div>
 		{/if}
@@ -225,12 +225,6 @@
 		justify-content: space-between;
 		width: 100%;
 		align-items: center;
-	}
-
-	.chevron {
-		cursor: pointer;
-		font-size: 2rem;
-		margin: 0 10px;
 	}
 
 	.week-date {
