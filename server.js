@@ -19,7 +19,6 @@ const oAuth2Client = new OAuth2Client(
     process.env.CLIENT_SECRET,
     process.env.REDIRECT_URI
 );
-
 let authClient;
 
 // Middleware
