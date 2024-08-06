@@ -253,12 +253,6 @@ app.post('/deleteRow', async (req, res) => {
     }
 });
 
-function getStartOfWeek() {
-    const now = new Date();
-    const firstDay = now.getDate() - now.getDay() + 1; // +1 to start from Monday
-    return new Date(now.setDate(firstDay));
-}
-
 app.get('/getLogs', async (req, res) => {
     if (!authClient) {
         return res.status(401).send('Not authorized');
@@ -291,7 +285,7 @@ app.get('/getLogs', async (req, res) => {
                 billable: row[6],
                 uitvoerder: row[7],
                 locatie: row[8],
-                id: row[12] || '' // Ensure the ID is included
+                id: row[12] || 'MOEDERS' // Ensure the ID is included
             });
 
             if (row[6] === 'Ja') {
