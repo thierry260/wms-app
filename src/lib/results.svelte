@@ -1,6 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { writable, derived, get } from 'svelte/store';
+	import Select from 'svelte-select'; // Import Select component
+
 	import {
 		parse,
 		startOfWeek,
@@ -14,16 +16,16 @@
 		isSameWeek
 	} from 'date-fns';
 	import { CaretCircleLeft, CaretCircleRight } from 'phosphor-svelte';
-	import Popup from './Popup.svelte'; // Import Popup component
 
 	const logs = writable([]);
 	const totalRevenue = writable(0);
 	const loading = writable(true);
 	const currentWeek = writable(new Date());
 	let allLogs = [];
-	let showPopup = writable(false);
 	let currentLog = writable(null);
 	let longPressTimer;
+
+	let dossiers = []; // Define dossiers array
 
 	onMount(async () => {
 		try {
@@ -40,12 +42,76 @@
 				allLogs = event.detail;
 				updateLogsForCurrentWeek();
 			});
+
+			// Fetch dossiers data
+			const dossiersResponse = await fetch(
+				'https://docs.google.com/spreadsheets/d/e/2PACX-1vQJheaG4HkZVUiDn_YR7Q1-SbgLlI7avzNZViruBlCKVp9G6KC8FPP4gT1sxBI4LhlL46cD1QvhOfCK/pub?gid=1197686602&single=true&output=csv'
+			);
+			const csvText = await dossiersResponse.text();
+			dossiers = parseCSV(csvText);
 		} catch (error) {
 			console.error('Error fetching logs:', error);
 		} finally {
 			loading.set(false);
 		}
 	});
+
+	function parseCSV(text) {
+		const rows = text.trim().split('\n').slice(1); // Remove empty rows and header
+		return rows
+			.map((row) => {
+				const cols = row.split(',');
+				return {
+					id: cols[0]?.trim(),
+					name: cols[2]?.trim()
+				};
+			})
+			.filter((dossier) => dossier.id && dossier.name);
+	}
+
+	async function saveLog() {
+		const editedLog = get(currentLog);
+		// Ensure that the billable and uitvoerder fields are correctly set
+		editedLog.billable = editedLog.billable === 'Ja' ? 'Ja' : 'Nee';
+		// Send the updated log to the server to save in Google Sheets
+		try {
+			const response = await fetch('http://localhost:3000/updateRow', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(editedLog)
+			});
+			if (response.ok) {
+				alert('Row updated successfully');
+				// Close the dialog after saving
+				closeDialog();
+				// Fetch and update logs to reflect the changes
+				fetchAndUpdateLogs();
+			} else {
+				alert('Error updating row');
+			}
+		} catch (error) {
+			console.error('Error updating row:', error);
+			alert('Error updating row');
+		}
+	}
+
+	// Add the new function to fetch and update logs after saving
+	async function fetchAndUpdateLogs() {
+		try {
+			const response = await fetch('http://localhost:3000/getLogs');
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+			const data = await response.json();
+			// Dispatch an event or use a store to update logs in Result component
+			const event = new CustomEvent('updateLogs', { detail: data.logs.reverse() });
+			window.dispatchEvent(event);
+		} catch (error) {
+			console.error('Error fetching logs:', error);
+		}
+	}
 
 	function updateLogsForCurrentWeek() {
 		const currentDate = get(currentWeek);
@@ -112,7 +178,12 @@
 
 	function handleLongPress(log) {
 		currentLog.set(log);
-		showPopup.set(true);
+		document.getElementById('editDialog').showModal();
+		console.log('Current log:', log); // Console log the current log data
+	}
+
+	function closeDialog() {
+		document.getElementById('editDialog').close();
 	}
 
 	const formattedCurrentWeek = derived(currentWeek, ($currentWeek) => {
@@ -171,16 +242,54 @@
 			</div>
 		{/if}
 
-		{#if $showPopup}
-			<Popup
-				message="Do you want to edit this log?"
-				onConfirm={() => {
-					showPopup.set(false);
-					console.log('HOERRRRR');
-				}}
-				onCancel={() => showPopup.set(false)}
-			/>
-		{/if}
+		<dialog id="editDialog">
+			{#if $currentLog}
+				<p>Edit this log:</p>
+				<div>
+					<label>Dossiernaam: </label>
+					<Select
+						items={dossiers}
+						bind:value={$currentLog.dossiernaam}
+						getOptionLabel={(option) => option.name}
+						getOptionValue={(option) => option.id}
+						placeholder="Dossier zoeken"
+					/>
+				</div>
+				<div>
+					<label>Datum: </label>
+					<input type="date" bind:value={$currentLog.datum} />
+				</div>
+				<div>
+					<label>Omschrijving: </label>
+					<textarea bind:value={$currentLog.omschrijving}></textarea>
+				</div>
+				<div>
+					<label>Minuten: </label>
+					<input type="text" bind:value={$currentLog.min} />
+				</div>
+				<div>
+					<label>Uren: </label>
+					<input type="text" bind:value={$currentLog.uur} />
+				</div>
+				<div>
+					<label>Billable: </label>
+					<input type="checkbox" bind:checked={$currentLog.billable} />
+				</div>
+				<div>
+					<label>Uitvoerder: </label>
+					<select bind:value={$currentLog.uitvoerder}>
+						<option value="Michel">Michel</option>
+						<option value="Toon">Toon</option>
+					</select>
+				</div>
+				<div>
+					<label>Locatie: </label>
+					<input type="text" bind:value={$currentLog.locatie} />
+				</div>
+				<button on:click={saveLog}>Save</button>
+				<button on:click={closeDialog}>Cancel</button>
+			{/if}
+		</dialog>
 	</div>
 </main>
 

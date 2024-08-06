@@ -91,15 +91,15 @@ app.post('/addRow', async (req, res) => {
 
         // Prepare the row data with the formula
         const rowData = [
-            dossiernaam || 'N/A',
-            datum || 'N/A',
-            omschrijving || 'N/A',
+            dossiernaam || '',
+            datum || '',
+            omschrijving || '',
             min || '0',
             uur || '0',
             totalFormula,  // Use the formula instead of a calculated value
-            billable || 'N/A',
-            uitvoerder || 'N/A',
-            locatie || 'N/A'
+            billable || '',
+            uitvoerder || '',
+            locatie || ''
         ];
 
         await sheets.spreadsheets.values.append({
@@ -119,6 +119,74 @@ app.post('/addRow', async (req, res) => {
         } else {
             console.error('General Error details:', error.message);
             res.status(500).send('Error adding row');
+        }
+    }
+});
+
+app.post('/updateRow', async (req, res) => {
+    if (!authClient) {
+        return res.status(401).send('Not authorized');
+    }
+
+    const { dossiernaam, datum, omschrijving, min, uur, billable, uitvoerder, locatie } = req.body;
+    console.log('Request body:', req.body);
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+        // Find the row number to update based on some unique identifier in the request
+        // This example assumes 'dossiernaam' is unique
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SHEET_ID,
+            range: SHEET_RANGE,
+        });
+
+        const rows = response.data.values;
+        let rowIndex;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i][0] === dossiernaam && rows[i][1] === datum) {
+                rowIndex = i + 1; // Google Sheets rows start from 1
+                break;
+            }
+        }
+
+        if (rowIndex === undefined) {
+            return res.status(404).send('Row not found');
+        }
+
+        const totalFormula = `=E${rowIndex}+D${rowIndex}/60`;  // Creating the formula for the new row
+
+
+        // Prepare the row data
+        const rowData = [
+            dossiernaam || '',
+            datum || '',
+            omschrijving || '',
+            min || '0',
+            uur || '0',
+            totalFormula,
+            billable || '',
+            uitvoerder || '',
+            locatie || ''
+        ];
+
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: SHEET_ID,
+            range: `Urenregistratie!A${rowIndex}:I${rowIndex}`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [rowData],
+            },
+        });
+
+        res.status(200).send('Row updated successfully');
+    } catch (error) {
+        if (error.response) {
+            console.error('API Error details:', error.response.data);
+            res.status(500).send(`Error updating row: ${error.response.data.error.message}`);
+        } else {
+            console.error('General Error details:', error.message);
+            res.status(500).send('Error updating row');
         }
     }
 });

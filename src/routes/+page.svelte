@@ -9,7 +9,7 @@
 	let dragging = false;
 	let xStart = 0;
 	let translateX = writable(0);
-	let isAuthenticated = writable(false);
+	let isAuthenticated = writable(true);
 	let updateLogs = writable(false); // Add writable store to trigger logs update
 
 	const pages = [
@@ -94,22 +94,8 @@
 
 	function handleRowAdded() {
 		updateLogs.set(true); // Trigger logs update
-		fetchAndUpdateLogs(); // Call the function to fetch and update logs
-	}
-
-	async function fetchAndUpdateLogs() {
-		try {
-			const response = await fetch('http://localhost:3000/getLogs');
-			if (!response.ok) {
-				throw new Error('Network response was not ok');
-			}
-			const data = await response.json();
-			// Dispatch an event or use a store to update logs in Result component
-			const event = new CustomEvent('updateLogs', { detail: data.logs });
-			window.dispatchEvent(event);
-		} catch (error) {
-			console.error('Error fetching logs:', error);
-		}
+		const event = new CustomEvent('rowAdded');
+		window.dispatchEvent(event); // Dispatch event when row is added
 	}
 
 	$: carouselStyle = `transform: translateX(calc(-${$currentIndex * 100}% + ${$translateX}px)); transition: ${dragging ? 'none' : 'transform 0.3s ease-in-out'}`;
