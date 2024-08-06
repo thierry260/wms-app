@@ -376,7 +376,7 @@
 	}
 
 	.disabled {
-		color: grey;
+		color: #ccc;
 		cursor: not-allowed;
 	}
 

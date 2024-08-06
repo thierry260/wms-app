@@ -4,8 +4,7 @@
 	import { writable } from 'svelte/store';
 
 	let dossiers = [];
-	let selectedDossier = null;
-	let selectedDossierName = '';
+	let selectedDossier;
 	let datum = '';
 	let tijdsduur = '00:15';
 	let uitvoerder = 'Toon'; // Default value
@@ -147,16 +146,12 @@
 						<label class="add_row_field full-width spacing_bottom">
 							<Select
 								items={dossiers}
-								bind:value={selectedDossierName}
+								bind:value={selectedDossier}
 								getOptionLabel={(option) => option.name}
 								getOptionValue={(option) => option.id}
+								getSelectionLabel={(option) => option?.name || `No name found for dossier ${option.id}`}
 								placeholder="Dossier zoeken"
-								on:select={(event) => {
-									const selected = event.detail;
-									selectedDossier = selected;
-									selectedDossierName = selectedDossier.name;
-									console.log(selectedDossier);
-								}}
+    							optionIdentifier="id"
 							/>
 						</label>
 
