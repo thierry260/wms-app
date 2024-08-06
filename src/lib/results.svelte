@@ -255,6 +255,7 @@
 						getSelectionLabel={(option) => option?.name || $currentLog.dossiernaam}
 						placeholder={$currentLog.dossiernaam}
 						optionIdentifier="id"
+						isClearable={false}
 					/>
 				</div>
 				<div>
