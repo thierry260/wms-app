@@ -69,10 +69,14 @@
 		const uur = tijdsduur.split(':')[0];
 		const totaal = (parseInt(min) / 60 + parseInt(uur)).toFixed(2);
 
+		// Convert the date to the desired format (dd-MM-yyyy)
+		const date = new Date(datum);
+		const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+
 		// Prepare the row object to be sent
 		const row = {
 			dossiernaam: selectedDossier.name,
-			datum,
+			datum: formattedDate,
 			omschrijving,
 			min,
 			uur,
@@ -149,9 +153,10 @@
 								bind:value={selectedDossier}
 								getOptionLabel={(option) => option.name}
 								getOptionValue={(option) => option.id}
-								getSelectionLabel={(option) => option?.name || `No name found for dossier ${option.id}`}
+								getSelectionLabel={(option) =>
+									option?.name || `No name found for dossier ${option.id}`}
 								placeholder="Dossier zoeken"
-    							optionIdentifier="id"
+								optionIdentifier="id"
 							/>
 						</label>
 

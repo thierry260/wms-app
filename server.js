@@ -83,13 +83,18 @@ app.post('/addRow', async (req, res) => {
         // Calculate the new row number to use in the formula
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SHEET_ID,
-            range: 'Urenregistratie!A:A',
+            range: 'Urenregistratie!A:M',
         });
 
-        const currentRow = response.data.values.length + 1;  // This will give us the next row number
+        const rows = response.data.values;
+        const currentRow = rows.length + 1;  // This will give us the next row number
         const totalFormula = `=E${currentRow}+D${currentRow}/60`;  // Creating the formula for the new row
 
-        // Prepare the row data with the formula
+        // Calculate the new ID value for column M
+        const previousId = rows.length > 1 ? parseInt(rows[rows.length - 1][12]) || 0 : 0;
+        const newId = previousId + 1;
+
+        // Prepare the row data with the formula and the new ID
         const rowData = [
             dossiernaam || '',
             datum || '',
@@ -99,7 +104,8 @@ app.post('/addRow', async (req, res) => {
             totalFormula,  // Use the formula instead of a calculated value
             billable || '',
             uitvoerder || '',
-            locatie || ''
+            locatie || '',
+            '', '', '', newId // Empty cells for columns I, J, K, and new ID in column M
         ];
 
         await sheets.spreadsheets.values.append({
@@ -128,13 +134,84 @@ app.post('/updateRow', async (req, res) => {
         return res.status(401).send('Not authorized');
     }
 
-    const { dossiernaam, datum, omschrijving, min, uur, billable, uitvoerder, locatie } = req.body;
+    const { id, dossiernaam, datum, omschrijving, min, uur, billable, uitvoerder, locatie } = req.body;
+    console.log('Request body:', req.body);
+
+    if (!id) {
+        return res.status(400).send('ID is required');
+    }
+
+    try {
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+        // Fetch the data to find the row index
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SHEET_ID,
+            range: SHEET_RANGE,
+        });
+
+        const rows = response.data.values;
+        let rowIndex;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i][12] && rows[i][12].toString() === id.toString()) {  // Find the row with the matching ID
+                rowIndex = i + 1; // Google Sheets rows start from 1
+                break;
+            }
+        }
+
+        if (rowIndex === undefined) {
+            return res.status(404).send('Row not found');
+        }
+
+        const totalFormula = `=E${rowIndex}+D${rowIndex}/60`;  // Creating the formula for the new row
+
+        // Prepare the row data
+        const rowData = [
+            dossiernaam || '',
+            datum || '',
+            omschrijving || '',
+            min || '0',
+            uur || '0',
+            totalFormula,
+            billable || '',
+            uitvoerder || '',
+            locatie || '',
+            '', '', '', id  // Ensure the ID is included correctly
+        ];
+
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: SHEET_ID,
+            range: `Urenregistratie!A${rowIndex}:M${rowIndex}`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [rowData],
+            },
+        });
+
+        res.status(200).send('Row updated successfully');
+    } catch (error) {
+        if (error.response) {
+            console.error('API Error details:', error.response.data);
+            res.status(500).send(`Error updating row: ${error.response.data.error.message}`);
+        } else {
+            console.error('General Error details:', error.message);
+            res.status(500).send('Error updating row');
+        }
+    }
+});
+
+app.post('/deleteRow', async (req, res) => {
+    if (!authClient) {
+        return res.status(401).send('Not authorized');
+    }
+
+    const { dossiernaam, datum } = req.body;
     console.log('Request body:', req.body);
 
     try {
         const sheets = google.sheets({ version: 'v4', auth: authClient });
 
-        // Find the row number to update based on some unique identifier in the request
+        // Find the row number to delete based on some unique identifier in the request
         // This example assumes 'dossiernaam' is unique
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SHEET_ID,
@@ -154,48 +231,27 @@ app.post('/updateRow', async (req, res) => {
             return res.status(404).send('Row not found');
         }
 
-        const totalFormula = `=E${rowIndex}+D${rowIndex}/60`;  // Creating the formula for the new row
-
-
-        // Prepare the row data
-        const rowData = [
-            dossiernaam || '',
-            datum || '',
-            omschrijving || '',
-            min || '0',
-            uur || '0',
-            totalFormula,
-            billable || '',
-            uitvoerder || '',
-            locatie || ''
-        ];
-
+        // Clear the row data
         await sheets.spreadsheets.values.update({
             spreadsheetId: SHEET_ID,
-            range: `Urenregistratie!A${rowIndex}:I${rowIndex}`,
-            valueInputOption: 'USER_ENTERED',
+            range: `Urenregistratie!A${rowIndex}:M${rowIndex}`,
+            valueInputOption: 'RAW',
             resource: {
-                values: [rowData],
+                values: [['', '', '', '', '', '', '', '', '', '', '', '', '']],
             },
         });
 
-        res.status(200).send('Row updated successfully');
+        res.status(200).send('Row deleted successfully');
     } catch (error) {
         if (error.response) {
             console.error('API Error details:', error.response.data);
-            res.status(500).send(`Error updating row: ${error.response.data.error.message}`);
+            res.status(500).send(`Error deleting row: ${error.response.data.error.message}`);
         } else {
             console.error('General Error details:', error.message);
-            res.status(500).send('Error updating row');
+            res.status(500).send('Error deleting row');
         }
     }
 });
-
-function getStartOfWeek() {
-    const now = new Date();
-    const firstDay = now.getDate() - now.getDay() + 1; // +1 to start from Monday
-    return new Date(now.setDate(firstDay));
-}
 
 app.get('/getLogs', async (req, res) => {
     if (!authClient) {
@@ -206,7 +262,7 @@ app.get('/getLogs', async (req, res) => {
         const sheets = google.sheets({ version: 'v4', auth: authClient });
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: SHEET_ID,
-            range: SHEET_RANGE,
+            range: 'Urenregistratie!A:M', // Ensure to include column M
         });
 
         const rows = response.data.values;
@@ -229,6 +285,7 @@ app.get('/getLogs', async (req, res) => {
                 billable: row[6],
                 uitvoerder: row[7],
                 locatie: row[8],
+                id: row[12] || 'MOEDERS' // Ensure the ID is included
             });
 
             if (row[6] === 'Ja') {
