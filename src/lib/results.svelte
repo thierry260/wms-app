@@ -56,23 +56,64 @@
 		}
 	});
 
+	function updateLogsForCurrentWeek() {
+		const currentDate = get(currentWeek);
+		const thisWeekLogs = filterLogsForThisWeek(allLogs, currentDate);
+		logs.set(thisWeekLogs);
+		const revenue = thisWeekLogs.reduce((acc, log) => acc + parseFloat(calculateRevenue(log)), 0);
+		totalRevenue.set(revenue.toFixed(2));
+	}
+
+	function handleLongPress(log) {
+		currentLog.set({
+			id: log.id, // Ensure the id is set
+			dossiernaam: log.dossiernaam,
+			datum: log.datum,
+			omschrijving: log.omschrijving,
+			min: log.min,
+			uur: log.uur,
+			totaal: log.totaal,
+			billable: log.billable,
+			uitvoerder: log.uitvoerder,
+			locatie: log.locatie
+		});
+		document.getElementById('editDialog').showModal();
+		console.log('Current log:', log); // Console log the current log to debug
+	}
+
 	function parseCSV(text) {
 		const rows = text.trim().split('\n').slice(1); // Remove empty rows and header
 		return rows
 			.map((row) => {
 				const cols = row.split(',');
 				return {
-					id: cols[0]?.trim(),
-					name: cols[2]?.trim()
+					id: cols[12]?.trim(), // Ensure the ID is included
+					dossiernaam: cols[0]?.trim(),
+					datum: cols[1]?.trim(),
+					omschrijving: cols[2]?.trim(),
+					min: cols[3]?.trim(),
+					uur: cols[4]?.trim(),
+					totaal: cols[5]?.trim(),
+					billable: cols[6]?.trim(),
+					uitvoerder: cols[7]?.trim(),
+					locatie: cols[8]?.trim()
 				};
 			})
-			.filter((dossier) => dossier.id && dossier.name);
+			.filter((log) => log.id && log.dossiernaam); // Filter out logs without ID and dossiernaam
 	}
 
 	async function saveLog() {
 		const editedLog = get(currentLog);
+		console.log('Edited log:', editedLog); // Debug log to see the current state of editedLog
 		// Ensure that the billable and uitvoerder fields are correctly set
 		editedLog.billable = editedLog.billable === 'Ja' ? 'Ja' : 'Nee';
+
+		// Ensure the ID is present in the request body
+		if (!editedLog.id) {
+			alert('ID is missing');
+			return;
+		}
+
 		// Send the updated log to the server to save in Google Sheets
 		try {
 			const response = await fetch('http://localhost:3000/updateRow', {
@@ -89,6 +130,8 @@
 				// Fetch and update logs to reflect the changes
 				fetchAndUpdateLogs();
 			} else {
+				const errorText = await response.text();
+				console.error('Error response:', errorText);
 				alert('Error updating row');
 			}
 		} catch (error) {
@@ -97,7 +140,6 @@
 		}
 	}
 
-	// Add the new function to fetch and update logs after saving
 	async function fetchAndUpdateLogs() {
 		try {
 			const response = await fetch('http://localhost:3000/getLogs');
@@ -113,12 +155,31 @@
 		}
 	}
 
-	function updateLogsForCurrentWeek() {
-		const currentDate = get(currentWeek);
-		const thisWeekLogs = filterLogsForThisWeek(allLogs, currentDate);
-		logs.set(thisWeekLogs);
-		const revenue = thisWeekLogs.reduce((acc, log) => acc + parseFloat(calculateRevenue(log)), 0);
-		totalRevenue.set(revenue.toFixed(2));
+	async function deleteLog() {
+		const logToDelete = get(currentLog);
+		console.log('Log to delete:', logToDelete);
+
+		try {
+			const response = await fetch('http://localhost:3000/deleteRow', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(logToDelete)
+			});
+			if (response.ok) {
+				alert('Row deleted successfully');
+				closeDialog();
+				fetchAndUpdateLogs();
+			} else {
+				const errorText = await response.text();
+				console.error('Error response:', errorText);
+				alert('Error deleting row');
+			}
+		} catch (error) {
+			console.error('Error deleting row:', error);
+			alert('Error deleting row');
+		}
 	}
 
 	function filterLogsForThisWeek(logs, currentWeekDate) {
@@ -176,12 +237,6 @@
 		clearTimeout(longPressTimer);
 	}
 
-	function handleLongPress(log) {
-		currentLog.set(log);
-		document.getElementById('editDialog').showModal();
-		console.log('Current log:', log); // Console log the current log data
-	}
-
 	function closeDialog() {
 		document.getElementById('editDialog').close();
 	}
@@ -195,6 +250,10 @@
 		const now = new Date();
 		return isSameWeek($currentWeek, now, { weekStartsOn: 1 });
 	});
+
+	$: if ($currentLog && $currentLog.datum) {
+		$currentLog.datum = new Date($currentLog.datum).toISOString().split('T')[0];
+	}
 </script>
 
 <main>
@@ -246,14 +305,12 @@
 			{#if $currentLog}
 				<p>Edit this log:</p>
 				<div>
+					<label>ID: </label>
+					<input type="text" bind:value={$currentLog.id} readonly />
+				</div>
+				<div>
 					<label>Dossiernaam: </label>
-					<Select
-						items={dossiers}
-						bind:value={$currentLog.dossiernaam}
-						getOptionLabel={(option) => option.name}
-						getOptionValue={(option) => option.id}
-						placeholder="Dossier zoeken"
-					/>
+					<input type="text" bind:value={$currentLog.dossiernaam} />
 				</div>
 				<div>
 					<label>Datum: </label>
@@ -288,6 +345,7 @@
 				</div>
 				<button on:click={saveLog}>Save</button>
 				<button on:click={closeDialog}>Cancel</button>
+				<button on:click={deleteLog}>Delete</button>
 			{/if}
 		</dialog>
 	</div>

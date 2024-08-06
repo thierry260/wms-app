@@ -70,10 +70,14 @@
 		const uur = tijdsduur.split(':')[0];
 		const totaal = (parseInt(min) / 60 + parseInt(uur)).toFixed(2);
 
+		// Convert the date to the desired format (dd-MM-yyyy)
+		const date = new Date(datum);
+		const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+
 		// Prepare the row object to be sent
 		const row = {
 			dossiernaam: selectedDossier.name,
-			datum,
+			datum: formattedDate,
 			omschrijving,
 			min,
 			uur,
@@ -102,6 +106,7 @@
 
 				// Reset form fields
 				selectedDossier = null;
+				selectedDossierName = '';
 				datum = new Date().toISOString().split('T')[0];
 				tijdsduur = '00:15';
 				uitvoerder = 'Toon';
@@ -147,13 +152,12 @@
 						<label class="add_row_field full-width spacing_bottom">
 							<Select
 								items={dossiers}
-								bind:value={selectedDossierName}
+								bind:value={selectedDossier}
 								getOptionLabel={(option) => option.name}
-								getOptionValue={(option) => option.id}
+								getOptionValue={(option) => option}
 								placeholder="Dossier zoeken"
 								on:select={(event) => {
-									const selected = event.detail;
-									selectedDossier = selected;
+									selectedDossier = event.detail;
 									selectedDossierName = selectedDossier.name;
 									console.log(selectedDossier);
 								}}
