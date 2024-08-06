@@ -42,17 +42,4 @@
 		text-align: center;
 	}
 
-	button {
-		margin: 10px;
-		padding: 10px 20px;
-		border: none;
-		background-color: var(--primary);
-		color: white;
-		cursor: pointer;
-		border-radius: 5px;
-	}
-
-	button:hover {
-		background-color: darken(var(--primary), 10%);
-	}
 </style>

@@ -244,50 +244,56 @@
 
 		<dialog id="editDialog">
 			{#if $currentLog}
-				<p>Edit this log:</p>
+				<h6>Log bewerken</h6>
 				<div>
-					<label>Dossiernaam: </label>
+					<label class="legend">Dossiernaam</label>
 					<Select
 						items={dossiers}
-						bind:value={$currentLog.dossiernaam}
+						bind:value={$currentLog}
 						getOptionLabel={(option) => option.name}
 						getOptionValue={(option) => option.id}
-						placeholder="Dossier zoeken"
+						getSelectionLabel={(option) => option?.name || $currentLog.dossiernaam}
+						placeholder={$currentLog.dossiernaam}
+						optionIdentifier="id"
 					/>
 				</div>
 				<div>
-					<label>Datum: </label>
+					<label class="legend">Datum</label>
 					<input type="date" bind:value={$currentLog.datum} />
 				</div>
 				<div>
-					<label>Omschrijving: </label>
+					<label class="legend">Omschrijving</label>
 					<textarea bind:value={$currentLog.omschrijving}></textarea>
 				</div>
 				<div>
-					<label>Minuten: </label>
-					<input type="text" bind:value={$currentLog.min} />
-				</div>
-				<div>
-					<label>Uren: </label>
-					<input type="text" bind:value={$currentLog.uur} />
-				</div>
-				<div>
-					<label>Billable: </label>
-					<input type="checkbox" bind:checked={$currentLog.billable} />
-				</div>
-				<div>
-					<label>Uitvoerder: </label>
+					<label class="legend">Uitvoerder</label>
 					<select bind:value={$currentLog.uitvoerder}>
 						<option value="Michel">Michel</option>
 						<option value="Toon">Toon</option>
 					</select>
 				</div>
 				<div>
-					<label>Locatie: </label>
+					<label class="legend">Locatie</label>
 					<input type="text" bind:value={$currentLog.locatie} />
 				</div>
-				<button on:click={saveLog}>Save</button>
-				<button on:click={closeDialog}>Cancel</button>
+				<div class="columns" data-col="2">
+					<div>
+						<label class="legend">Minuten</label>
+						<input type="text" bind:value={$currentLog.min} />
+					</div>
+					<div>
+						<label class="legend">Uren</label>
+						<input type="text" bind:value={$currentLog.uur} />
+					</div>
+				</div>
+				<div>
+					<label class="legend">Facturabel</label>
+					<input type="checkbox" bind:checked={$currentLog.billable} />
+				</div>
+				<div class="buttons">
+					<button class="outline" on:click={closeDialog}>Annuleren</button>
+					<button on:click={saveLog}>Opslaan</button>
+				</div>
 			{/if}
 		</dialog>
 	</div>

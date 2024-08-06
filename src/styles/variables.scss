@@ -1,6 +1,6 @@
 /* Variables */
 
-// SCSS variables 
+// SCSS variables
 $lg: 1199px;
 $md: 991px;
 $sm: 767px;
@@ -11,23 +11,24 @@ $success: #4ccf4c;
 
 // CSS variables
 :root {
-    --background: #f2f2f2;
-    --header-height: 70px;
-    --container-width: 1040px;
-    --primary: #2D1EED;
-    --primary-light: #d3d0fb;
-    --text: #707f8e;
-    --text-light: #9fa2a5;
-    --heading-color: #3d3d3d;
-    --border-radius: 5px;
-    --disabled: #e5e5e5;
-    --border-color: #ddd;
-    --heading: 'Nunito', sans-serif;
-    --body: 'Quicksand', sans-serif;
+	--background: #f2f2f2;
+	--header-height: 70px;
+	--container-width: 1040px;
+	--primary: #2d1eed;
+	--primary-light: #d3d0fb;
+	--text: #707f8e;
+	--text-light: #9fa2a5;
+	--heading-color: #3d3d3d;
+	--border-radius: 5px;
+	--disabled: #e5e5e5;
+	--border-color: #ddd;
+	--border: #ddd;
+	--heading: 'Nunito', sans-serif;
+	--body: 'Quicksand', sans-serif;
 
-    --card_background: #FFFFFF;
+	--card_background: #ffffff;
 
-    @media (max-width: $lg) {
-        --header-height: 60px;
-    }
+	@media (max-width: $lg) {
+		--header-height: 60px;
+	}
 }
