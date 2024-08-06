@@ -23,7 +23,7 @@
 <header>
 	<h1>WMS</h1>
 	{#if $isAuthenticated}
-		<button class="logout" on:click={handleLogout}><SignOut size={24} weight="bold" /></button>
+		<button class="logout" on:click={handleLogout}><SignOut size={24}  /></button>
 	{:else}
 		<button class="login" on:click={handleLogin}>Login</button>
 	{/if}
@@ -55,6 +55,10 @@
 		background: none;
 		border: none;
 		transition: color 0.3s ease;
+	}
+
+	button.logout {
+		padding-inline: 0;
 	}
 
 	.logout:hover,

@@ -168,13 +168,14 @@
 		flex: 1;
 		border: none;
 		background: none;
-		font-size: 1.6rem;
+		font-size: 1.4rem;
 		color: var(--text);
 		cursor: pointer;
 		transition: color 0.3s ease;
-		padding-block: 25px;
+		padding-block: 20px;
 		border-bottom: 2px solid transparent;
 		border-radius: 0;
+		font-weight: 500;
 	}
 
 	.bottom-nav button.active {
