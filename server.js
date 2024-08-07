@@ -13,7 +13,7 @@ const port = 3000;
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const SHEET_ID = '1Mr3a1ISyqdLGV4VKWrJIfME7ET0__wMpRVfCaZ8wEq0';
 const SHEET_RANGE = 'Urenregistratie!A:I';
-const SHEET_RANGE_UPDATE = 'Urenregistratie!A:M';
+const SHEET_RANGE_WIDE = 'Urenregistratie!A:M';
 
 const oAuth2Client = new OAuth2Client(
 	process.env.CLIENT_ID,
@@ -153,7 +153,7 @@ app.post('/updateRow', async (req, res) => {
 		// Fetch the data to find the row index
 		const response = await sheets.spreadsheets.values.get({
 			spreadsheetId: SHEET_ID,
-			range: SHEET_RANGE_UPDATE
+			range: SHEET_RANGE_WIDE
 		});
 
 		const rows = response.data.values;
@@ -162,7 +162,6 @@ app.post('/updateRow', async (req, res) => {
 		console.log('id: ', id);
 		// console.log('rows: ', rows);
 		for (let i = 0; i < rows.length; i++) {
-			console.log('row id: ', rows[i][12].toString());
 			if (rows[i][12] && rows[i][12].toString() === id.toString()) {
 				// Find the row with the matching ID
 				rowIndex = i + 1; // Google Sheets rows start from 1
@@ -219,8 +218,15 @@ app.post('/deleteRow', async (req, res) => {
 		return res.status(401).send('Not authorized');
 	}
 
-	const { dossiernaam, datum } = req.body;
+	const { id, dossiernaam, datum, omschrijving, min, uur, totaal, billable, uitvoerder, locatie } =
+		req.body;
 	console.log('Request body:', req.body);
+
+	if (!id) {
+		return res.status(400).send('ID is required');
+	} else {
+		console.log('id: ', id);
+	}
 
 	try {
 		const sheets = google.sheets({ version: 'v4', auth: authClient });
@@ -229,13 +235,16 @@ app.post('/deleteRow', async (req, res) => {
 		// This example assumes 'dossiernaam' is unique
 		const response = await sheets.spreadsheets.values.get({
 			spreadsheetId: SHEET_ID,
-			range: SHEET_RANGE
+			range: SHEET_RANGE_WIDE
 		});
 
 		const rows = response.data.values;
 		let rowIndex;
+
+		// console.log('rows: ', rows);
 		for (let i = 0; i < rows.length; i++) {
-			if (rows[i][0] === dossiernaam && rows[i][1] === datum) {
+			if (rows[i][12] && rows[i][12].toString() === id.toString()) {
+				// Find the row with the matching ID
 				rowIndex = i + 1; // Google Sheets rows start from 1
 				break;
 			}

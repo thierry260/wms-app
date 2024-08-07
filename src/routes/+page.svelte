@@ -4,6 +4,7 @@
 	import Result from '$lib/results.svelte';
 	import { writable } from 'svelte/store';
 	import { onMount } from 'svelte';
+	// import 
 
 	const currentIndex = writable(0);
 	let dragging = false;
@@ -173,7 +174,7 @@
 		cursor: pointer;
 		transition: color 0.3s ease;
 		padding-block: 20px;
-		border-bottom: 2px solid transparent;
+		border-bottom: 3px solid transparent;
 		border-radius: 0;
 		font-weight: 500;
 	}

@@ -159,6 +159,10 @@
 		const logToDelete = get(currentLog);
 		console.log('Log to delete:', logToDelete);
 
+		if (!confirm("Weet je zeker dat je deze log wilt verwijderen?")){
+			return;
+		}
+
 		try {
 			const response = await fetch('http://localhost:3000/deleteRow', {
 				method: 'POST',
