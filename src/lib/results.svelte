@@ -323,7 +323,7 @@
 			{#if $currentLog}
 				<div class="top">
 					<h6>Log bewerken</h6>
-					<button class="basic" on:click={deleteLog}><TrashSimple size="18"/></button>
+					<button class="basic" on:click={deleteLog}><TrashSimple size="16"/></button>
 				</div>
 				<div>
 					<label class="legend">Dossiernaam</label>

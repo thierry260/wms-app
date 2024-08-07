@@ -18,6 +18,8 @@
 	import { CaretCircleLeft, CaretCircleRight, TrashSimple } from 'phosphor-svelte';
 
     const searchQuery = writable('');  // Store for the search query
+    const searchQueryFrom = writable('');  // Store for the search query
+    const searchQueryTo = writable('');  // Store for the search query
     const logs = writable([]);
     const totalRevenue = writable(0);
 	const loading = writable(true);
@@ -59,6 +61,8 @@
 
 	function updateLogsForSearch(data = allLogs) {
 		const searchValue = get(searchQuery).trim().toLowerCase();
+        const fromDate = get(searchQueryFrom);
+        const toDate = get(searchQueryTo);
 
 		if (searchValue) {
 			data = data.filter(log => 
@@ -68,6 +72,27 @@
 				log.locatie.toLowerCase().includes(searchValue)
 			);
 		}
+
+        // Filter based on date range
+        if (fromDate || toDate) {
+        data = data.filter(log => {
+            // Parse log date in YYYY-MM-DD format for comparison
+            const logDate = new Date(log.datum.split('-').reverse().join('-'));
+
+            let isValidLog = true;
+            if (fromDate) {
+                const from = new Date(fromDate);
+                from.setHours(0, 0, 0, 0);  // Ensure the time part is zeroed out
+                isValidLog = isValidLog && logDate >= from;
+            }
+            if (toDate) {
+                const to = new Date(toDate);
+                to.setHours(23, 59, 59, 999);  // Ensure the time part includes the full day
+                isValidLog = isValidLog && logDate <= to;
+            }
+            return isValidLog;
+        });
+    }
 
         data.sort((a, b) => {
             let dateA = new Date(a.datum.split('-').reverse().join('-'));
@@ -83,6 +108,44 @@
 	function handleSearchInput(event) {
         searchQuery.set(event.target.value);
 		updateLogsForSearch();
+    }
+
+    function handleSearchInputFrom(event) {
+        const fromDate = new Date(event.target.value);
+        searchQueryFrom.set(event.target.value);
+        
+        // Get the current value of the "To" date
+        const toDate = get(searchQueryTo);
+        
+        // Check if "From" date is after the "To" date
+        if (toDate && fromDate > new Date(toDate)) {
+            searchQueryFrom.set(toDate); // Reset "From" date to "To" date
+        }
+        
+        // Update logs after changing the "From" date
+        updateLogsForSearch();
+    }
+
+    function handleSearchInputTo(event) {
+        const toDate = new Date(event.target.value);
+        searchQueryTo.set(event.target.value);
+
+        // Get the current value of the "From" date
+        const fromDate = get(searchQueryFrom);
+        
+        // Check if "To" date is before the "From" date
+        if (fromDate && toDate < new Date(fromDate)) {
+            searchQueryTo.set(fromDate); // Reset "To" date to "From" date
+        }
+        
+        // Check if "To" date is in the future and set to today's date if so
+        const today = new Date();
+        if (toDate > today) {
+            searchQueryTo.set(today.toISOString().split('T')[0]); // Reset "To" date to today
+        }
+
+        // Update logs after changing the "To" date
+        updateLogsForSearch();
     }
 
 	function handleLongPress(log) {
@@ -261,6 +324,16 @@
 		{:else}
 			<input type="text" placeholder="Zoek op dossiernaam, omschrijving, uitvoerder of locatie" on:input={handleSearchInput}
             bind:value={$searchQuery} />
+            <div class="columns" data-col="2">
+                <div class="date_input">
+                    <label class="legend">Van</label>
+                    <input type="date" on:input={handleSearchInputFrom} />
+                </div>
+                <div class="date_input">
+                    <label class="legend">Tot</label>
+                    <input type="date" on:input={handleSearchInputTo} />
+                </div>
+            </div>
 			<div class="logs-container">
 				<ul>
 					{#each $logs as log}
@@ -293,7 +366,7 @@
 			{#if $currentLog}
 				<div class="top">
 					<h6>Log bewerken</h6>
-					<button class="basic" on:click={deleteLog}><TrashSimple size="18"/></button>
+					<button class="basic" on:click={deleteLog}><TrashSimple size="16"/></button>
 				</div>
 				<div>
 					<label class="legend">Dossiernaam</label>
@@ -376,9 +449,9 @@
 	.logs-container {
 		flex-grow: 1;
 		width: 100%;
-		max-height: calc(100vh - 350px);
+		max-height: calc(100vh - 385px);
 		overflow-y: auto; /* Scrollbaar maken */
-		margin-block: 20px; /* Ruimte tussen de lijst en de tekst */
+		margin-top: 20px; /* Ruimte tussen de lijst en de tekst */
 	}
 
 	ul {
@@ -476,4 +549,17 @@
 		justify-content: space-between;
 		align-items: center;
 	}
+    .date_input {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    .date_input label {
+        margin-bottom: 0;
+    }
+    .card > input, 
+    .card > .columns input {
+        padding: 12px 15px;
+    }
 </style>

@@ -1127,6 +1127,7 @@ dialog {
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
 	gap: 15px;
+	width: 100%;
 	// @media (max-width: $md) {
 	// 	grid-template-columns: 100%;
 	// }
