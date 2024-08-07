@@ -110,7 +110,7 @@
 
 		// Ensure the ID is present in the request body
 		if (!editedLog.id) {
-			alert('ID is missing');
+			alert('ID ontbreekt');
 			return;
 		}
 
@@ -124,7 +124,7 @@
 				body: JSON.stringify(editedLog)
 			});
 			if (response.ok) {
-				alert('Row updated successfully');
+				alert('Urenregistratie succesvol bijgewerkt');
 				// Close the dialog after saving
 				closeDialog();
 				// Fetch and update logs to reflect the changes
@@ -132,11 +132,11 @@
 			} else {
 				const errorText = await response.text();
 				console.error('Error response:', errorText);
-				alert('Error updating row');
+				alert('Fout bij het updaten van urenregistratie');
 			}
 		} catch (error) {
-			console.error('Error updating row:', error);
-			alert('Error updating row');
+			console.error('Fout bij het updaten van urenregistratie:', error);
+			alert('Fout bij het updaten van urenregistratie');
 		}
 	}
 
@@ -172,17 +172,17 @@
 				body: JSON.stringify(logToDelete)
 			});
 			if (response.ok) {
-				alert('Row deleted successfully');
+				alert('Urenregistratie succesvol verwijderd');
 				closeDialog();
 				fetchAndUpdateLogs();
 			} else {
 				const errorText = await response.text();
 				console.error('Error response:', errorText);
-				alert('Error deleting row');
+				alert('Fout bij het verwijderen van urenregistratie');
 			}
 		} catch (error) {
-			console.error('Error deleting row:', error);
-			alert('Error deleting row');
+			console.error('Fout bij het verwijderen van urenregistratie:', error);
+			alert('Fout bij het verwijderen van urenregistratie');
 		}
 	}
 
@@ -277,7 +277,7 @@
 		{#if $loading}
 			<p class="loading-text">Laden...</p>
 		{:else}
-			<h2>Week: €{$totalRevenue}</h2>
+			<h2>Weekomzet: €{$totalRevenue}</h2>
 			<p>Gelogde taken:</p>
 			<div class="logs-container">
 				<ul>

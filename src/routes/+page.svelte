@@ -15,7 +15,7 @@
 
 	const pages = [
 		{ component: CaseDropdown, name: 'Urenregistratie' },
-		{ component: Result, name: 'Resultaten' }
+		{ component: Result, name: 'Weekoverzichten' }
 	];
 
 	onMount(async () => {

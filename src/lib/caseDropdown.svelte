@@ -100,7 +100,7 @@
 			});
 
 			if (response.ok) {
-				alert('Row added successfully');
+				alert('Urenregistratie succesvol toegevoegd');
 				dispatch('rowAdded'); // Dispatch event when row is added
 
 				// Reset form fields
