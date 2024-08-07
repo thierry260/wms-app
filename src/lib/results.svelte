@@ -68,7 +68,7 @@
 		currentLog.set({
 			id: log.id, // Ensure the id is set
 			dossiernaam: log.dossiernaam,
-			datum: log.datum,
+			datum: convertToISODate(log.datum),
 			omschrijving: log.omschrijving,
 			min: log.min,
 			uur: log.uur,
@@ -250,6 +250,18 @@
 		const now = new Date();
 		return isSameWeek($currentWeek, now, { weekStartsOn: 1 });
 	});
+
+	const convertToISODate = (dmyDate) => {
+		// Split the input string by the hyphen
+		const [day, month, year] = dmyDate.split('-');
+
+		// Pad the day and month with leading zeros if needed
+		const paddedDay = day.padStart(2, '0');
+		const paddedMonth = month.padStart(2, '0');
+
+		// Return the date in the YYYY-MM-DD format
+		return `${year}-${paddedMonth}-${paddedDay}`;
+	}
 
 	$: if ($currentLog && $currentLog.datum) {
 		$currentLog.datum = new Date($currentLog.datum).toISOString().split('T')[0];

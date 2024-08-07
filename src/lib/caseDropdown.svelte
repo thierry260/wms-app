@@ -110,7 +110,7 @@
 				uitvoerder = 'Toon';
 				omschrijving = '';
 				billable = true;
-				locatie = 'Kick offices';
+				locatie = '';
 			} else {
 				// Capture and log error text from server response
 				const errorText = await response.text();
