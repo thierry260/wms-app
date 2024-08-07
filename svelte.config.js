@@ -1,16 +1,10 @@
 import preprocess from 'svelte-preprocess';
-import adapter from '@sveltejs/adapter-static';
+import vercel from '@sveltejs/adapter-vercel';
 
 export default {
 	kit: {
-		adapter: adapter({
-			pages: 'build',
-			assets: 'build',
-			fallback: 'index.html' // This sets up the fallback for a single-page application
-		}),
-		prerender: {
-			// Add any necessary options here
-		}
+		adapter: vercel()
+		// other options if needed
 	},
 	preprocess: preprocess({
 		scss: {
