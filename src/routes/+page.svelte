@@ -2,6 +2,7 @@
 	import Navigation from '$lib/navigation.svelte';
 	import CaseDropdown from '$lib/CaseDropdown.svelte';
 	import Result from '$lib/results.svelte';
+	import Filter from '$lib/filter.svelte';
 	import { writable } from 'svelte/store';
 	import { onMount } from 'svelte';
 	// import 
@@ -15,7 +16,8 @@
 
 	const pages = [
 		{ component: CaseDropdown, name: 'Urenregistratie' },
-		{ component: Result, name: 'Weekoverzichten' }
+		{ component: Result, name: 'Weekoverzichten' },
+		{ component: Filter, name: 'Opzoeken' }
 	];
 
 	onMount(async () => {
