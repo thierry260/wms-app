@@ -29,7 +29,7 @@
 
 	onMount(async () => {
 		try {
-			const response = await fetch('http://localhost:3000/getLogs');
+			const response = await fetch('https://www.wms.conceptgen.nl/getLogs');
 			if (!response.ok) {
 				throw new Error('Network response was not ok');
 			}
@@ -116,7 +116,7 @@
 
 		// Send the updated log to the server to save in Google Sheets
 		try {
-			const response = await fetch('http://localhost:3000/updateRow', {
+			const response = await fetch('https://www.wms.conceptgen.nl/updateRow', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -142,7 +142,7 @@
 
 	async function fetchAndUpdateLogs() {
 		try {
-			const response = await fetch('http://localhost:3000/getLogs');
+			const response = await fetch('https://www.wms.conceptgen.nl/getLogs');
 			if (!response.ok) {
 				throw new Error('Network response was not ok');
 			}
@@ -164,7 +164,7 @@
 		}
 
 		try {
-			const response = await fetch('http://localhost:3000/deleteRow', {
+			const response = await fetch('https://www.wms.conceptgen.nl/deleteRow', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

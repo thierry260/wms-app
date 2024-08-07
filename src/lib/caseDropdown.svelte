@@ -26,7 +26,7 @@
 			const today = new Date().toISOString().split('T')[0];
 			datum = today;
 
-			const authResponse = await fetch('http://localhost:3000/auth/status');
+			const authResponse = await fetch('https://www.wms.conceptgen.nl/auth/status');
 			const authData = await authResponse.json();
 			isAuthenticated.set(authData.loggedIn);
 
@@ -91,7 +91,7 @@
 
 		try {
 			// Send the POST request to the server
-			const response = await fetch('http://localhost:3000/addRow', {
+			const response = await fetch('https://www.wms.conceptgen.nl/addRow', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -124,11 +124,11 @@
 	}
 
 	function handleLogin() {
-		window.location.href = 'http://localhost:3000/auth/google';
+		window.location.href = 'https://www.wms.conceptgen.nl/auth/google';
 	}
 
 	function handleLogout() {
-		window.location.href = 'http://localhost:3000/logout';
+		window.location.href = 'https://www.wms.conceptgen.nl/logout';
 	}
 
 	function handleFocus(event) {

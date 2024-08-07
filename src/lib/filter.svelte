@@ -20,6 +20,7 @@
     const searchQuery = writable('');  // Store for the search query
     const searchQueryFrom = writable('');  // Store for the search query
     const searchQueryTo = writable('');  // Store for the search query
+
     const logs = writable([]);
     const totalRevenue = writable(0);
 	const loading = writable(true);
@@ -33,7 +34,7 @@
 
 	onMount(async () => {
 		try {
-			const response = await fetch('http://localhost:3000/getLogs');
+			const response = await fetch('https://www.wms.conceptgen.nl/getLogs');
 			if (!response.ok) {
 				throw new Error('Network response was not ok');
 			}
@@ -194,7 +195,7 @@ function handleSearchInputTo() {
 
 		// Send the updated log to the server to save in Google Sheets
 		try {
-			const response = await fetch('http://localhost:3000/updateRow', {
+			const response = await fetch('https://www.wms.conceptgen.nl/updateRow', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -220,7 +221,7 @@ function handleSearchInputTo() {
 
 	async function fetchAndUpdateLogs() {
 		try {
-			const response = await fetch('http://localhost:3000/getLogs');
+			const response = await fetch('https://www.wms.conceptgen.nl/getLogs');
 			if (!response.ok) {
 				throw new Error('Network response was not ok');
 			}
@@ -242,7 +243,7 @@ function handleSearchInputTo() {
 		}
 
 		try {
-			const response = await fetch('http://localhost:3000/deleteRow', {
+			const response = await fetch('https://www.wms.conceptgen.nl/deleteRow', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

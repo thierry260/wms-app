@@ -22,7 +22,7 @@
 
 	onMount(async () => {
 		try {
-			const authResponse = await fetch('http://localhost:3000/auth/status');
+			const authResponse = await fetch('https://www.wms.conceptgen.nl/auth/status');
 			const authData = await authResponse.json();
 			isAuthenticated.set(authData.loggedIn);
 			// Add event listener for updateLogs event
@@ -135,7 +135,8 @@
 	{/each}
 </nav>
 
-<style>
+<style lang="scss">
+    @import '/src/styles/global';
 	main {
 		height: 100vh;
 		display: flex;

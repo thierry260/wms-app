@@ -6,17 +6,17 @@
 	let isAuthenticated = writable(false);
 
 	onMount(async () => {
-		const authResponse = await fetch('http://localhost:3000/auth/status');
+		const authResponse = await fetch('https://www.wms.conceptgen.nl/auth/status');
 		const authData = await authResponse.json();
 		isAuthenticated.set(authData.loggedIn);
 	});
 
 	function handleLogin() {
-		window.location.href = 'http://localhost:3000/auth/google';
+		window.location.href = 'https://www.wms.conceptgen.nl/auth/google';
 	}
 
 	function handleLogout() {
-		window.location.href = 'http://localhost:3000/logout';
+		window.location.href = 'https://www.wms.conceptgen.nl/logout';
 	}
 </script>
 

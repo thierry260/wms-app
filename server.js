@@ -45,7 +45,7 @@ app.get('/auth/google/callback', async (req, res) => {
 		const response = await oAuth2Client.getToken(code);
 		oAuth2Client.setCredentials(response.tokens);
 		authClient = oAuth2Client;
-		res.redirect('http://localhost:5173/');
+		res.redirect('https://www.wms.conceptgen.nl/');
 	} catch (error) {
 		console.error('Error retrieving access token', error);
 		res.status(500).send('Authentication failed');
@@ -325,9 +325,9 @@ app.get('/getLogs', async (req, res) => {
 
 app.get('/logout', (req, res) => {
 	authClient = null;
-	res.redirect('http://localhost:5173/');
+	res.redirect('https://www.wms.conceptgen.nl/');
 });
 
 app.listen(port, () => {
-	console.log(`Server is running on http://localhost:${port}`);
+	console.log(`Server is running on https://www.wms.conceptgen.nl:${port}`);
 });
