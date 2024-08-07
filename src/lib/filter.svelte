@@ -110,43 +110,36 @@
 		updateLogsForSearch();
     }
 
-    function handleSearchInputFrom(event) {
-        const fromDate = new Date(event.target.value);
-        searchQueryFrom.set(event.target.value);
-        
-        // Get the current value of the "To" date
-        const toDate = get(searchQueryTo);
-        
-        // Check if "From" date is after the "To" date
-        if (toDate && fromDate > new Date(toDate)) {
-            searchQueryFrom.set(toDate); // Reset "From" date to "To" date
-        }
-        
-        // Update logs after changing the "From" date
-        updateLogsForSearch();
+    function handleSearchInputFrom() {
+    const fromDate = new Date(get(searchQueryFrom));
+    const toDate = get(searchQueryTo);
+    
+    // Check if "From" date is after the "To" date
+    if (toDate && fromDate > new Date(toDate)) {
+        searchQueryFrom.set(toDate); // Reset "From" date to "To" date
     }
+    
+    updateLogsForSearch();
+}
 
-    function handleSearchInputTo(event) {
-        const toDate = new Date(event.target.value);
-        searchQueryTo.set(event.target.value);
-
-        // Get the current value of the "From" date
-        const fromDate = get(searchQueryFrom);
-        
-        // Check if "To" date is before the "From" date
-        if (fromDate && toDate < new Date(fromDate)) {
-            searchQueryTo.set(fromDate); // Reset "To" date to "From" date
-        }
-        
-        // Check if "To" date is in the future and set to today's date if so
-        const today = new Date();
-        if (toDate > today) {
-            searchQueryTo.set(today.toISOString().split('T')[0]); // Reset "To" date to today
-        }
-
-        // Update logs after changing the "To" date
-        updateLogsForSearch();
+function handleSearchInputTo() {
+    const toDate = new Date(get(searchQueryTo));
+    const fromDate = get(searchQueryFrom);
+    
+    // Check if "To" date is before the "From" date
+    if (fromDate && toDate < new Date(fromDate)) {
+        searchQueryTo.set(fromDate); // Reset "To" date to "From" date
     }
+    
+    // Check if "To" date is in the future and set to today's date if so
+    const today = new Date();
+    if (toDate > today) {
+        searchQueryTo.set(today.toISOString().split('T')[0]); // Reset "To" date to today
+    }
+    
+    updateLogsForSearch();
+}
+
 
 	function handleLongPress(log) {
 		currentLog.set({
@@ -327,11 +320,11 @@
             <div class="columns" data-col="2">
                 <div class="date_input">
                     <label class="legend">Van</label>
-                    <input type="date" on:input={handleSearchInputFrom} />
+                    <input type="date" bind:value={$searchQueryFrom} on:input={handleSearchInputFrom} />
                 </div>
                 <div class="date_input">
                     <label class="legend">Tot</label>
-                    <input type="date" on:input={handleSearchInputTo} />
+                    <input type="date" bind:value={$searchQueryTo} on:input={handleSearchInputTo} />
                 </div>
             </div>
 			<div class="logs-container">
