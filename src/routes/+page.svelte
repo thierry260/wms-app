@@ -135,8 +135,7 @@
 	{/each}
 </nav>
 
-<style lang="scss">
-    @import '/src/styles/global';
+<style>
 	main {
 		height: 100vh;
 		display: flex;
