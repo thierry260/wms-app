@@ -15,7 +15,7 @@
 		format,
 		isSameWeek
 	} from 'date-fns';
-	import { CaretCircleLeft, CaretCircleRight, TrashSimple } from 'phosphor-svelte';
+	import { CaretCircleLeft, CaretCircleRight, TrashSimple, Funnel, X } from 'phosphor-svelte';
 
     const searchQuery = writable('');  // Store for the search query
     const searchQueryFrom = writable('');  // Store for the search query
@@ -27,6 +27,7 @@
 	let allLogs = [];
 	let currentLog = writable(null);
 	let longPressTimer;
+    let showFilters = false;
 
 	let dossiers = []; // Define dossiers array
 
@@ -315,18 +316,29 @@ function handleSearchInputTo() {
 		{#if $loading}
 			<p class="loading-text">Laden...</p>
 		{:else}
-			<input type="text" placeholder="Zoek op dossiernaam, omschrijving, uitvoerder of locatie" on:input={handleSearchInput}
-            bind:value={$searchQuery} />
-            <div class="columns" data-col="2">
-                <div class="date_input">
-                    <label class="legend">Van</label>
-                    <input type="date" bind:value={$searchQueryFrom} on:input={handleSearchInputFrom} />
-                </div>
-                <div class="date_input">
-                    <label class="legend">Tot</label>
-                    <input type="date" bind:value={$searchQueryTo} on:input={handleSearchInputTo} />
-                </div>
+            <div class="search_filter">
+                <input type="text" placeholder="Zoek op dossiernaam, omschrijving, uitvoerder of locatie" on:input={handleSearchInput}
+                bind:value={$searchQuery} />
+                <button class="basic" on:click={() => showFilters = !showFilters}>
+                    {#if !showFilters}
+                        <Funnel size="18" />
+                    {:else}
+                        <X size="18" />
+                    {/if}
+                </button>
             </div>
+    		{#if showFilters}
+                <div class="columns" data-col="2">
+                    <div class="date_input">
+                        <label class="legend">Van</label>
+                        <input type="date" bind:value={$searchQueryFrom} on:input={handleSearchInputFrom} />
+                    </div>
+                    <div class="date_input">
+                        <label class="legend">Tot</label>
+                        <input type="date" bind:value={$searchQueryTo} on:input={handleSearchInputTo} />
+                    </div>
+                </div>
+            {/if}
 			<div class="logs-container">
 				<ul>
 					{#each $logs as log}
@@ -554,5 +566,33 @@ function handleSearchInputTo() {
     .card > input, 
     .card > .columns input {
         padding: 12px 15px;
+        font-size: 1.4rem;
+    }
+
+    .search_filter {
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: stretch;
+    }
+    .search_filter input {
+        flex-grow: 1;
+        font-size: 1.4rem;
+    }
+    .search_filter button {
+        min-width: 50px; 
+    }
+    @media (max-width: 575px){
+        .search_filter button {
+            min-width: 42px; 
+        }
+        .card > .columns {
+            grid-template-columns: 100%;
+            padding-top: 20px;
+        }
+        .date_input {
+            margin-top: 0;
+        }
     }
 </style>
