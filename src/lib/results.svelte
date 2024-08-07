@@ -15,7 +15,7 @@
 		format,
 		isSameWeek
 	} from 'date-fns';
-	import { CaretCircleLeft, CaretCircleRight } from 'phosphor-svelte';
+	import { CaretCircleLeft, CaretCircleRight, TrashSimple } from 'phosphor-svelte';
 
 	const logs = writable([]);
 	const totalRevenue = writable(0);
@@ -303,7 +303,10 @@
 
 		<dialog id="editDialog">
 			{#if $currentLog}
-				<h6>Log bewerken</h6>
+				<div class="top">
+					<h6>Log bewerken</h6>
+					<button class="basic" on:click={deleteLog}><TrashSimple size="18"/></button>
+				</div>
 				<div>
 					<label class="legend">Dossiernaam</label>
 					<Select
@@ -351,9 +354,6 @@
 					<input type="checkbox" bind:checked={$currentLog.billable} />
 				</div>
 				<div class="buttons">
-					<button on:click={saveLog}>Save</button>
-					<button on:click={closeDialog}>Cancel</button>
-					<button on:click={deleteLog}>Delete</button>
 					<button class="outline" on:click={closeDialog}>Annuleren</button>
 					<button on:click={saveLog}>Opslaan</button>
 				</div>
@@ -467,5 +467,11 @@
 		font-style: italic;
 		font-size: 0.8em;
 		vertical-align: top;
+	}
+
+	dialog .top {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 </style>
