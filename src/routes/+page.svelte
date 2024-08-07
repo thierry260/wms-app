@@ -1,8 +1,8 @@
 <script>
-	import Navigation from '$lib/navigation.svelte';
+	import Navigation from '$lib/Navigation.svelte';
 	import CaseDropdown from '$lib/CaseDropdown.svelte';
-	import Result from '$lib/results.svelte';
-	import Filter from '$lib/filter.svelte';
+	import Result from '$lib/Results.svelte';
+	import Filter from '$lib/Filter.svelte';
 	import { writable } from 'svelte/store';
 	import { onMount } from 'svelte';
 	// import 
