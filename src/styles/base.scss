@@ -490,6 +490,10 @@ html {
 	position: relative;
 	font-size: 1.4rem;
 
+	&.consent {
+		margin-bottom: 20px;
+	}
+
 	textarea {
 		max-height: 400px;
 	}
@@ -1126,4 +1130,8 @@ dialog {
 	// @media (max-width: $md) {
 	// 	grid-template-columns: 100%;
 	// }
+}
+
+.text_center {
+	text-align: center;
 }

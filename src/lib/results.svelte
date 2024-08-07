@@ -278,7 +278,7 @@
 			<p class="loading-text">Laden...</p>
 		{:else}
 			<h2>Weekomzet: €{$totalRevenue}</h2>
-			<p>Gelogde taken:</p>
+			<p class="legend">Gelogde taken</p>
 			<div class="logs-container">
 				<ul>
 					{#each $logs as log}
@@ -291,8 +291,8 @@
 						>
 							<div class="log-header">
 								<strong>{log.dossiernaam}</strong>
-								<div>
-									{log.uur}:{log.min}
+								<div class="total-revenue">
+									<span>{log.uur}:{log.min}</span>
 									<span class="total-revenue-single">(€{calculateRevenue(log)})</span>
 								</div>
 							</div>
@@ -483,6 +483,16 @@
 
 	.formatted_current_week {
 		color: var(--text);
+	}
+
+	.total-revenue {
+		display: flex;
+		justify-content: flex-end;
+		text-align: right;
+		flex-wrap: wrap;
+		column-gap: 5px;
+		row-gap: 2px;
+		align-items: center;
 	}
 	.total-revenue-single {
 		color: var(--text);

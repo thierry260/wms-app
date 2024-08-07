@@ -115,11 +115,11 @@
 				// Capture and log error text from server response
 				const errorText = await response.text();
 				console.error('Error response:', errorText);
-				alert('Error adding row');
+				alert('Fout bij toevoegen van rij');
 			}
 		} catch (error) {
 			console.error('Error submitting form:', error);
-			alert('Error submitting form');
+			alert('Fout bij verzenden van formulier');
 		}
 	}
 
@@ -140,13 +140,13 @@
 	<!-- <button on:click={handleLogout}>Logout</button> -->
 	<div class="card hour_specs" id="caseDropdown">
 		<div class="head">
-			<h2 class="mb_0">Urenregistratie</h2>
+			<h2 class="mb_0 text_center">Urenregistratie</h2>
 		</div>
 		<form on:submit|preventDefault={handleSubmit}>
 			<div class="content">
 				<div class="form">
 					<fieldset>
-						<legend>Data invoeren</legend>
+						<legend class="text_center">Data invoeren</legend>
 						<label class="add_row_field full-width spacing_bottom">
 							<Select
 								items={dossiers}
