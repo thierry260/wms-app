@@ -98,7 +98,7 @@
 			uitvoerder: log.uitvoerder,
 			locatie: log.locatie
 		});
-		document.getElementById('editDialog').showModal();
+		document.getElementById('editDialogInFilter').showModal();
 		console.log('Current log:', log); // Console log the current log to debug
 	}
 
@@ -229,7 +229,7 @@
 	}
 
 	function closeDialog() {
-		document.getElementById('editDialog').close();
+		document.getElementById('editDialogInFilter').close();
 	}
 
 	const isCurrentWeek = derived(currentWeek, ($currentWeek) => {
@@ -289,7 +289,7 @@
 			</div>
 		{/if}
 
-		<dialog id="editDialog">
+		<dialog id="editDialogInFilter">
 			{#if $currentLog}
 				<div class="top">
 					<h6>Log bewerken</h6>
