@@ -283,7 +283,9 @@
 				<ul>
 					{#each $logs as log}
 						<li
+							on:pointerdown={() => handleMouseDown(log)}
 							on:mousedown={() => handleMouseDown(log)}
+							on:pointerup={handleMouseUp}
 							on:mouseup={handleMouseUp}
 							on:mouseleave={handleMouseLeave}
 						>
@@ -383,14 +385,18 @@
 		display: flex;
 		justify-content: center;
 		align-items: center;
+
+		/* padding-bottom: 80px;
+		height: 100%; */
 	}
 
 	.card {
-		display: flex;
+		display: inline-flex;
 		flex-direction: column;
-		justify-content: center;
 		align-items: center;
-		min-height: 100%;
+		/* min-height: 100%; */
+		min-height: 1px;
+		height: 100%;
 	}
 
 	h2 {
@@ -400,7 +406,7 @@
 	.logs-container {
 		flex-grow: 1;
 		width: 100%;
-		max-height: 50vh; /* Limiteer de hoogte tot 50% van de viewport hoogte */
+		max-height: calc(100vh - 350px);
 		overflow-y: auto; /* Scrollbaar maken */
 		margin-bottom: 20px; /* Ruimte tussen de lijst en de tekst */
 	}
@@ -456,7 +462,7 @@
 	}
 
 	.week-date {
-		font-size: 1.2rem;
+		font-size: 1.3rem;
 		font-weight: bold;
 	}
 
