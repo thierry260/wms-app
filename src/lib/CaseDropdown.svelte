@@ -2,6 +2,7 @@
 	import { onMount, createEventDispatcher } from 'svelte';
 	import Select from 'svelte-select';
 	import { writable } from 'svelte/store';
+	import { addRow } from '../lib/api/googleSheets';
 
 	let dossiers = [];
 	let selectedDossier;
@@ -58,70 +59,58 @@
 
 	$: console.log('Selected Dossier:', selectedDossier);
 
-	async function handleSubmit() {
-		if (!selectedDossier) {
-			alert('Selecteer een dossier');
-			return;
-		}
+    async function handleSubmit() {
+        if (!selectedDossier) {
+            alert('Selecteer een dossier');
+            return;
+        }
 
-		// Split tijdsduur into uur and min
-		const min = tijdsduur.split(':')[1];
-		const uur = tijdsduur.split(':')[0];
-		const totaal = (parseInt(min) / 60 + parseInt(uur)).toFixed(2);
+        // Split tijdsduur into uur and min
+        const [uur, min] = tijdsduur.split(':');
+        const totaal = (parseInt(min) / 60 + parseInt(uur)).toFixed(2);
 
-		// Convert the date to the desired format (dd-MM-yyyy)
-		const date = new Date(datum);
-		const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+        // Convert the date to the desired format (dd-MM-yyyy)
+        const date = new Date(datum);
+        const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
 
-		// Prepare the row object to be sent
-		const row = {
-			dossiernaam: selectedDossier.name,
-			datum: formattedDate,
-			omschrijving,
-			min,
-			uur,
-			totaal,
-			billable: billable ? 'Ja' : 'Nee',
-			uitvoerder,
-			locatie
-		};
+        // Prepare the row array to be sent to Google Sheets
+        const row = [
+            selectedDossier.name,
+            formattedDate,
+            omschrijving,
+            min,
+            uur,
+            totaal,
+            billable ? 'Ja' : 'Nee',
+            uitvoerder,
+            locatie,
+            '', // Empty cells for additional columns in the range
+            '',
+            '',
+            ''  // Placeholder for ID (if you want to auto-generate IDs in the sheet, handle it in the spreadsheet formula)
+        ];
 
-		// Log the row object to be sent to the server
-		console.log('Sending row data to server:', row);
+        // Log the row data that will be sent to Google Sheets
+        console.log('Adding row to Google Sheets:', row);
 
-		try {
-			// Send the POST request to the server
-			const response = await fetch('https://www.wms.conceptgen.nl/addRow', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(row)
-			});
-
-			if (response.ok) {
-				alert('Urenregistratie succesvol toegevoegd');
-				dispatch('rowAdded'); // Dispatch event when row is added
-
-				// Reset form fields
-				selectedDossier = null;
-				datum = new Date().toISOString().split('T')[0];
-				tijdsduur = '00:15';
-				uitvoerder = 'Toon';
-				omschrijving = '';
-				billable = true;
-				locatie = '';
-			} else {
-				// Capture and log error text from server response
-				const errorText = await response.text();
-				console.error('Error response:', errorText);
-				alert('Fout bij toevoegen van rij');
-			}
-		} catch (error) {
-			console.error('Error submitting form:', error);
-			alert('Fout bij verzenden van formulier');
-		}
-	}
+        try {
+            // Use the addRow function to append the data directly to Google Sheets
+            await addRow(row);
+            alert('Urenregistratie succesvol toegevoegd');
+            
+            // Reset form fields
+            selectedDossier = null;
+            datum = new Date().toISOString().split('T')[0];
+            tijdsduur = '00:15';
+            uitvoerder = 'Toon';
+            omschrijving = '';
+            billable = true;
+            locatie = '';
+        } catch (error) {
+            console.error('Error adding row to Google Sheets:', error);
+            alert('Fout bij toevoegen van rij');
+        }
+    }
 
 	function handleLogin() {
 		window.location.href = 'https://www.wms.conceptgen.nl/auth/google';
