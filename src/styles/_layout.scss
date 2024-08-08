@@ -1,0 +1,148 @@
+/* layout.scss */
+/* Layout */
+
+// Styling
+body {
+  background-color: var(--background);
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.65;
+  color: var(--text);
+  overflow-x: hidden;
+  overflow-y: hidden;
+  height: 100%;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  background-color: var(--card_background);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--primary);
+    margin: 0;
+  }
+
+  .logout {
+    font-size: 1.6rem;
+    color: var(--text);
+    cursor: pointer;
+    background: none;
+    border: none;
+    transition: color 0.3s ease;
+
+    &:hover {
+      color: var(--primary);
+    }
+  }
+}
+
+.card {
+  width: calc(100% - 60px);
+  max-width: 600px;
+  margin: 20px auto;
+  /* Center the form and add top/bottom margin */
+  padding: 20px;
+  background-color: var(--card_background);
+  border-radius: var(--border-radius);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+  form {
+    padding-inline: 0;
+    padding-bottom: 0;
+  }
+}
+
+.hour_specs {
+  .spacing_bottom {
+    padding-bottom: 15px;
+  }
+}
+
+form {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+
+  @media (max-width: $sm) {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: 1 / -1;
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    grid-column: 1 / -1;
+
+    .consent {
+      flex-direction: row;
+      padding-bottom: 5px;
+    }
+
+    button {
+      width: unset;
+    }
+  }
+}
+
+label.add_row_field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+}
+
+legend {
+  font-size: 1.8rem;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.add_row_field_columns {
+  display: grid;
+  gap: 15px;
+
+  @media (min-width: $sm) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: $sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  background-color: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  width: 100%;
+  /* Make the button full-width */
+  font-size: 1.6rem;
+  transition: background-color 0.3s ease;
+}
+
+input[type="checkbox"] {
+  width: auto;
+  margin-right: 10px;
+}
