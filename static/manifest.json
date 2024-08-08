@@ -1,0 +1,16 @@
+// static/manifest.json
+{
+    "name": "Mail Gen",
+    "short_name": "Mail Gen",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#34e89e",
+    "theme_color": "#34e89e",
+    "icons": [
+        {
+            "src": "%sveltekit.assets%/img/MailGen-beeldmerk.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+        }
+    ]
+}

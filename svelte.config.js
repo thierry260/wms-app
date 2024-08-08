@@ -1,15 +1,33 @@
 import preprocess from 'svelte-preprocess';
-import vercel from '@sveltejs/adapter-vercel';
+import adapter from '@sveltejs/adapter-static';
 
-export default {
-	kit: {
-		adapter: vercel()
-		// other options if needed
-	},
-	preprocess: preprocess({
-		scss: {
-			prependData: `@import 'src/styles/global.scss';`
-		},
-		postcss: true
-	})
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  kit: {
+    adapter: adapter({
+      pages: 'build',
+      assets: 'build',
+      fallback: 'index.html',
+      precompress: false
+    }),
+    // Ensure correct paths
+    paths: {
+      base: '',  // Use the correct base path if any
+      assets: '',  // Ensure assets path is correctly set
+    },
+  },
+  preprocess: preprocess({
+    scss: {
+      includePaths: ['src/styles'],
+      prependData: `@import 'global.scss';`, // Ensure this is correct
+    },
+  }),
+  onwarn: (warning, handler) => {
+    if (warning.code === "css-unused-selector") {
+      return;
+    }
+    handler(warning);
+  },
 };
+
+export default config;
