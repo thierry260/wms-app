@@ -1,8 +1,6 @@
 <script>
   import { onMount } from "svelte";
   import { fetchWorkspaceData } from "$lib/utils/get";
-  import { CaretRight, ArrowRight } from "phosphor-svelte";
-  import { goto } from "$app/navigation";
 
   import CaseDropdown from "$lib/CaseDropdown.svelte";
   import Result from "$lib/Results.svelte";
@@ -20,12 +18,6 @@
 
   onMount(async () => {
     try {
-      const authResponse = await fetch(
-        "https://www.wms.conceptgen.nl/auth/status"
-      );
-      const authData = await authResponse.json();
-      isAuthenticated.set(authData.loggedIn);
-      // Add event listener for updateLogs event
       window.addEventListener("updateLogs", (event) => {
         updateLogs.set(true);
       });
@@ -169,7 +161,7 @@
     background-color: #fff;
     /* padding: 10px 0; */
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    position: fixed;
+    position: absolute;
     width: 100%;
     bottom: 0;
     left: 0;

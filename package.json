@@ -32,6 +32,8 @@
 		"@tiptap/extension-underline": "^2.5.5",
 		"@tiptap/pm": "^2.5.5",
 		"@tiptap/starter-kit": "^2.5.5",
-		"firebase": "^9.23.0"
+		"date-fns": "^3.6.0",
+		"firebase": "^9.23.0",
+		"svelte-select": "^5.8.3"
 	}
 }

@@ -35,5 +35,6 @@
     flex: 1;
     padding: 80px;
     overflow-y: auto;
+    position: relative;
   }
 </style>

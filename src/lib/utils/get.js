@@ -1,4 +1,4 @@
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "$lib/firebase";
 import { browser } from "$app/environment";
 
@@ -36,6 +36,7 @@ export async function fetchWorkspaceData(fieldName = null) {
 
       if (docSnap.exists()) {
         cachedData = docSnap.data();
+        console.log(cachedData);
         if (browser) {
           localStorage.setItem(CACHE_KEY, JSON.stringify(cachedData));
           localStorage.setItem(
@@ -106,6 +107,39 @@ export async function fetchTemplateData(templateId) {
     }
   } catch (error) {
     console.error("Error fetching template document:", error);
+    return null;
+  }
+}
+
+export async function fetchWorkspaceFilesData() {
+  try {
+    if (!browser) {
+      console.error("Not in a browser environment");
+      return null;
+    }
+
+    const workspaceId = localStorage.getItem("workspace");
+    if (!workspaceId) {
+      console.error("Workspace ID not found in localStorage");
+      return null;
+    }
+
+    const filesCollectionRef = collection(
+      db,
+      "workspaces",
+      workspaceId,
+      "files"
+    );
+    const filesSnapshot = await getDocs(filesCollectionRef);
+
+    const filesData = [];
+    filesSnapshot.forEach((doc) => {
+      filesData.push({ id: doc.id, ...doc.data() });
+    });
+
+    return filesData;
+  } catch (error) {
+    console.error("Error fetching files collection:", error);
     return null;
   }
 }
