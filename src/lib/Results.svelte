@@ -32,11 +32,16 @@
   let longPressTimer;
 
   let dossiers = []; // Define dossiers array
+  let dossiersData = [];
 
   onMount(async () => {
     try {
-      let dossiers = await fetchWorkspaceFilesData();
-      const data = dossiers.flatMap((dossier) =>
+      dossiersData = await fetchWorkspaceFilesData();
+      dossiers = dossiersData.map((dossier) => ({
+        id: dossier.id,
+        label: `${dossier.id} - ${dossier.name}`,
+      }));
+      const data = dossiersData.flatMap((dossier) =>
         (dossier.timetracking || []).map((entry) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
@@ -69,18 +74,29 @@
     totalRevenue.set(revenue.toFixed(2));
   }
 
+  function calculateHoursAndMinutes(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return {
+      hours: hours,
+      minutes: minutes,
+    };
+  }
+
   function handleLongPress(log) {
+    const { hours, minutes } = calculateHoursAndMinutes(log.minutes);
+
     currentLog.set({
       id: log.id, // Ensure the id is set
       name: log.name,
-      datum: convertToISODate(log.date),
-      omschrijving: log.description,
-      min: log.min,
-      uur: log.uur,
+      date: format(log.date.toDate(), "yyyy-MM-dd"),
+      description: log.description,
+      min: minutes, // Use calculated minutes
+      uur: hours, // Use calculated hours
       totaal: log.totaal,
       billable: log.billable,
       assignee: log.assignee,
-      locatie: log.locatie,
+      location: log.location,
     });
     document.getElementById("editDialog").showModal();
     console.log("Current log:", log); // Console log the current log to debug
@@ -244,18 +260,6 @@
     return isSameWeek($currentWeek, now, { weekStartsOn: 1 });
   });
 
-  const convertToISODate = (dmyDate) => {
-    // Split the input string by the hyphen
-    const [day, month, year] = dmyDate.split("-");
-
-    // Pad the day and month with leading zeros if needed
-    const paddedDay = day.padStart(2, "0");
-    const paddedMonth = month.padStart(2, "0");
-
-    // Return the date in the YYYY-MM-DD format
-    return `${year}-${paddedMonth}-${paddedDay}`;
-  };
-
   function formatMinutesToHHMM(totalMinutes) {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -294,7 +298,7 @@
                 </div>
               </div>
               <p class="description">{log.description}</p>
-              {#if log.billable === "Ja"}
+              {#if log.billable}
                 <span class="billable-icon">€</span>
               {/if}
               <p class="date">{format(log.date.toDate(), "dd-MM-yyyy")}</p>
@@ -339,8 +343,8 @@
             getOptionValue={(option) => option.id}
             getSelectionLabel={(option) => option?.name || $currentLog.name}
             placeholder={$currentLog.name}
-            optionIdentifier="id"
-            isClearable={false}
+            itemId="id"
+            clearable={false}
           />
         </div>
         <div>
@@ -360,7 +364,7 @@
         </div>
         <div>
           <label class="legend">Locatie</label>
-          <input type="text" bind:value={$currentLog.locatie} />
+          <input type="text" bind:value={$currentLog.location} />
         </div>
         <div class="columns" data-col="2">
           <div>

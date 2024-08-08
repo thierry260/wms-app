@@ -248,7 +248,7 @@ legend {
   transition: transform 0.1s ease-out;
 }
 
-.open>.dropdown {
+.open > .dropdown {
   transform: rotate(90deg);
 }
 
@@ -343,7 +343,6 @@ main:has(.home) nav:first-child {
   }
 
   &:hover {
-
     &:before,
     &:after {
       pointer-events: auto;
@@ -378,7 +377,6 @@ main:has(.home) nav:first-child {
 
 [data-tooltip] {
   &[data-flow="top"] {
-
     &::before,
     &::after {
       left: 50%;
@@ -387,7 +385,6 @@ main:has(.home) nav:first-child {
     }
 
     &[data-source="deadline"] {
-
       &::before,
       &::after {
         left: 25%;
@@ -396,7 +393,6 @@ main:has(.home) nav:first-child {
       }
 
       &:hover {
-
         &::before,
         &::after {
           -webkit-transform: translate(-50%, 5px);
@@ -419,7 +415,6 @@ main:has(.home) nav:first-child {
 
 [data-tooltip] {
   &[data-flow="top"]:hover {
-
     &::before,
     &::after {
       -webkit-transform: translate(-50%, 0);
@@ -484,7 +479,6 @@ main:has(.home) nav:first-child {
 }
 
 [data-tooltip=""] {
-
   &::after,
   &::before {
     display: none !important;

@@ -36,7 +36,6 @@ export async function fetchWorkspaceData(fieldName = null) {
 
       if (docSnap.exists()) {
         cachedData = docSnap.data();
-        console.log(cachedData);
         if (browser) {
           localStorage.setItem(CACHE_KEY, JSON.stringify(cachedData));
           localStorage.setItem(

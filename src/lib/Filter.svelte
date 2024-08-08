@@ -41,8 +41,13 @@
 
   onMount(async () => {
     try {
-      dossiers = await fetchWorkspaceFilesData();
-      const data = dossiers.flatMap((dossier) => dossier.timetracking || []);
+      let dossiers = await fetchWorkspaceFilesData();
+      const data = dossiers.flatMap((dossier) =>
+        (dossier.timetracking || []).map((entry) => ({
+          ...entry,
+          name: dossier.name, // Add the dossier's name to each timetracking entry
+        }))
+      );
       allLogs = data;
       updateLogsForSearch();
 
@@ -66,10 +71,10 @@
     if (searchValue) {
       data = data.filter(
         (log) =>
-          log.dossiernaam.toLowerCase().includes(searchValue) ||
-          log.omschrijving.toLowerCase().includes(searchValue) ||
-          log.uitvoerder.toLowerCase().includes(searchValue) ||
-          log.locatie.toLowerCase().includes(searchValue)
+          log.name.toLowerCase().includes(searchValue) ||
+          log.description.toLowerCase().includes(searchValue) ||
+          log.assignee.toLowerCase().includes(searchValue) ||
+          log.location.toLowerCase().includes(searchValue)
       );
     }
 
@@ -140,42 +145,32 @@
     updateLogsForSearch();
   }
 
-  function handleLongPress(log) {
-    currentLog.set({
-      id: log.id, // Ensure the id is set
-      dossiernaam: log.dossiernaam,
-      datum: convertToISODate(log.date),
-      omschrijving: log.omschrijving,
-      min: log.min,
-      uur: log.uur,
-      totaal: log.totaal,
-      billable: log.billable,
-      uitvoerder: log.uitvoerder,
-      locatie: log.locatie,
-    });
-    document.getElementById("editDialogInFilter").showModal();
-    console.log("Current log:", log); // Console log the current log to debug
+  function calculateHoursAndMinutes(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return {
+      hours: hours,
+      minutes: minutes,
+    };
   }
 
-  function parseCSV(text) {
-    const rows = text.trim().split("\n").slice(1); // Remove empty rows and header
-    return rows
-      .map((row) => {
-        const cols = row.split(",");
-        return {
-          id: cols[12]?.trim(), // Ensure the ID is included
-          dossiernaam: cols[0]?.trim(),
-          datum: cols[1]?.trim(),
-          omschrijving: cols[2]?.trim(),
-          min: cols[3]?.trim(),
-          uur: cols[4]?.trim(),
-          totaal: cols[5]?.trim(),
-          billable: cols[6]?.trim(),
-          uitvoerder: cols[7]?.trim(),
-          locatie: cols[8]?.trim(),
-        };
-      })
-      .filter((log) => log.id && log.dossiernaam); // Filter out logs without ID and dossiernaam
+  function handleLongPress(log) {
+    const { hours, minutes } = calculateHoursAndMinutes(log.minutes);
+
+    currentLog.set({
+      id: log.id, // Ensure the id is set
+      name: log.name,
+      date: format(log.date.toDate(), "yyyy-MM-dd"),
+      description: log.description,
+      min: minutes, // Use calculated minutes
+      uur: hours, // Use calculated hours
+      totaal: log.totaal,
+      billable: log.billable,
+      assignee: log.assignee,
+      location: log.location,
+    });
+    document.getElementById("editDialog").showModal();
+    console.log("Current log:", log); // Console log the current log to debug
   }
 
   async function saveLog() {
@@ -265,11 +260,9 @@
   }
 
   function calculateRevenue(log) {
-    const uur = parseFloat(log.uur) || 0;
-    const min = parseFloat(log.min) || 0;
-    const totaalUren = uur + min / 60;
-    const revenue =
-      log.billable === "Ja" ? (totaalUren * 250).toFixed(2) : "0.00";
+    const min = parseFloat(log.minutes) || 0;
+    const totaalUren = min / 60;
+    const revenue = log.billable ? (totaalUren * 250).toFixed(2) : "0.00";
     return revenue;
   }
 
@@ -305,6 +298,12 @@
     // Return the date in the YYYY-MM-DD format
     return `${year}-${paddedMonth}-${paddedDay}`;
   };
+
+  function formatMinutesToHHMM(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
 
   $: if ($currentLog && $currentLog.date) {
     $currentLog.date = new Date($currentLog.date).toISOString().split("T")[0];
@@ -362,19 +361,19 @@
               on:mouseleave={handleMouseLeave}
             >
               <div class="log-header">
-                <strong>{log.dossiernaam}</strong>
+                <strong>{log.name}</strong>
                 <div class="total-revenue">
-                  <span>{log.uur}:{log.min}</span>
+                  <span>{formatMinutesToHHMM(log.minutes)}</span>
                   <span class="total-revenue-single"
                     >(€{calculateRevenue(log)})</span
                   >
                 </div>
               </div>
-              <p class="description">{log.omschrijving}</p>
-              {#if log.billable === "Ja"}
+              <p class="description">{log.description}</p>
+              {#if log.billable}
                 <span class="billable-icon">€</span>
               {/if}
-              <p class="date">{log.date}</p>
+              <p class="date">{format(log.date.toDate(), "dd-MM-yyyy")}</p>
             </li>
           {/each}
         </ul>
@@ -396,9 +395,8 @@
             bind:value={$currentLog}
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.id}
-            getSelectionLabel={(option) =>
-              option?.name || $currentLog.dossiernaam}
-            placeholder={$currentLog.dossiernaam}
+            getSelectionLabel={(option) => option?.name || $currentLog.name}
+            placeholder={$currentLog.name}
             optionIdentifier="id"
             isClearable={false}
           />

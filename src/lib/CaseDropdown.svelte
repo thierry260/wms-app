@@ -9,15 +9,15 @@
   let selectedDossier;
   let datum = "";
   let tijdsduur = "00:15";
-  let uitvoerder = "Toon"; // Default value
-  let omschrijving = "";
+  let assignee = "Toon"; // Default value
+  let description = "";
   let billable = true;
-  let locatie = ""; // Default value
+  let location = ""; // Default value
   let isAuthenticated = writable(false);
   const dispatch = createEventDispatcher(); // Add event dispatcher
 
-  // Dropdown options for uitvoerder
-  const uitvoerderOptions = [
+  // Dropdown options for assignee
+  const assigneeOptions = [
     { label: "Michel", value: "Michel" },
     { label: "Toon", value: "Toon" },
   ];
@@ -31,26 +31,15 @@
       dossiersData = await fetchWorkspaceFilesData();
 
       // Extract and concatenate all timetracking arrays into timetrackingEntries
-      //   dossiers = dossiersData.flatMap((dossier) => dossier.timetracking || []);
-      dossiers = dossiersData;
+      dossiers = dossiersData.map((dossier) => ({
+        id: dossier.id,
+        label: `${dossier.id} - ${dossier.name}`,
+      }));
       console.log("Dossiers:", dossiers);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
   });
-
-  function parseCSV(text) {
-    const rows = text.trim().split("\n").slice(1); // Remove empty rows and header
-    return rows
-      .map((row) => {
-        const cols = row.split(",");
-        return {
-          id: cols[0]?.trim(), // Use optional chaining and trim
-          name: cols[2]?.trim(), // Use optional chaining and trim
-        };
-      })
-      .filter((dossier) => dossier.id && dossier.name); // Filter out empty dossiers and ids
-  }
 
   $: console.log("Selected Dossier:", selectedDossier);
 
@@ -71,15 +60,14 @@
 
     // Prepare the row object to be sent
     const row = {
-      dossiernaam: selectedDossier.name,
-      datum: formattedDate,
-      omschrijving,
-      min,
-      uur,
+      name: selectedDossier.name,
+      date: formattedDate,
+      description,
+      minutes,
       totaal,
-      billable: billable ? "Ja" : "Nee",
-      uitvoerder,
-      locatie,
+      billable: billable,
+      assignee,
+      location,
     };
 
     // Log the row object to be sent to the server
@@ -103,10 +91,10 @@
         selectedDossier = null;
         datum = new Date().toISOString().split("T")[0];
         tijdsduur = "00:15";
-        uitvoerder = "Toon";
-        omschrijving = "";
+        assignee = "Toon";
+        description = "";
         billable = true;
-        locatie = "";
+        location = "";
       } else {
         // Capture and log error text from server response
         const errorText = await response.text();
@@ -117,14 +105,6 @@
       console.error("Error submitting form:", error);
       alert("Fout bij verzenden van formulier");
     }
-  }
-
-  function handleLogin() {
-    window.location.href = "https://www.wms.conceptgen.nl/auth/google";
-  }
-
-  function handleLogout() {
-    window.location.href = "https://www.wms.conceptgen.nl/logout";
   }
 
   function handleFocus(event) {
@@ -151,7 +131,7 @@
               getSelectionLabel={(option) =>
                 option?.name || `No name found for dossier ${option.id}`}
               placeholder="Dossier zoeken"
-              optionIdentifier="id"
+              itemId="id"
             />
           </label>
 
@@ -171,22 +151,18 @@
             </label>
 
             <label class="add_row_field">
-              <input type="text" bind:value={locatie} on:focus={handleFocus} />
+              <input type="text" bind:value={location} on:focus={handleFocus} />
               <span>Locatie</span>
             </label>
 
             <label class="add_row_field spacing_bottom">
-              <input
-                type="text"
-                bind:value={uitvoerder}
-                on:focus={handleFocus}
-              />
+              <input type="text" bind:value={assignee} on:focus={handleFocus} />
               <span>Uitvoerder *</span>
             </label>
           </div>
 
           <label class="add_row_field full-width">
-            <textarea bind:value={omschrijving} on:focus={handleFocus}
+            <textarea bind:value={description} on:focus={handleFocus}
             ></textarea>
             <span>Omschrijving *</span>
           </label>
