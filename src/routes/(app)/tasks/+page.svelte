@@ -2,25 +2,45 @@
   import { db } from "$lib/firebase";
   import { onMount } from "svelte";
   import Sortable from "sortablejs";
+  import { writable, get } from "svelte/store";
+  import Select from "svelte-select"; // Import svelte-select
+
   import {
     collection,
     getDocs,
     doc,
     setDoc,
     getDoc,
+    addDoc,
     updateDoc,
+    arrayUnion,
+    Timestamp,
   } from "firebase/firestore";
   import { writable } from "svelte/store";
   import { Clock, TrashSimple, PencilSimple } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
   let tasks = writable({});
+  let newTask = writable({
+    title: "",
+    description: "",
+    assignees: [],
+    file_id: "",
+    priority: "Medium",
+    status: "",
+    status_id: "",
+    deadline: "",
+  });
+  let modal;
+  let assignees = writable([]);
+  let files = writable([]);
+  let clients = writable([]);
 
   async function fetchTaskStatuses() {
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -37,7 +57,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const taskSnapshots = await getDocs(tasksRef);
 
@@ -108,7 +128,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "tasks",
-      taskId
+      taskId,
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
@@ -207,12 +227,12 @@
         animation: 250,
         onEnd: async function (evt) {
           const newOrder = Array.from(evt.from.children).map(
-            (child) => child.dataset.id
+            (child) => child.dataset.id,
           );
           const workspaceRef = doc(
             db,
             "workspaces",
-            localStorage.getItem("workspace")
+            localStorage.getItem("workspace"),
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
@@ -220,7 +240,7 @@
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
             taskStatuses: newOrder.map((id) =>
-              workspaceData.taskStatuses.find((status) => status.id === id)
+              workspaceData.taskStatuses.find((status) => status.id === id),
             ),
           });
         },
@@ -228,7 +248,63 @@
     });
   }
 
+  function openModal(statusId) {
+    newTask.set({
+      title: "",
+      description: "",
+      status_id: statusId,
+    });
+    modal.showModal();
+  }
+
+  function closeModal() {
+    modal.close();
+  }
+
+  // Ensure `updated_at` is saved every time
+  async function addTask() {
+    const taskData = get(newTask);
+
+    // Convert deadline to Firestore timestamp
+    if (taskData.deadline) {
+      taskData.deadline = Timestamp.fromDate(new Date(taskData.deadline));
+    }
+
+    try {
+      const tasksRef = collection(
+        db,
+        "workspaces",
+        localStorage.getItem("workspace"),
+        "tasks",
+      );
+      await addDoc(tasksRef, {
+        ...taskData,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(), // Ensure updated_at is set when saving
+      });
+      await fetchTasks(); // Refresh tasks to show the new task
+      closeModal();
+    } catch (error) {
+      console.error("Error adding task: ", error);
+    }
+  }
+
   onMount(async () => {
+    // Fetch assignees (Example: hardcoded, adjust based on your structure)
+    assignees.set(["Michel", "Mike", "Toon", "Thierry"]);
+
+    // Fetch files
+    const filesRef = collection(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "files",
+    );
+    const fileSnapshots = await getDocs(filesRef);
+    files.set(fileSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+    // Fetch task statuses
+    await fetchTaskStatuses();
     await fetchTasks();
     setupSortable();
   });
@@ -299,13 +375,80 @@
             {/each}
           {/if}
         </ul>
-        <button class="kanban-task-add basic" data-status={status.id}>
+        <button
+          class="kanban-task-add basic"
+          data-status={status.id}
+          on:click={() => openModal(status.id)}
+        >
           + Taak toevoegen
         </button>
       </div>
     {/each}
   {/if}
 </div>
+
+<dialog bind:this={modal} class="task-modal">
+  <h2>Nieuwe Taak Toevoegen</h2>
+  <form on:submit|preventDefault={addTask}>
+    <label>
+      Titel:
+      <input type="text" bind:value={$newTask.title} required />
+    </label>
+
+    <label>
+      Beschrijving:
+      <textarea bind:value={$newTask.description} required></textarea>
+    </label>
+
+    <label>
+      Uitvoerders:
+      <select bind:value={$newTask.assignees} multiple required>
+        {#each $assignees as assignee}
+          <option value={assignee}>{assignee}</option>
+        {/each}
+      </select>
+    </label>
+
+    <label>
+      Dossier:
+      <Select
+        items={$files}
+        bind:value={$newTask.file_id}
+        getOptionLabel={(file) => `${file.id} - ${file.name}`}
+        getOptionValue={(file) => file.id}
+        placeholder="Selecteer een dossier"
+        clearable={false}
+      />
+    </label>
+
+    <label>
+      Prioriteit:
+      <select bind:value={$newTask.priority} required>
+        <option value="Low">Laag</option>
+        <option value="Medium">Medium</option>
+        <option value="High">Hoog</option>
+      </select>
+    </label>
+
+    <label>
+      Status:
+      <select bind:value={$newTask.status_id} required>
+        <option value="" disabled selected>Selecteer een status</option>
+        {#each $taskStatuses as status}
+          <option value={status.id}>{status.name}</option>
+        {/each}
+      </select>
+    </label>
+
+    <label>
+      Deadline:
+      <input type="datetime-local" bind:value={$newTask.deadline} required />
+    </label>
+
+    <button type="submit">Opslaan</button>
+    <button type="button" on:click={closeModal}>Annuleren</button>
+  </form>
+</dialog>
 
 <style lang="scss">
   .kanban-board {
