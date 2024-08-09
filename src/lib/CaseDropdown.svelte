@@ -81,6 +81,7 @@
 
       alert("Urenregistratie succesvol toegevoegd");
       dispatch("rowAdded"); // Dispatch event when row is added
+      window.dispatchEvent(new CustomEvent("logUpdated"));
 
       // Reset form fields
       selectedDossier = null;
@@ -93,6 +94,7 @@
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Fout bij verzenden van formulier");
+      dispatch("logUpdated");
     }
   }
 
