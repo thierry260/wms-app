@@ -21,12 +21,12 @@
 <div class="layout">
   <Sidebar />
   <main>
-    <Breadcrumbs />
+    <!-- <Breadcrumbs /> -->
     <slot />
   </main>
 </div>
 
-<style>
+<style lang="scss">
   .layout {
     display: flex;
     height: 100vh;
@@ -36,5 +36,6 @@
     padding: 80px;
     overflow-y: auto;
     position: relative;
+    display: flex;
   }
 </style>

@@ -106,7 +106,7 @@
       const user = auth.currentUser;
       const credential = EmailAuthProvider.credential(
         user.email,
-        currentPassword,
+        currentPassword
       );
 
       await reauthenticateWithCredential(user, credential);
@@ -301,7 +301,7 @@
   </div>
 {/if}
 
-<style>
+<style lang="scss">
   .tabs {
     display: flex;
     justify-content: center;

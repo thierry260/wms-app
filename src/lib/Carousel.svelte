@@ -73,7 +73,7 @@
 	{/each}
 </nav>
 
-<style>
+<style lang="scss">
 	.carousel {
 		display: flex;
 		overflow: hidden;

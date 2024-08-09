@@ -401,7 +401,6 @@
               on:mouseup={handleMouseUp}
               on:mouseleave={handleMouseLeave}
             >
-              {i}
               <div class="log-header">
                 <strong>{log.name}</strong>
                 <div class="total-revenue">
@@ -503,7 +502,7 @@
   </div>
 </main>
 
-<style>
+<style lang="scss">
   main {
     display: flex;
     justify-content: center;
