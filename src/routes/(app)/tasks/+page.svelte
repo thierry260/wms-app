@@ -16,7 +16,6 @@
     arrayUnion,
     Timestamp,
   } from "firebase/firestore";
-  import { writable } from "svelte/store";
   import { Clock } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
@@ -95,10 +94,10 @@
             "workspaces",
             localStorage.getItem("workspace"),
             "files",
-            fileId
-          )
-        )
-      )
+            fileId,
+          ),
+        ),
+      ),
     );
 
     // Map file data to file IDs
@@ -236,13 +235,23 @@
       "files",
     );
     const fileSnapshots = await getDocs(filesRef);
-    files.set(fileSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+    const mappedFiles = fileSnapshots.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      label: `${doc.id} - ${doc.data().name || "No Name"}`, // Set label with a fallback
+      value: doc.id, // Set value
+    }));
+
+    console.log("Mapped Files:", mappedFiles); // Check the console output
+    files.set(mappedFiles);
 
     // Fetch task statuses
     await fetchTaskStatuses();
     await fetchTasks();
     setupSortable();
   });
+
   // Utility functions
   function formatDate(timestamp) {
     if (!timestamp) return "";
@@ -338,8 +347,6 @@
       <Select
         items={$files}
         bind:value={$newTask.file_id}
-        getOptionLabel={(file) => `${file.id} - ${file.name}`}
-        getOptionValue={(file) => file.id}
         placeholder="Selecteer een dossier"
         clearable={false}
       />

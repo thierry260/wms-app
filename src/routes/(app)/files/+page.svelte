@@ -41,7 +41,7 @@
             const data = doc.data();
             return {
                 id: doc.id,
-                label: `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""}`.trim(),
+                label: `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} (${data.bedrijfsnaam || ""})`.trim(),
                 ...data,
             };
         });
