@@ -200,6 +200,7 @@ button,
 
 input[type="text"],
 input[type="date"],
+input[type="datetime-local"],
 input[type="password"],
 input[type="url"],
 input[type="tel"],
@@ -541,6 +542,7 @@ fieldset legend {
 
 dialog {
   width: calc(100% - 60px);
+  outline: none;
   max-width: 670px;
   padding: 20px;
   background-color: var(--card_background);
