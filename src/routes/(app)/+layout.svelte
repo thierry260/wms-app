@@ -33,7 +33,10 @@
   }
   main {
     flex: 1;
-    padding: 120px 60px 60px 60px;
+    padding: 60px;
+    &:has(.bottom-nav) {
+      padding: 120px 60px 60px 60px;
+    }
     overflow-y: auto;
     position: relative;
     display: flex;

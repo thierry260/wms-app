@@ -10,6 +10,7 @@
     DotsThree,
     X,
     SignOut,
+    ListChecks,
   } from "phosphor-svelte";
 
   let showMore = false;
@@ -30,6 +31,11 @@
       label: "Dossiers",
       route: "/files",
       icon: Folders,
+    },
+    {
+      label: "Taken",
+      route: "/tasks",
+      icon: ListChecks,
     },
     // Add additional items here
   ];

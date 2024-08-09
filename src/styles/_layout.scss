@@ -45,6 +45,8 @@ header {
 
 .card {
   max-width: 600px;
+  width: 100%;
+  margin-inline: auto;
   /* Center the form and add top/bottom margin */
   padding: 20px;
   background-color: var(--card_background);
