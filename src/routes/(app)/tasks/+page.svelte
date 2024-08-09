@@ -15,8 +15,11 @@
     updateDoc,
     arrayUnion,
     Timestamp,
+    query,
+    where,
+    deleteDoc,
+    writeBatch,
   } from "firebase/firestore";
-  import { writable } from "svelte/store";
   import { Clock, TrashSimple, PencilSimple } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
@@ -40,7 +43,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -57,7 +60,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks",
+      "tasks"
     );
     const taskSnapshots = await getDocs(tasksRef);
 
@@ -128,7 +131,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "tasks",
-      taskId,
+      taskId
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
@@ -157,7 +160,13 @@
     const q = query(tasksRef, where("status_id", "==", statusId));
     const taskSnapshots = await getDocs(q);
 
-    if (taskSnapshots.size === 0) {
+    let confirmMessage = "Weet je zeker dat je deze status wilt verwijderen?";
+    if (taskSnapshots.size > 0) {
+      confirmMessage +=
+        "\nAlle taken met deze status zullen ook worden verwijderd.";
+    }
+
+    if (confirm(confirmMessage)) {
       const workspaceRef = doc(
         db,
         "workspaces",
@@ -168,25 +177,46 @@
       const updatedStatuses = workspaceData.taskStatuses.filter(
         (status) => status.id !== statusId
       );
+
+      if (taskSnapshots.size > 0) {
+        const batch = writeBatch(db);
+        taskSnapshots.forEach((docSnapshot) => {
+          batch.delete(docSnapshot.ref);
+        });
+        await batch.commit(); // Commit the batch operation
+      }
+
       await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
-      await deleteDoc(
-        doc(
-          db,
-          "workspaces",
-          localStorage.getItem("workspace"),
-          "tasks",
-          statusId
-        )
-      );
-    } else {
-      alert("Cannot delete status with tasks attached.");
+      // Note: Deleting the status doc in 'tasks' subcollection is not needed
+      // if task status is stored in the main 'workspaces' collection as part of workspace data
+      taskStatuses.set(updatedStatuses);
     }
   }
-
   function handleEditClick(event) {
-    const target = event.currentTarget;
-    target.contentEditable = true;
+    const target = event.currentTarget
+      .closest(".kanban-column-header")
+      .querySelector("h3");
     target.focus();
+
+    // Move the cursor to the end of the content inside the h3 element
+    const range = document.createRange();
+    const selection = window.getSelection();
+
+    range.selectNodeContents(target);
+    range.collapse(false); // Collapse the range to the end
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function handleKeyDown() {
+    if (event.key === "Enter") {
+      event.preventDefault(); // Prevent newline character in contentEditable
+      const target = event.currentTarget;
+      const statusId = target.closest(".kanban-column").dataset.id;
+      const newName = target.innerText;
+
+      updateTaskStatusName(statusId, newName);
+    }
   }
 
   function handleBlur(event) {
@@ -194,7 +224,6 @@
     const statusId = target.closest(".kanban-column").dataset.id;
     const newName = target.innerText;
 
-    target.contentEditable = false;
     updateTaskStatusName(statusId, newName);
   }
 
@@ -227,12 +256,12 @@
         animation: 250,
         onEnd: async function (evt) {
           const newOrder = Array.from(evt.from.children).map(
-            (child) => child.dataset.id,
+            (child) => child.dataset.id
           );
           const workspaceRef = doc(
             db,
             "workspaces",
-            localStorage.getItem("workspace"),
+            localStorage.getItem("workspace")
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
@@ -240,7 +269,7 @@
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
             taskStatuses: newOrder.map((id) =>
-              workspaceData.taskStatuses.find((status) => status.id === id),
+              workspaceData.taskStatuses.find((status) => status.id === id)
             ),
           });
         },
@@ -275,7 +304,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks",
+        "tasks"
       );
       await addDoc(tasksRef, {
         ...taskData,
@@ -298,7 +327,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const fileSnapshots = await getDocs(filesRef);
     files.set(fileSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
@@ -329,6 +358,34 @@
     if (now.getTime() === deadlineDate.getTime()) return "today";
     return "";
   }
+
+  let newStatusName = writable(""); // Track the new column name
+
+  async function addNewStatus() {
+    const statusName = get(newStatusName).trim();
+    if (!statusName) return; // Exit if the input is empty
+
+    const newStatusId = doc(collection(db, "dummy")).id; // Generate a new unique ID
+    const workspaceRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace")
+    );
+    const newStatus = { id: newStatusId, name: statusName };
+
+    try {
+      // Update Firestore with the new status
+      await updateDoc(workspaceRef, {
+        taskStatuses: arrayUnion(newStatus),
+      });
+
+      // Refresh the task statuses
+      await fetchTaskStatuses();
+      newStatusName.set(""); // Reset the input field
+    } catch (error) {
+      console.error("Error adding new status:", error);
+    }
+  }
 </script>
 
 <div class="kanban-board">
@@ -337,9 +394,9 @@
       <div class="kanban-column" data-id={status.id}>
         <div class="kanban-column-header">
           <h3
-            on:click={handleEditClick}
+            on:keydown={handleKeyDown}
             on:blur={handleBlur}
-            contenteditable="false"
+            contenteditable="true"
           >
             {status.name}
           </h3>
@@ -384,6 +441,21 @@
         </button>
       </div>
     {/each}
+
+    <div
+      class="kanban-column new-column-placeholder"
+      on:click={() => {
+        document.querySelector(".new-column-placeholder input").focus();
+      }}
+    >
+      <input
+        bind:value={$newStatusName}
+        placeholder="+ Nieuwe status toevoegen"
+        on:keydown={(e) => e.key === "Enter" && addNewStatus()}
+        on:blur={addNewStatus}
+        on:click={(e) => e.stopPropagation()}
+      />
+    </div>
   {/if}
 </div>
 
@@ -493,10 +565,30 @@
       align-items: center;
       gap: 10px;
       color: var(--text);
+
+      &:has(h3:focus) {
+      }
       h3 {
         font-size: 1.6rem;
         flex-grow: 1;
         margin-bottom: 0;
+        outline: none;
+      }
+    }
+
+    &.new-column-placeholder {
+      background-color: transparent;
+      border: 2px dashed #ccc;
+      min-height: 220px;
+      box-shadow: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: default;
+      input {
+        background-color: transparent;
+        border: none;
+        outline: none;
       }
     }
   }
@@ -513,6 +605,7 @@
     border-radius: 4px;
     padding: 15px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
     &:not(:last-child) {
       margin-bottom: 8px;
     }
