@@ -126,22 +126,25 @@
   </div>
 </main>
 
-<nav class="bottom-nav">
-  {#each pages as { name }, i}
-    <button
-      on:click={() => currentIndex.set(i)}
-      class:active={$currentIndex === i}>{name}</button
-    >
-  {/each}
-</nav>
+<div class="bottom-nav-outer">
+  <nav class="bottom-nav">
+    {#each pages as { name }, i}
+      <button
+        on:click={() => currentIndex.set(i)}
+        class:active={$currentIndex === i}>{name}</button
+      >
+    {/each}
+  </nav>
+</div>
 
 <style lang="scss">
   main {
-    height: 100vh;
+    // height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden; /* Ensure overflow is hidden to manage swipes */
+    flex-grow: 1;
   }
 
   .carousel {
@@ -153,6 +156,10 @@
   .carousel-item {
     flex: 0 0 100%;
     width: 100%;
+  }
+
+  .bottom-nav-outer {
+    // position: absolute;
   }
 
   .bottom-nav {

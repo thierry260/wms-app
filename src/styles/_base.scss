@@ -311,6 +311,41 @@ main:has(.home) nav:first-child {
   }
 }
 
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+}
+fieldset:not(:first-of-type) {
+  margin-top: 15px;
+}
+fieldset legend {
+  font-size: 1.2rem;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--text);
+}
+.legend {
+  font-size: 1.2rem;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--text);
+}
+.settings_page fieldset:not(.dont_space) {
+  gap: 15px;
+}
+.settings_page fieldset.dont_space {
+  gap: 0;
+}
+
 // Tooltips
 [data-tooltip] {
   position: relative;
@@ -535,4 +570,118 @@ dialog {
 
 .text_center {
   text-align: center;
+}
+
+.add_row_field_columns {
+  gap: inherit;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+
+  @media (max-width: 767px) {
+    grid-template-columns: 100%;
+  }
+}
+
+.form small {
+  font-size: 1.2rem;
+  margin-top: 0.5em;
+  color: var(--text-light);
+
+  a {
+    color: inherit;
+
+    &:hover {
+      color: var(--text);
+    }
+  }
+}
+
+.add_row_field.add_row_field {
+  position: relative;
+  font-size: 1.4rem;
+
+  &.consent {
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  textarea {
+    max-height: 400px;
+  }
+
+  textarea,
+  input:not(:is([type="checkbox"], [type="radio"])),
+  select {
+    width: 100%;
+    padding: 26px 18px 10px;
+    border: none;
+    outline: none;
+    // background-color: var(--background);
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    max-width: 100%;
+    width: 100%;
+    font-size: inherit;
+
+    &[type="file"] {
+      border-style: dashed;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    &:not([name="invite_url"])[disabled] {
+      background-color: var(--background);
+      cursor: not-allowed;
+    }
+  }
+
+  input::placeholder {
+    opacity: 0;
+  }
+
+  textarea::placeholder {
+    opacity: 0;
+  }
+
+  select {
+    padding: 18px 18px;
+  }
+
+  textarea + span,
+  input:not(:is([type="checkbox"], [type="radio"])) + span {
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    transition-duration: 300ms;
+    font-size: inherit;
+    pointer-events: none;
+  }
+
+  textarea + span {
+    top: 25px;
+  }
+
+  &:focus-within > span,
+  input:focus + span,
+  textarea:focus + span,
+  input:not(:placeholder-shown) + span,
+  textarea:not(:placeholder-shown) + span {
+    opacity: 0.6;
+    font-size: 1.2rem;
+    top: 1.5em;
+  }
+
+  input:is([type="checkbox"], [type="radio"]) {
+    width: 15px;
+    height: 15px;
+    vertical-align: middle;
+    margin-right: 2px;
+
+    + span {
+      font-size: 1.4rem;
+      opacity: 1;
+      vertical-align: middle;
+    }
+  }
 }

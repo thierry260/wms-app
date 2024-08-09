@@ -21,7 +21,7 @@
 <div class="layout">
   <Sidebar />
   <main>
-    <Breadcrumbs />
+    <!-- <Breadcrumbs /> -->
     <slot />
   </main>
 </div>
@@ -36,5 +36,6 @@
     padding: 80px;
     overflow-y: auto;
     position: relative;
+    display: flex;
   }
 </style>
