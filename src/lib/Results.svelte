@@ -110,7 +110,6 @@
   }
 
   function handleLongPress(log) {
-    // Find the dossier associated with the log
     const dossier = dossiersData.find((dossier) => dossier.name === log.name);
 
     if (!dossier || !dossier.timetracking) {
@@ -118,7 +117,6 @@
       return;
     }
 
-    // Find the index of the log in the dossier's timetracking array
     const index = dossier.timetracking.findIndex(
       (entry) =>
         entry.date.isEqual(log.date) &&
@@ -137,6 +135,7 @@
     currentLog.set({
       index, // Store the correct index
       dossierId: dossier.id, // Use dossier's ID
+      originalDossierId: dossier.id, // Track the original dossier ID
       name: dossier.name,
       date: format(log.date.toDate(), "yyyy-MM-dd"), // Keep the string format for the UI
       description: log.description,
@@ -148,6 +147,7 @@
       location: log.location,
     });
 
+    // Ensure currentLog is set before opening the dialog
     document.getElementById("editDialog").showModal();
     console.log("Current log:", get(currentLog)); // Console log the current log to debug
   }
@@ -156,54 +156,95 @@
     const editedLog = get(currentLog);
     console.log("Edited log:", editedLog); // Debug log to see the current state of editedLog
 
+    // Extract the id from dossierId and originalDossierId
+    const dossierId = editedLog.dossierId.id;
+    const originalDossierId = editedLog.originalDossierId || dossierId;
+
+    console.log("Dossier ID:", dossierId);
+    console.log("Original Dossier ID:", originalDossierId);
+
     // Convert the date string back to a Firestore Timestamp
     const [year, month, day] = editedLog.date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
     const firestoreTimestamp = Timestamp.fromDate(dateObj);
 
-    // Get the reference to the specific dossier document in Firestore
-    const dossierRef = doc(
+    // Reference to the original dossier
+    const originalDossierRef = doc(
       db,
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      editedLog.dossierId,
+      originalDossierId, // Use the original dossier ID if available
+    );
+
+    // Reference to the new dossier
+    const newDossierRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "files",
+      dossierId, // Use the current dossier ID
     );
 
     try {
-      // Fetch the dossier document to retrieve the existing timetracking array
-      const docSnap = await getDoc(dossierRef);
+      // Fetch the original dossier document
+      const originalDocSnap = await getDoc(originalDossierRef);
+      let originalTimetracking = [];
 
-      if (docSnap.exists()) {
-        const timetracking = docSnap.data().timetracking || [];
+      if (originalDocSnap.exists()) {
+        originalTimetracking = originalDocSnap.data().timetracking || [];
 
-        // Update the specific entry at the stored index
-        timetracking[editedLog.index] = {
-          ...timetracking[editedLog.index],
-          ...editedLog,
-          date: firestoreTimestamp, // Use the Firestore Timestamp
-          minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
-        };
+        // Remove the specific log entry from the original dossier's timetracking array
+        if (originalDossierId !== dossierId) {
+          originalTimetracking = originalTimetracking.filter(
+            (entry, index) => index !== editedLog.index,
+          );
 
-        // Update the Firestore document with the updated timetracking array
-        await updateDoc(dossierRef, {
-          timetracking: timetracking,
-        });
-
-        alert("Urenregistratie succesvol bijgewerkt");
-        // Close the dialog after saving
-        window.dispatchEvent(new CustomEvent("logUpdated"));
-
-        closeDialog();
-        // Fetch and update logs to reflect the changes
-        fetchAndUpdateLogs();
-      } else {
-        console.error("Dossier document not found");
-        alert("Fout bij het updaten van urenregistratie");
+          // Update the original dossier with the updated timetracking array
+          await updateDoc(originalDossierRef, {
+            timetracking: originalTimetracking,
+          });
+        }
       }
+
+      // Fetch the new dossier document
+      const newDocSnap = await getDoc(newDossierRef);
+      let newTimetracking = [];
+
+      if (newDocSnap.exists()) {
+        newTimetracking = newDocSnap.data().timetracking || [];
+      } else {
+        console.error("New Dossier document not found, creating a new one.");
+
+        // Optional: Create the new dossier document if it doesn't exist
+        await setDoc(newDossierRef, {
+          timetracking: newTimetracking,
+        });
+      }
+
+      // Add the log entry to the new dossier's timetracking array
+      newTimetracking.push({
+        ...editedLog,
+        date: firestoreTimestamp, // Use the Firestore Timestamp
+        minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
+      });
+
+      // Update the new dossier with the updated timetracking array
+      await updateDoc(newDossierRef, {
+        timetracking: newTimetracking,
+      });
+
+      alert("Urenregistratie succesvol bijgewerkt");
+
+      // Dispatch the 'logUpdated' event to update the results list
+      window.dispatchEvent(new CustomEvent("logUpdated"));
+
+      closeDialog();
+      // Fetch and update logs to reflect the changes
+      fetchAndUpdateLogs();
     } catch (error) {
-      console.error("Fout bij het updaten van urenregistratie:", error);
-      alert("Fout bij het updaten van urenregistratie");
+      console.error("Fout bij het bijwerken van urenregistratie:", error);
+      alert("Fout bij het bijwerken van urenregistratie");
     }
   }
 
@@ -221,7 +262,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId,
+      logToDelete.dossierId.id, // Access the id property of dossierId
     );
 
     try {
@@ -411,11 +452,11 @@
           <label class="legend">Dossiernaam</label>
           <Select
             items={dossiers}
-            bind:value={$currentLog}
-            getOptionLabel={(option) => option.name}
+            bind:value={$currentLog.dossierId}
+            getOptionLabel={(option) => option.label}
             getOptionValue={(option) => option.id}
-            getSelectionLabel={(option) => option?.name || $currentLog.name}
-            placeholder={$currentLog.name}
+            getSelectionLabel={(option) => option?.label || $currentLog.name}
+            placeholder="Select dossier"
             itemId="id"
             clearable={false}
           />
