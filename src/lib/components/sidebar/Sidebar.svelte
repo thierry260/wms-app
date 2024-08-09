@@ -22,13 +22,13 @@
       icon: Timer,
     },
     {
-      label: "Cliënten",
-      route: "/clients/",
+      label: "CRM",
+      route: "/crm",
       icon: Users,
     },
     {
       label: "Dossiers",
-      route: "/files/",
+      route: "/files",
       icon: Folders,
     },
   ];
