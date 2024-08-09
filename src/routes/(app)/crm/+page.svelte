@@ -3,11 +3,17 @@
   import { collection, addDoc, Timestamp } from "firebase/firestore"; // Import Firestore functions
   import { writable } from "svelte/store";
 
-  let name = "";
-  let address = "";
-  let date_of_birth = "";
+  let voornaam = "";
+  let tussenvoegsels = "";
+  let achternaam = "";
+  let bedrijfsnaam = "";
+  let functienaam = "";
+  let geboortedatum = "";
+  let notities = "";
   let email = "";
-  let phone_number = "";
+  let telefoonnummer = "";
+  let adres = "";
+  let website = "";
 
   let submitting = writable(false);
   let errorMessage = writable("");
@@ -15,8 +21,8 @@
 
   async function handleSubmit() {
     // Ensure all required fields are filled out
-    if (!name || !address || !date_of_birth || !email || !phone_number) {
-      errorMessage.set("Please fill out all fields.");
+    if (!voornaam || !achternaam || !email || !telefoonnummer || !adres) {
+      errorMessage.set("Vul alle verplichte velden in.");
       return;
     }
 
@@ -25,47 +31,61 @@
     successMessage.set("");
 
     try {
-      // Convert date_of_birth to a Firestore Timestamp
-      const dobTimestamp = Timestamp.fromDate(new Date(date_of_birth));
+      // Convert geboortedatum to a Firestore Timestamp if provided
+      const dobTimestamp = geboortedatum
+        ? Timestamp.fromDate(new Date(geboortedatum))
+        : null;
 
       // Reference to the clients collection
       const clientsRef = collection(
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "clients"
+        "clients",
       );
 
       // Add a new document with the client data
       await addDoc(clientsRef, {
-        name,
-        address,
-        date_of_birth: dobTimestamp,
+        voornaam,
+        tussenvoegsels,
+        achternaam,
+        bedrijfsnaam,
+        functienaam,
+        geboortedatum: dobTimestamp,
+        notities,
         email,
-        phone_number,
+        telefoonnummer,
+        adres,
+        website,
       });
 
-      successMessage.set("Client successfully added!");
+      successMessage.set("Contact succesvol toegevoegd!");
       resetForm();
     } catch (error) {
       console.error("Error adding client: ", error);
-      errorMessage.set("There was an error adding the client.");
+      errorMessage.set("Toevoegen mislukt.");
     } finally {
       submitting.set(false);
     }
   }
 
   function resetForm() {
-    name = "";
-    address = "";
-    date_of_birth = "";
+    voornaam = "";
+    tussenvoegsels = "";
+    achternaam = "";
+    bedrijfsnaam = "";
+    functienaam = "";
+    geboortedatum = "";
+    notities = "";
     email = "";
-    phone_number = "";
+    telefoonnummer = "";
+    adres = "";
+    website = "";
   }
 </script>
 
 <main>
-  <h1>Add Client</h1>
+  <h1>Contact toevoegen</h1>
 
   {#if $errorMessage}
     <p style="color: red;">{$errorMessage}</p>
@@ -77,35 +97,82 @@
 
   <form on:submit|preventDefault={handleSubmit}>
     <label>
-      Name:
-      <input type="text" bind:value={name} placeholder="Client Name" />
+      Voornaam:
+      <input type="text" bind:value={voornaam} placeholder="Voornaam" />
     </label>
 
     <label>
-      Address:
-      <input type="text" bind:value={address} placeholder="Client Address" />
-    </label>
-
-    <label>
-      Date of Birth:
-      <input type="date" bind:value={date_of_birth} />
-    </label>
-
-    <label>
-      Email:
-      <input type="email" bind:value={email} placeholder="Client Email" />
-    </label>
-
-    <label>
-      Phone Number:
+      Tussenvoegsels:
       <input
-        type="tel"
-        bind:value={phone_number}
-        placeholder="Client Phone Number"
+        type="text"
+        bind:value={tussenvoegsels}
+        placeholder="Tussenvoegsels (optioneel)"
       />
     </label>
 
-    <button type="submit" disabled={$submitting}>Add Client</button>
+    <label>
+      Achternaam:
+      <input type="text" bind:value={achternaam} placeholder="Achternaam" />
+    </label>
+
+    <label>
+      Bedrijfsnaam:
+      <input
+        type="text"
+        bind:value={bedrijfsnaam}
+        placeholder="Bedrijfsnaam (optioneel)"
+      />
+    </label>
+
+    <label>
+      Functienaam:
+      <input
+        type="text"
+        bind:value={functienaam}
+        placeholder="Functienaam (optioneel)"
+      />
+    </label>
+
+    <label>
+      Geboortedatum:
+      <input type="date" bind:value={geboortedatum} />
+    </label>
+
+    <label>
+      Notities:
+      <textarea bind:value={notities} placeholder="Notities (optioneel)"
+      ></textarea>
+    </label>
+
+    <label>
+      E-mail adres:
+      <input type="email" bind:value={email} placeholder="E-mail adres" />
+    </label>
+
+    <label>
+      Telefoonnummer:
+      <input
+        type="tel"
+        bind:value={telefoonnummer}
+        placeholder="Telefoonnummer"
+      />
+    </label>
+
+    <label>
+      Adres:
+      <input type="text" bind:value={adres} placeholder="Adres" />
+    </label>
+
+    <label>
+      Website:
+      <input
+        type="url"
+        bind:value={website}
+        placeholder="Website (optioneel)"
+      />
+    </label>
+
+    <button type="submit" disabled={$submitting}>Contact toevoegen</button>
   </form>
 </main>
 
