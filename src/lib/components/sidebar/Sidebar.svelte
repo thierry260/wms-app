@@ -3,17 +3,17 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { getAuth, signOut } from "firebase/auth";
-  import { Timer, Folders, Users } from "phosphor-svelte";
-  import { templatesStore } from "$lib/stores/templates";
-  import { fetchWorkspaceData } from "$lib/utils/get";
-  import { createCategory } from "$lib/utils/create";
+  import {
+    Timer,
+    Folders,
+    Users,
+    DotsThree,
+    X,
+    SignOut,
+  } from "phosphor-svelte";
 
-  let data = [];
-  let currentId = "";
-  let currentType;
-  let isHomeActive = false;
-  let isSettingsActive = false;
-  let areAllOpen = false;
+  let showMore = false;
+  let isMobile = false;
 
   const menuItems = [
     {
@@ -31,19 +31,21 @@
       route: "/files",
       icon: Folders,
     },
+    // Add additional items here
   ];
 
-  $: {
-    currentId = $page.params.id;
-    currentType = $page.route.id.includes("template") ? "template" : "category";
-    isHomeActive =
-      $page.route.id === "" ||
-      $page.route.id === "/" ||
-      $page.route.id === "/(app)";
-    isSettingsActive = $page.route.id.includes("/settings");
-  }
+  const checkIsMobile = () => {
+    if (typeof window !== "undefined") {
+      isMobile = window.innerWidth < 768;
+    }
+  };
 
-  onMount(async () => {});
+  onMount(() => {
+    checkIsMobile();
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", checkIsMobile);
+    }
+  });
 
   const logout = async () => {
     const auth = getAuth();
@@ -54,26 +56,74 @@
       console.error("Logout failed", error);
     }
   };
+
+  const toggleMore = () => {
+    showMore = !showMore;
+  };
 </script>
 
-<aside class="sidebar">
-  <img class="logo" src="/img/wms-logo.png" alt="WMS logo" />
+<!-- Sidebar for Desktop -->
+{#if !isMobile}
+  <aside class="sidebar">
+    <img class="logo" src="/img/wms-logo.png" alt="WMS logo" />
 
-  {#each menuItems as item}
-    <a
-      class="menu_item {item.route === $page.url.pathname ? 'active' : ''}"
-      href={item.route}
+    {#each menuItems as item}
+      <a
+        class="menu_item {item.route === $page.url.pathname ? 'active' : ''}"
+        href={item.route}
+      >
+        <svelte:component this={item.icon} size={20} />
+        {item.label}
+      </a>
+    {/each}
+    <button class="logout-button" on:click={logout}
+      ><SignOut size={18} />Uitloggen</button
     >
-      <svelte:component this={item.icon} size={20} />
-      {item.label}
-    </a>
-  {/each}
+  </aside>
+{/if}
 
-  <!-- <a class="menu_item" href="/settings" class:active={isSettingsActive}>
-    <Gear size={20} />Instellingen
-  </a> -->
-  <button class="logout-button" on:click={logout}>Uitloggen</button>
-</aside>
+<!-- Bottom Navigation for Mobile -->
+{#if isMobile}
+  <nav class="sidebar-mobile">
+    <div class="main_nav">
+      <div class="main_nav_items">
+        {#each menuItems.slice(0, 4) as item}
+          <a
+            class="nav_item {item.route === $page.url.pathname ? 'active' : ''}"
+            href={item.route}
+          >
+            <svelte:component this={item.icon} size={18} />
+          </a>
+        {/each}
+      </div>
+      <div class="nav_item" on:click={toggleMore}>
+        {#if showMore}
+          <X size={20} />
+        {:else}
+          <DotsThree size={24} />
+        {/if}
+      </div>
+    </div>
+    {#if showMore}
+      <div class="more-menu">
+        <button class="logout-button" on:click={logout}
+          ><SignOut size={18} />Uitloggen</button
+        >
+        {#each menuItems.slice(4) as item}
+          <a
+            class="more_item {item.route === $page.url.pathname
+              ? 'active'
+              : ''}"
+            href={item.route}
+          >
+            <svelte:component this={item.icon} size={18} />
+            {item.label}
+          </a>
+        {/each}
+      </div>
+    {/if}
+  </nav>
+{/if}
 
 <style lang="scss">
   .sidebar {
@@ -141,6 +191,97 @@
 
       &:hover {
         background-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+  }
+
+  .sidebar-mobile {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column-reverse;
+    padding: 10px 25px;
+    background: linear-gradient(230deg, var(--primary), var(--secondary));
+    position: fixed;
+    z-index: 1000;
+
+    bottom: 20px;
+    /* margin-inline: auto; */
+    transform: translateX(-50%);
+    left: 50%;
+    border-radius: 30px;
+    gap: 12px;
+    align-items: center;
+
+    .main_nav {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .main_nav_items {
+      display: contents;
+    }
+
+    .nav_item {
+      color: #fff;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.1s ease-out;
+
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      border-radius: 5px;
+      border: 1px solid rgba(0, 0, 0, 0);
+      padding: 5px 15px;
+      height: 46px;
+      transition:
+        background-color 0.2s ease-out,
+        border-color 0.2s ease-out,
+        padding 0.2s ease-out;
+      font-size: 0.875rem;
+      overflow: hidden;
+
+      padding: 0;
+      height: 38px;
+      width: 38px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      &.active {
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &:hover:not(.active) {
+        cursor: pointer;
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    .more-menu {
+      padding: 10px;
+
+      .logout-button {
+        font-size: 1.4rem;
+        background: transparent;
+      }
+
+      .more_item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 0;
+        color: #fff;
+        text-decoration: none;
+
+        &.active {
+          color: var(--active-color);
+        }
       }
     }
   }

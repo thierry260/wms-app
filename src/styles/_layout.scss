@@ -44,9 +44,7 @@ header {
 }
 
 .card {
-  width: calc(100% - 60px);
   max-width: 600px;
-  margin: 20px auto;
   /* Center the form and add top/bottom margin */
   padding: 20px;
   background-color: var(--card_background);

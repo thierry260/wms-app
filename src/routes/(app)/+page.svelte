@@ -181,7 +181,7 @@
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     position: absolute;
     width: 100%;
-    bottom: 0;
+    top: 0;
     left: 0;
   }
 
