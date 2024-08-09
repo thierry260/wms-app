@@ -9,7 +9,6 @@
     setDoc,
     getDoc,
     updateDoc,
-    arrayUnion,
   } from "firebase/firestore";
   import { writable } from "svelte/store";
 
@@ -42,22 +41,64 @@
     const taskSnapshots = await getDocs(tasksRef);
 
     const categorizedTasks = {};
+    const fileRefs = new Map();
+
     statuses.forEach((status) => {
       categorizedTasks[status.id] = [];
     });
 
+    // Process tasks and collect file references
     taskSnapshots.docs.forEach((doc) => {
       const taskData = { id: doc.id, ...doc.data() };
       const taskStatusId = taskData.status_id;
+      const fileId = taskData.file_id;
 
       if (categorizedTasks[taskStatusId]) {
         categorizedTasks[taskStatusId].push(taskData);
       } else {
         console.warn(`Unknown task status ID: ${taskStatusId}`);
       }
+
+      // Collect file references
+      if (fileId) {
+        fileRefs.set(fileId, doc.id); // Use task ID as a placeholder for file reference
+      }
+    });
+
+    // Fetch file data
+    const fileDocs = await Promise.all(
+      Array.from(fileRefs.keys()).map((fileId) =>
+        getDoc(
+          doc(
+            db,
+            "workspaces",
+            localStorage.getItem("workspace"),
+            "files",
+            fileId
+          )
+        )
+      )
+    );
+
+    // Map file data to file IDs
+    const fileDataMap = new Map();
+    fileDocs.forEach((fileDoc) => {
+      if (fileDoc.exists()) {
+        fileDataMap.set(fileDoc.id, fileDoc.data());
+      }
+    });
+
+    // Combine task and file data
+    Object.keys(categorizedTasks).forEach((statusId) => {
+      categorizedTasks[statusId] = categorizedTasks[statusId].map((task) => ({
+        ...task,
+        fileData: fileDataMap.get(task.file_id) || null,
+      }));
     });
 
     tasks.set(categorizedTasks);
+
+    console.log(categorizedTasks);
   }
 
   async function updateTaskStatus(taskId, newStatusId) {
@@ -142,6 +183,8 @@
           {#if $tasks[status.id]}
             {#each $tasks[status.id] as task (task.id)}
               <li class="kanban-task" data-id={task.id}>
+                <div class="top"></div>
+                <span class="subtitle">{task.fileData.name}</span>
                 <h4>{task.title}</h4>
                 <p>{task.description}</p>
               </li>
@@ -158,6 +201,7 @@
 
 <style lang="scss">
   .kanban-board {
+    --container: 1520px;
     display: flex;
     justify-content: space-between;
 
@@ -167,11 +211,13 @@
     align-items: start;
     overflow-x: auto;
     overflow-y: hidden;
-    margin-inline: auto;
+    margin-inline: -60px;
+    margin-bottom: -60px;
+    width: calc(100% + 120px);
     padding-inline: max(50px, (100% - var(--container) + 100px) / 2);
     padding-inline: max(50px, (100% - var(--container)) / 2);
     padding-bottom: 40px;
-    max-width: 100%;
+    // max-width: 100%;
     display: grid;
     grid-auto-columns: 400px;
     grid-auto-flow: column;
@@ -205,8 +251,19 @@
   .kanban-task {
     background-color: #fff;
     border-radius: 4px;
-    padding: 8px;
+    padding: 15px;
     margin-bottom: 8px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+    .subtitle {
+      text-transform: uppercase;
+      opacity: 0.6;
+      font-size: 1.4rem;
+      margin-bottom: 0.5em;
+      display: block;
+    }
+    h4 {
+      font-size: 2rem;
+    }
   }
 </style>
