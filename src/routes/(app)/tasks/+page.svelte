@@ -16,7 +16,8 @@
     arrayUnion,
     Timestamp,
   } from "firebase/firestore";
-  import { Clock } from "phosphor-svelte";
+  import { writable } from "svelte/store";
+  import { Clock, TrashSimple, PencilSimple } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
   let tasks = writable({});
@@ -130,6 +131,71 @@
       taskId,
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
+  }
+
+  async function updateTaskStatusName(statusId, newName) {
+    const workspaceRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace")
+    );
+    const workspaceSnap = await getDoc(workspaceRef);
+    const workspaceData = workspaceSnap.data();
+    const updatedStatuses = workspaceData.taskStatuses.map((status) =>
+      status.id === statusId ? { ...status, name: newName } : status
+    );
+    await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
+  }
+
+  async function deleteTaskStatus(statusId) {
+    const tasksRef = collection(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "tasks"
+    );
+    const q = query(tasksRef, where("status_id", "==", statusId));
+    const taskSnapshots = await getDocs(q);
+
+    if (taskSnapshots.size === 0) {
+      const workspaceRef = doc(
+        db,
+        "workspaces",
+        localStorage.getItem("workspace")
+      );
+      const workspaceSnap = await getDoc(workspaceRef);
+      const workspaceData = workspaceSnap.data();
+      const updatedStatuses = workspaceData.taskStatuses.filter(
+        (status) => status.id !== statusId
+      );
+      await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
+      await deleteDoc(
+        doc(
+          db,
+          "workspaces",
+          localStorage.getItem("workspace"),
+          "tasks",
+          statusId
+        )
+      );
+    } else {
+      alert("Cannot delete status with tasks attached.");
+    }
+  }
+
+  function handleEditClick(event) {
+    const target = event.currentTarget;
+    target.contentEditable = true;
+    target.focus();
+  }
+
+  function handleBlur(event) {
+    const target = event.currentTarget;
+    const statusId = target.closest(".kanban-column").dataset.id;
+    const newName = target.innerText;
+
+    target.contentEditable = false;
+    updateTaskStatusName(statusId, newName);
   }
 
   function setupSortable() {
@@ -280,7 +346,17 @@
     {#each $taskStatuses as status (status.id)}
       <div class="kanban-column" data-id={status.id}>
         <div class="kanban-column-header">
-          <h3>{status.name}</h3>
+          <h3
+            on:click={handleEditClick}
+            on:blur={handleBlur}
+            contenteditable="false"
+          >
+            {status.name}
+          </h3>
+          <div on:click={handleEditClick}><PencilSimple size={18} /></div>
+          <div on:click={() => deleteTaskStatus(status.id)}>
+            <TrashSimple size={18} />
+          </div>
         </div>
         <ul
           id={status.id}
@@ -293,12 +369,13 @@
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
               >
-                <div class="top"></div>
-                <span class="subtitle"
-                  >{task.fileData ? task.fileData.name : ""}</span
-                >
-                <h4>{task.title}</h4>
-                <p>{task.description}</p>
+                <div class="top">
+                  <h4>{task.title}</h4>
+                  <span class="subtitle"
+                    >{task.fileData ? task.fileData.name : ""}</span
+                  >
+                </div>
+                <!-- <p>{task.description}</p> -->
                 {#if task.deadline}
                   <div class="task-deadline">
                     <Clock size="18" />{formatDate(task.deadline)}
@@ -416,10 +493,18 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
+    gap: 15px;
 
     .kanban-column-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
       h3 {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
+        flex-grow: 1;
+        margin-bottom: 0;
       }
     }
   }
@@ -435,17 +520,20 @@
     background-color: #fff;
     border-radius: 4px;
     padding: 15px;
-    margin-bottom: 8px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    &:not(:last-child) {
+      margin-bottom: 8px;
+    }
 
     .task-deadline {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       padding: 3px 5px;
-      color: #fff;
       border-radius: 5px;
       font-size: 13px;
+      margin-top: 15px;
+      color: var(--text-light);
     }
 
     &.today .task-deadline {
@@ -461,7 +549,7 @@
       text-transform: uppercase;
       opacity: 0.6;
       font-size: 1.4rem;
-      margin-bottom: 0.5em;
+      margin-top: 0.5em;
       display: block;
       &:empty {
         display: none;
@@ -469,6 +557,7 @@
     }
     h4 {
       font-size: 1.8rem;
+      margin-bottom: 0;
     }
   }
 </style>
