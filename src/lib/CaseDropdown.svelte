@@ -35,8 +35,10 @@
       // Extract and concatenate all timetracking arrays into timetrackingEntries
       dossiers = dossiersData.map((dossier) => ({
         id: dossier.id,
-        label: `${dossier.id} - ${dossier.name}`,
+        name: dossier.name, // Ensure that name is set correctly
+        label: `${dossier.id} - ${dossier.name}`, // Use both id and name for display in the dropdown
       }));
+
       console.log("Dossiers:", dossiers);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -71,7 +73,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        selectedDossier.id
+        selectedDossier.id,
       );
 
       // Update the timetracking array in the Firestore document

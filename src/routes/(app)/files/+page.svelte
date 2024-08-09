@@ -11,15 +11,16 @@
     } from "firebase/firestore"; // Import Firestore functions
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
+    import Select from "svelte-select";
 
     let fileId = "";
     let client_id = "";
     let dossierstatus = "Actief"; // Default value
-    let description = "";
+    let name = "";
     let opvolgdatum = "";
     let uurtarief = 250; // Default value
     let projectkosten = 0;
-    let administratiestatus = "Betaald"; // Default value
+    let administratiestatus = "Afwachten"; // Default value
     let administratieafspraak = "";
     let gekoppelde_facturen = "";
     let clients = [];
@@ -36,10 +37,14 @@
             "clients",
         );
         const clientSnapshots = await getDocs(clientsRef);
-        clients = clientSnapshots.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
+        clients = clientSnapshots.docs.map((doc) => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                label: `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""}`.trim(),
+                ...data,
+            };
+        });
 
         // Automatically fetch the last file ID and increment for suggestion
         const filesRef = collection(
@@ -58,7 +63,7 @@
 
     async function handleSubmit() {
         // Ensure all required fields are filled out
-        if (!fileId || !client_id || !description) {
+        if (!fileId || !client_id || !name) {
             errorMessage.set("Vul alle verplichte velden in.");
             return;
         }
@@ -68,6 +73,9 @@
         successMessage.set("");
 
         try {
+            // Ensure fileId is a string
+            const fileIdString = String(fileId);
+
             // Check if the file ID already exists
             const filesRef = collection(
                 db,
@@ -77,7 +85,7 @@
             );
             const existingFileQuery = query(
                 filesRef,
-                where("__name__", "==", fileId),
+                where("__name__", "==", fileIdString),
             );
             const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -99,11 +107,11 @@
                 dossierstatus !== "Afgewikkeld" && dossierstatus !== "Inactief";
 
             // Add the new file document with the specified ID (using setDoc instead of addDoc)
-            const fileDocRef = doc(filesRef, fileId);
+            const fileDocRef = doc(filesRef, fileIdString);
             await setDoc(fileDocRef, {
                 client_id,
                 dossierstatus,
-                description,
+                name,
                 active,
                 opvolgdatum: opvolgdatumTimestamp,
                 uurtarief,
@@ -130,7 +138,7 @@
     }
 
     function resetForm() {
-        description = "";
+        name = "";
         client_id = "";
         dossierstatus = "Actief"; // Reset to default value
         opvolgdatum = "";
@@ -166,13 +174,15 @@
 
         <label>
             Contact:
-            <select bind:value={client_id}>
-                <option value="" disabled selected>Selecteer een contact</option
-                >
-                {#each clients as client}
-                    <option value={client.id}>{client.name}</option>
-                {/each}
-            </select>
+            <Select
+                items={clients}
+                bind:value={client_id}
+                getOptionValue={(option) => option.id}
+                getOptionLabel={(option) => option.label}
+                placeholder="Zoek een contact"
+                itemId="id"
+                clearable={false}
+            />
         </label>
 
         <label>
@@ -190,11 +200,7 @@
 
         <label>
             Dossiernaam:
-            <input
-                type="text"
-                bind:value={description}
-                placeholder="Dossiernaam"
-            />
+            <input type="text" bind:value={name} placeholder="Dossiernaam" />
         </label>
 
         <label>

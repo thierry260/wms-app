@@ -21,7 +21,7 @@
 
   async function handleSubmit() {
     // Ensure all required fields are filled out
-    if (!voornaam || !achternaam || !email || !telefoonnummer || !adres) {
+    if (!voornaam) {
       errorMessage.set("Vul alle verplichte velden in.");
       return;
     }
@@ -166,7 +166,7 @@
     <label>
       Website:
       <input
-        type="url"
+        type="text"
         bind:value={website}
         placeholder="Website (optioneel)"
       />
