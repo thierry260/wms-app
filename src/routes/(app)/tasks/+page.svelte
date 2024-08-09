@@ -48,20 +48,19 @@
 
     taskSnapshots.docs.forEach((doc) => {
       const taskData = { id: doc.id, ...doc.data() };
-      const taskStatus = taskData.status;
+      const taskStatusId = taskData.status_id;
 
-      const status = statuses.find((status) => status.name === taskStatus);
-      if (status) {
-        categorizedTasks[status.id].push(taskData);
+      if (categorizedTasks[taskStatusId]) {
+        categorizedTasks[taskStatusId].push(taskData);
       } else {
-        console.warn(`Unknown task status: ${taskStatus}`);
+        console.warn(`Unknown task status ID: ${taskStatusId}`);
       }
     });
 
     tasks.set(categorizedTasks);
   }
 
-  async function updateTaskStatus(taskId, newStatus) {
+  async function updateTaskStatus(taskId, newStatusId) {
     const taskRef = doc(
       db,
       "workspaces",
@@ -69,10 +68,11 @@
       "tasks",
       taskId
     );
-    await setDoc(taskRef, { status: newStatus }, { merge: true });
+    await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
 
   function setupSortable() {
+    // Set up task sorting within columns
     taskStatuses.subscribe((statuses) => {
       document
         .querySelectorAll(".kanban-column-content")
@@ -88,20 +88,34 @@
               const taskId = itemEl.dataset.id;
 
               if (oldStatusId !== newStatusId) {
-                await updateTaskStatus(
-                  taskId,
-                  statuses.find((status) => status.id === newStatusId).name
-                );
+                await updateTaskStatus(taskId, newStatusId);
               }
             },
           });
         });
 
+      // Set up column sorting
       Sortable.create(document.querySelector(".kanban-board"), {
         group: "taskColumn",
         animation: 250,
         onEnd: async function (evt) {
-          // Handle column reordering here if needed
+          const newOrder = Array.from(evt.from.children).map(
+            (child) => child.dataset.id
+          );
+          const workspaceRef = doc(
+            db,
+            "workspaces",
+            localStorage.getItem("workspace")
+          );
+          const workspaceSnap = await getDoc(workspaceRef);
+          const workspaceData = workspaceSnap.data();
+
+          // Update column order in the workspace document
+          await updateDoc(workspaceRef, {
+            taskStatuses: newOrder.map((id) =>
+              workspaceData.taskStatuses.find((status) => status.id === id)
+            ),
+          });
         },
       });
     });
@@ -135,7 +149,7 @@
           {/if}
         </ul>
         <button class="kanban-task-add basic" data-status={status.id}>
-          + Add Task
+          + Taak toevoegen
         </button>
       </div>
     {/each}
@@ -182,7 +196,7 @@
   }
 
   .kanban-column-content {
-    /* min-height: 100px; */
+    min-height: 100px;
     list-style: none;
     padding: 0;
     flex-grow: 1;
