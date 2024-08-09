@@ -11,6 +11,7 @@
     updateDoc,
   } from "firebase/firestore";
   import { writable } from "svelte/store";
+  import { Clock } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
   let tasks = writable({});
@@ -166,6 +167,27 @@
     await fetchTasks();
     setupSortable();
   });
+  // Utility functions
+  function formatDate(timestamp) {
+    if (!timestamp) return "";
+    const date = timestamp.toDate();
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  }
+
+  function getDeadlineStatus(deadline) {
+    if (!deadline) return "";
+    const now = new Date();
+    const deadlineDate = deadline.toDate();
+    deadlineDate.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+
+    if (now > deadlineDate) return "overdue";
+    if (now.getTime() === deadlineDate.getTime()) return "today";
+    return "";
+  }
 </script>
 
 <div class="kanban-board">
@@ -182,11 +204,21 @@
         >
           {#if $tasks[status.id]}
             {#each $tasks[status.id] as task (task.id)}
-              <li class="kanban-task" data-id={task.id}>
+              <li
+                class="kanban-task {getDeadlineStatus(task.deadline)}"
+                data-id={task.id}
+              >
                 <div class="top"></div>
-                <span class="subtitle">{task.fileData.name}</span>
+                <span class="subtitle"
+                  >{task.fileData ? task.fileData.name : ""}</span
+                >
                 <h4>{task.title}</h4>
                 <p>{task.description}</p>
+                {#if task.deadline}
+                  <div class="task-deadline">
+                    <Clock size="18" />{formatDate(task.deadline)}
+                  </div>
+                {/if}
               </li>
             {/each}
           {/if}
@@ -204,6 +236,7 @@
     --container: 1520px;
     display: flex;
     justify-content: space-between;
+    outline: none;
 
     flex-grow: 1;
     flex-basis: 0;
@@ -255,15 +288,37 @@
     margin-bottom: 8px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 
+    .task-deadline {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 5px;
+      color: #fff;
+      border-radius: 5px;
+      font-size: 13px;
+    }
+
+    &.today .task-deadline {
+      background-color: $warning;
+      color: #fff;
+    }
+    &.overdue .task-deadline {
+      background-color: $error;
+      color: #fff;
+    }
+
     .subtitle {
       text-transform: uppercase;
       opacity: 0.6;
       font-size: 1.4rem;
       margin-bottom: 0.5em;
       display: block;
+      &:empty {
+        display: none;
+      }
     }
     h4 {
-      font-size: 2rem;
+      font-size: 1.8rem;
     }
   }
 </style>
