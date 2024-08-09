@@ -79,7 +79,7 @@
         (dossier.timetracking || []).map((entry) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
-        })),
+        }))
       );
       allLogs = data;
       updateLogsForCurrentWeek(); // Update the logs for the current week
@@ -221,7 +221,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId,
+      logToDelete.dossierId
     );
 
     try {
@@ -233,7 +233,7 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index,
+          (entry, index) => index !== logToDelete.index
         );
 
         // Update the Firestore document with the updated timetracking array
@@ -360,7 +360,6 @@
               on:mouseup={handleMouseUp}
               on:mouseleave={handleMouseLeave}
             >
-              {i}
               <div class="log-header">
                 <strong>{log.name}</strong>
                 <div class="total-revenue">
