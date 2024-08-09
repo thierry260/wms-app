@@ -118,7 +118,7 @@
   on:click={() => open && closeDropdown()}
 />
 
-<style>
+<style lang="scss">
   .dropdown_list {
     position: absolute;
     top: 100%;
@@ -200,7 +200,7 @@
   }
 
   .dropdown_list li.remove:hover {
-    background-color: lighten(var(--error, #f00), 32%);
+    background-color: lighten(#f00, 32%);
   }
 
   .dropdown_list li.separator {

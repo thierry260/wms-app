@@ -47,7 +47,7 @@
         (dossier.timetracking || []).map((entry) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
-        })),
+        }))
       );
       allLogs = data;
       updateLogsForCurrentWeek();
@@ -71,7 +71,7 @@
     console.log(thisWeekLogs);
     const revenue = thisWeekLogs.reduce(
       (acc, log) => acc + parseFloat(calculateRevenue(log)),
-      0,
+      0
     );
     totalRevenue.set(revenue.toFixed(2));
   }
@@ -100,7 +100,7 @@
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location,
+        entry.location === log.location
     );
 
     if (index === -1) {
@@ -143,7 +143,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      editedLog.dossierId,
+      editedLog.dossierId
     );
 
     try {
@@ -432,7 +432,7 @@
   </div>
 </main>
 
-<style>
+<style lang="scss">
   main {
     display: flex;
     justify-content: center;

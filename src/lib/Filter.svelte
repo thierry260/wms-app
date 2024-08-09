@@ -82,7 +82,7 @@
     if (fromDate || toDate) {
       data = data.filter((log) => {
         // Parse log date in YYYY-MM-DD format for comparison
-        const logDate = new Date(log.date.split("-").reverse().join("-"));
+        const logDate = new Date(format(log.date.toDate(), "yyyy-MM-dd"));
 
         let isValidLog = true;
         if (fromDate) {
@@ -100,8 +100,8 @@
     }
 
     data.sort((a, b) => {
-      let dateA = new Date(a.date.split("-").reverse().join("-"));
-      let dateB = new Date(b.date.split("-").reverse().join("-"));
+      let dateA = new Date(format(a.date.toDate(), "yyyy-MM-dd"));
+      let dateB = new Date(format(b.date.toDate(), "yyyy-MM-dd"));
       return dateB - dateA;
     });
 
@@ -443,7 +443,7 @@
   </div>
 </main>
 
-<style>
+<style lang="scss">
   main {
     display: flex;
     justify-content: center;

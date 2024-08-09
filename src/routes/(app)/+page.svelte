@@ -135,7 +135,7 @@
   {/each}
 </nav>
 
-<style>
+<style lang="scss">
   main {
     height: 100vh;
     display: flex;

@@ -78,6 +78,7 @@ p {
 }
 
 /* ----- Buttons ----- */
+button,
 .button {
   border: none;
   cursor: pointer;
@@ -98,6 +99,16 @@ p {
   border-radius: 8px;
   padding: 12px 20px;
   transition: all ease-out 0.2s;
+
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  background-color: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  /* Make the button full-width */
+  font-size: 1.6rem;
+  transition: background-color 0.3s ease;
 
   &.outline {
     background: $white;
@@ -188,6 +199,7 @@ p {
 }
 
 input[type="text"],
+input[type="date"],
 input[type="password"],
 input[type="url"],
 input[type="tel"],

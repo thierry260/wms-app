@@ -71,7 +71,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        selectedDossier.id,
+        selectedDossier.id
       );
 
       // Update the timetracking array in the Firestore document
@@ -167,3 +167,5 @@
     </div>
   </form>
 </div>
+
+<style lang="scss"></style>
