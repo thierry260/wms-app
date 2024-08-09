@@ -62,7 +62,31 @@
     } finally {
       loading.set(false);
     }
+
+    // Listen for the custom event to update logs
+    window.addEventListener("logUpdated", fetchAndUpdateLogs);
+
+    // Cleanup listener when component is destroyed
+    return () => {
+      window.removeEventListener("logUpdated", fetchAndUpdateLogs);
+    };
   });
+
+  async function fetchAndUpdateLogs() {
+    try {
+      dossiersData = await fetchWorkspaceFilesData();
+      const data = dossiersData.flatMap((dossier) =>
+        (dossier.timetracking || []).map((entry) => ({
+          ...entry,
+          name: dossier.name, // Add the dossier's name to each timetracking entry
+        })),
+      );
+      allLogs = data;
+      updateLogsForCurrentWeek(); // Update the logs for the current week
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+    }
+  }
 
   function updateLogsForCurrentWeek() {
     const currentDate = get(currentWeek);
@@ -168,6 +192,8 @@
 
         alert("Urenregistratie succesvol bijgewerkt");
         // Close the dialog after saving
+        window.dispatchEvent(new CustomEvent("logUpdated"));
+
         closeDialog();
         // Fetch and update logs to reflect the changes
         fetchAndUpdateLogs();
@@ -181,23 +207,6 @@
     }
   }
 
-  async function fetchAndUpdateLogs() {
-    try {
-      const response = await fetch("https://www.wms.conceptgen.nl/getLogs");
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      const data = await response.json();
-      // Dispatch an event or use a store to update logs in Result component
-      const event = new CustomEvent("updateLogs", {
-        detail: data.logs.reverse(),
-      });
-      window.dispatchEvent(event);
-    } catch (error) {
-      console.error("Error fetching logs:", error);
-    }
-  }
-
   async function deleteLog() {
     const logToDelete = get(currentLog);
     console.log("Log to delete:", logToDelete);
@@ -206,21 +215,42 @@
       return;
     }
 
+    // Get the reference to the specific dossier document in Firestore
+    const dossierRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "files",
+      logToDelete.dossierId,
+    );
+
     try {
-      const response = await fetch("https://www.wms.conceptgen.nl/deleteRow", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(logToDelete),
-      });
-      if (response.ok) {
+      // Fetch the dossier document to retrieve the existing timetracking array
+      const docSnap = await getDoc(dossierRef);
+
+      if (docSnap.exists()) {
+        let timetracking = docSnap.data().timetracking || [];
+
+        // Remove the specific log entry by filtering out the one that matches the index
+        timetracking = timetracking.filter(
+          (entry, index) => index !== logToDelete.index,
+        );
+
+        // Update the Firestore document with the updated timetracking array
+        await updateDoc(dossierRef, {
+          timetracking: timetracking,
+        });
+
         alert("Urenregistratie succesvol verwijderd");
+
+        // Dispatch the 'logUpdated' event to update the results list
+        window.dispatchEvent(new CustomEvent("logUpdated"));
+
         closeDialog();
+        // Fetch and update logs to reflect the changes
         fetchAndUpdateLogs();
       } else {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
+        console.error("Dossier document not found");
         alert("Fout bij het verwijderen van urenregistratie");
       }
     } catch (error) {
