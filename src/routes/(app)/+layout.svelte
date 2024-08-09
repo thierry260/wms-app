@@ -33,7 +33,7 @@
   }
   main {
     flex: 1;
-    padding: 80px;
+    padding: 120px 60px 60px 60px;
     overflow-y: auto;
     position: relative;
     display: flex;
