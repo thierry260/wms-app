@@ -278,11 +278,17 @@
   }
 
   function openModal(statusId) {
-    newTask.set({
+    newTask.update((n) => ({
+      ...n,
       title: "",
       description: "",
-      status_id: statusId,
-    });
+      assignees: [],
+      file_id: "",
+      priority: "Medium",
+      status_id: statusId, // Set the status ID here
+      deadline: "",
+    }));
+
     modal.showModal();
   }
 
@@ -330,8 +336,19 @@
       "files"
     );
     const fileSnapshots = await getDocs(filesRef);
-    files.set(fileSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    files.set(
+      fileSnapshots.docs.map((doc) => ({
+        id: doc.id,
+        label: `${doc.id} - ${doc.data().name}`,
+      }))
+    );
 
+    // dossiers = dossiersData.map((dossier) => ({
+    //     id: dossier.id,
+    //     label: `${dossier.id} - ${dossier.name}`,
+    //   }));
+
+    console.log(files);
     // Fetch task statuses
     await fetchTaskStatuses();
     await fetchTasks();
@@ -460,41 +477,44 @@
 </div>
 
 <dialog bind:this={modal} class="task-modal">
-  <h2>Nieuwe Taak Toevoegen</h2>
+  <h2>Taak toevoegen</h2>
   <form on:submit|preventDefault={addTask}>
-    <label>
-      Titel:
+    <label
+      ><span class="legend">Titel</span>
       <input type="text" bind:value={$newTask.title} required />
     </label>
 
-    <label>
-      Beschrijving:
-      <textarea bind:value={$newTask.description} required></textarea>
+    <label
+      ><span class="legend">Beschrijving</span>
+      <textarea bind:value={$newTask.description}></textarea>
     </label>
 
-    <label>
-      Uitvoerders:
-      <select bind:value={$newTask.assignees} multiple required>
+    <label
+      ><span class="legend">Uitvoerders</span>
+      <select bind:value={$newTask.assignees} multiple>
         {#each $assignees as assignee}
           <option value={assignee}>{assignee}</option>
         {/each}
       </select>
     </label>
 
-    <label>
-      Dossier:
+    <label
+      ><span class="legend">Dossier</span>
       <Select
         items={$files}
         bind:value={$newTask.file_id}
         getOptionLabel={(file) => `${file.id} - ${file.name}`}
         getOptionValue={(file) => file.id}
+        getSelectionLabel={(option) =>
+          option?.name || `No name found for dossier ${option.id}`}
         placeholder="Selecteer een dossier"
+        itemId="id"
         clearable={false}
       />
     </label>
 
-    <label>
-      Prioriteit:
+    <label
+      ><span class="legend">Prioriteit</span>
       <select bind:value={$newTask.priority} required>
         <option value="Low">Laag</option>
         <option value="Medium">Medium</option>
@@ -502,8 +522,8 @@
       </select>
     </label>
 
-    <label>
-      Status:
+    <label
+      ><span class="legend">Status</span>
       <select bind:value={$newTask.status_id} required>
         <option value="" disabled selected>Selecteer een status</option>
         {#each $taskStatuses as status}
@@ -512,13 +532,17 @@
       </select>
     </label>
 
-    <label>
-      Deadline:
-      <input type="datetime-local" bind:value={$newTask.deadline} required />
+    <label
+      ><span class="legend">Deadline</span>
+      <input type="datetime-local" bind:value={$newTask.deadline} />
     </label>
 
-    <button type="submit">Opslaan</button>
-    <button type="button" on:click={closeModal}>Annuleren</button>
+    <div class="buttons">
+      <button class="basic" type="button" on:click={closeModal}
+        >Annuleren</button
+      >
+      <button type="submit">Opslaan</button>
+    </div>
   </form>
 </dialog>
 
@@ -644,5 +668,9 @@
       font-size: 1.8rem;
       margin-bottom: 0;
     }
+  }
+  .legend {
+    margin-bottom: 0.5em;
+    display: block;
   }
 </style>
