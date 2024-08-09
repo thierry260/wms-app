@@ -596,7 +596,7 @@
     font-size: 1.4rem;
   }
   .search_filter button {
-    min-width: 50px;
+    // min-width: 50px;
   }
   @media (max-width: 575px) {
     .search_filter button {

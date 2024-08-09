@@ -47,7 +47,7 @@ textarea {
     padding: 18px 18px;
   }
 
-  input:not(:is([type="checkbox"], [type="radio"]))+span {
+  input:not(:is([type="checkbox"], [type="radio"])) + span {
     position: absolute;
     top: 50%;
     left: 20px;
@@ -58,9 +58,9 @@ textarea {
     color: var(--gray-500);
   }
 
-  &:has(input:focus)>span,
-  &:focus-within>span,
-  input:not(:placeholder-shown)+span {
+  &:has(input:focus) > span,
+  &:focus-within > span,
+  input:not(:placeholder-shown) + span {
     opacity: 0.9;
     font-size: 1.2rem;
     top: 1.5em;
@@ -72,7 +72,7 @@ textarea {
     vertical-align: middle;
     margin-right: 2px;
 
-    +span {
+    + span {
       opacity: 1;
       vertical-align: middle;
     }
