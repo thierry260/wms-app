@@ -3,7 +3,14 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { getAuth, signOut } from "firebase/auth";
-  import { Timer, Folders, Users, DotsThree } from "phosphor-svelte";
+  import {
+    Timer,
+    Folders,
+    Users,
+    DotsThree,
+    X,
+    SignOut,
+  } from "phosphor-svelte";
 
   let showMore = false;
   let isMobile = false;
@@ -69,26 +76,39 @@
         {item.label}
       </a>
     {/each}
-    <button class="logout-button" on:click={logout}>Uitloggen</button>
+    <button class="logout-button" on:click={logout}
+      ><SignOut size={18} />Uitloggen</button
+    >
   </aside>
 {/if}
 
 <!-- Bottom Navigation for Mobile -->
 {#if isMobile}
   <nav class="sidebar-mobile">
-    {#each menuItems.slice(0, 4) as item}
-      <a
-        class="nav_item {item.route === $page.url.pathname ? 'active' : ''}"
-        href={item.route}
-      >
-        <svelte:component this={item.icon} size={24} />
-      </a>
-    {/each}
-    <button class="nav_item" on:click={toggleMore}>
-      <DotsThree size={24} />
-    </button>
+    <div class="main_nav">
+      <div class="main_nav_items">
+        {#each menuItems.slice(0, 4) as item}
+          <a
+            class="nav_item {item.route === $page.url.pathname ? 'active' : ''}"
+            href={item.route}
+          >
+            <svelte:component this={item.icon} size={18} />
+          </a>
+        {/each}
+      </div>
+      <div class="nav_item" on:click={toggleMore}>
+        {#if showMore}
+          <X size={20} />
+        {:else}
+          <DotsThree size={24} />
+        {/if}
+      </div>
+    </div>
     {#if showMore}
       <div class="more-menu">
+        <button class="logout-button" on:click={logout}
+          ><SignOut size={18} />Uitloggen</button
+        >
         {#each menuItems.slice(4) as item}
           <a
             class="more_item {item.route === $page.url.pathname
@@ -96,7 +116,7 @@
               : ''}"
             href={item.route}
           >
-            <svelte:component this={item.icon} size={20} />
+            <svelte:component this={item.icon} size={18} />
             {item.label}
           </a>
         {/each}
@@ -178,23 +198,29 @@
   .sidebar-mobile {
     display: flex;
     justify-content: space-between;
-    padding: 10px;
+    flex-direction: column-reverse;
+    padding: 10px 25px;
     background: linear-gradient(230deg, var(--primary), var(--secondary));
     position: fixed;
-    bottom: 0;
-    width: 100%;
     z-index: 1000;
 
-    bottom: 10px;
-    /* left: 10px; */
-    /* right: 10px; */
-    width: unset;
+    bottom: 20px;
     /* margin-inline: auto; */
     transform: translateX(-50%);
     left: 50%;
-    border-radius: 50px;
-    gap: 20px;
+    border-radius: 30px;
+    gap: 12px;
     align-items: center;
+
+    .main_nav {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .main_nav_items {
+      display: contents;
+    }
 
     .nav_item {
       color: #fff;
@@ -205,17 +231,45 @@
       gap: 5px;
       transition: color 0.1s ease-out;
 
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      border-radius: 5px;
+      border: 1px solid rgba(0, 0, 0, 0);
+      padding: 5px 15px;
+      height: 46px;
+      transition:
+        background-color 0.2s ease-out,
+        border-color 0.2s ease-out,
+        padding 0.2s ease-out;
+      font-size: 0.875rem;
+      overflow: hidden;
+
+      padding: 0;
+      height: 38px;
+      width: 38px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
       &.active {
-        color: var(--active-color);
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      &:hover:not(.active) {
+        cursor: pointer;
+        border-color: rgba(255, 255, 255, 0.2);
       }
     }
 
     .more-menu {
-      position: absolute;
-      bottom: 60px; /* Adjust based on your design */
-      background: linear-gradient(230deg, var(--primary), var(--secondary));
-      border-radius: 10px;
       padding: 10px;
+
+      .logout-button {
+        font-size: 1.4rem;
+        background: transparent;
+      }
 
       .more_item {
         display: flex;
