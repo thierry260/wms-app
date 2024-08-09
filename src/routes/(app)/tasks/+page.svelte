@@ -6,9 +6,9 @@
   import { writable } from "svelte/store";
 
   let tasks = writable({
-    todo: [],
-    inprogress: [],
-    done: [],
+    "To do": [],
+    "In progress": [],
+    Done: [],
   });
 
   async function fetchTasks() {
@@ -20,16 +20,17 @@
     );
     const taskSnapshots = await getDocs(tasksRef);
     const categorizedTasks = {
-      todo: [],
-      inprogress: [],
-      done: [],
+      "To do": [],
+      "In progress": [],
+      Done: [],
     };
 
     taskSnapshots.docs.forEach((doc) => {
       const taskData = { id: doc.id, ...doc.data() };
 
       // Normalize status to match your defined keys
-      let taskStatus = taskData.status.toLowerCase().replace(" ", "");
+      //   let taskStatus = taskData.status.toLowerCase().replace(" ", "");
+      let taskStatus = taskData.status;
 
       if (categorizedTasks[taskStatus]) {
         categorizedTasks[taskStatus].push(taskData);
@@ -53,17 +54,17 @@
   }
 
   function setupSortable() {
-    ["todo", "inProgress", "done"].forEach((status) => {
-      new Sortable(document.getElementById(status), {
-        group: "tasks",
-        animation: 150,
-        onEnd: async (evt) => {
-          const movedTaskId = evt.item.getAttribute("data-id");
-          const newStatus = evt.to.getAttribute("data-status");
-          await updateTaskStatus(movedTaskId, newStatus);
-        },
-      });
-    });
+    // ["todo", "inProgress", "done"].forEach((status) => {
+    //   new Sortable(document.getElementById(status), {
+    //     group: "tasks",
+    //     animation: 150,
+    //     onEnd: async (evt) => {
+    //       const movedTaskId = evt.item.getAttribute("data-id");
+    //       const newStatus = evt.to.getAttribute("data-status");
+    //       await updateTaskStatus(movedTaskId, newStatus);
+    //     },
+    //   });
+    // });
 
     document
       .querySelectorAll(".kanban-column-content")
