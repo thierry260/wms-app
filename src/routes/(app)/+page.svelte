@@ -21,6 +21,9 @@
       window.addEventListener("updateLogs", (event) => {
         updateLogs.set(true);
       });
+
+      // Add event listener for keydown to handle arrow keys
+      window.addEventListener("keydown", handleKeydown);
     } catch (error) {
       console.error("Error checking authentication status:", error);
     }
@@ -38,6 +41,14 @@
 
   function swipeRight() {
     currentIndex.update((n) => (n > 0 ? n - 1 : n));
+  }
+
+  function handleKeydown(event) {
+    if (event.key === "ArrowLeft") {
+      swipeRight();
+    } else if (event.key === "ArrowRight") {
+      swipeLeft();
+    }
   }
 
   function handleTouchStart(event) {

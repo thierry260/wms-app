@@ -4,7 +4,7 @@
   import Result from "$lib/Results.svelte";
   import Filter from "$lib/Filter.svelte";
   import { writable } from "svelte/store";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   // import
 
   const currentIndex = writable(0);
@@ -20,7 +20,7 @@
     { component: Filter, name: "Opzoeken" },
   ];
 
-  onMount(async () => {
+  onMount(() => {
     try {
       const authResponse = await fetch(
         "https://www.wms.conceptgen.nl/auth/status"
@@ -31,9 +31,17 @@
       window.addEventListener("updateLogs", (event) => {
         updateLogs.set(true);
       });
+
+      // Add event listener for keydown to handle arrow keys
+      window.addEventListener("keydown", handleKeydown);
     } catch (error) {
       console.error("Error checking authentication status:", error);
     }
+  });
+
+  onDestroy(() => {
+    // Cleanup event listener on component destroy
+    window.removeEventListener("keydown", handleKeydown);
   });
 
   function swipeLeft() {
@@ -42,6 +50,14 @@
 
   function swipeRight() {
     currentIndex.update((n) => (n > 0 ? n - 1 : n));
+  }
+
+  function handleKeydown(event) {
+    if (event.key === "ArrowLeft") {
+      swipeRight();
+    } else if (event.key === "ArrowRight") {
+      swipeLeft();
+    }
   }
 
   function handleTouchStart(event) {
