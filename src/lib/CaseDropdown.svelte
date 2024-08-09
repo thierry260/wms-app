@@ -3,6 +3,8 @@
   import Select from "svelte-select";
   import { writable } from "svelte/store";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
+  import { doc, updateDoc, arrayUnion } from "firebase/firestore"; // Import Firebase Firestore functions
+  import { db } from "$lib/firebase"; // Import the Firebase instance
 
   let dossiersData = [];
   let dossiers = [];
@@ -41,8 +43,6 @@
     }
   });
 
-  $: console.log("Selected Dossier:", selectedDossier);
-
   async function handleSubmit() {
     if (!selectedDossier) {
       alert("Selecteer een dossier");
@@ -50,57 +50,46 @@
     }
 
     // Split tijdsduur into uur and min
-    const min = tijdsduur.split(":")[1];
-    const uur = tijdsduur.split(":")[0];
-    const totaal = (parseInt(min) / 60 + parseInt(uur)).toFixed(2);
-
-    // Convert the date to the desired format (dd-MM-yyyy)
-    const date = new Date(datum);
-    const formattedDate = `${date.getDate()}-${date.getMonth() + 1}-${date.getFullYear()}`;
+    const [uur, min] = tijdsduur.split(":").map(Number);
+    const totaal = (uur + min / 60).toFixed(2);
 
     // Prepare the row object to be sent
     const row = {
-      name: selectedDossier.name,
-      date: formattedDate,
+      date: new Date(datum),
       description,
-      minutes,
+      minutes: uur * 60 + min,
       totaal,
-      billable: billable,
+      billable,
       assignee,
       location,
     };
 
-    // Log the row object to be sent to the server
-    console.log("Sending row data to server:", row);
-
     try {
-      // Send the POST request to the server
-      const response = await fetch("https://www.wms.conceptgen.nl/addRow", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(row),
+      // Get the dossier document reference
+      const dossierRef = doc(
+        db,
+        "workspaces",
+        localStorage.getItem("workspace"),
+        "files",
+        selectedDossier.id,
+      );
+
+      // Update the timetracking array in the Firestore document
+      await updateDoc(dossierRef, {
+        timetracking: arrayUnion(row),
       });
 
-      if (response.ok) {
-        alert("Urenregistratie succesvol toegevoegd");
-        dispatch("rowAdded"); // Dispatch event when row is added
+      alert("Urenregistratie succesvol toegevoegd");
+      dispatch("rowAdded"); // Dispatch event when row is added
 
-        // Reset form fields
-        selectedDossier = null;
-        datum = new Date().toISOString().split("T")[0];
-        tijdsduur = "00:15";
-        assignee = "Toon";
-        description = "";
-        billable = true;
-        location = "";
-      } else {
-        // Capture and log error text from server response
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        alert("Fout bij toevoegen van rij");
-      }
+      // Reset form fields
+      selectedDossier = null;
+      datum = new Date().toISOString().split("T")[0];
+      tijdsduur = "00:15";
+      assignee = "Toon";
+      description = "";
+      billable = true;
+      location = "";
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Fout bij verzenden van formulier");

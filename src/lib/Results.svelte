@@ -3,6 +3,8 @@
   import { writable, derived, get } from "svelte/store";
   import Select from "svelte-select"; // Import Select component
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
+  import { Timestamp, getDoc, doc, updateDoc } from "firebase/firestore";
+  import { db } from "$lib/firebase";
 
   import {
     parse,
@@ -45,7 +47,7 @@
         (dossier.timetracking || []).map((entry) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
-        }))
+        })),
       );
       allLogs = data;
       updateLogsForCurrentWeek();
@@ -69,7 +71,7 @@
     console.log(thisWeekLogs);
     const revenue = thisWeekLogs.reduce(
       (acc, log) => acc + parseFloat(calculateRevenue(log)),
-      0
+      0,
     );
     totalRevenue.set(revenue.toFixed(2));
   }
@@ -84,12 +86,35 @@
   }
 
   function handleLongPress(log) {
+    // Find the dossier associated with the log
+    const dossier = dossiersData.find((dossier) => dossier.name === log.name);
+
+    if (!dossier || !dossier.timetracking) {
+      console.error("Dossier or timetracking array not found");
+      return;
+    }
+
+    // Find the index of the log in the dossier's timetracking array
+    const index = dossier.timetracking.findIndex(
+      (entry) =>
+        entry.date.isEqual(log.date) &&
+        entry.description === log.description &&
+        entry.assignee === log.assignee &&
+        entry.location === log.location,
+    );
+
+    if (index === -1) {
+      console.error("Log entry not found in dossier's timetracking array");
+      return;
+    }
+
     const { hours, minutes } = calculateHoursAndMinutes(log.minutes);
 
     currentLog.set({
-      id: log.id, // Ensure the id is set
-      name: log.name,
-      date: format(log.date.toDate(), "yyyy-MM-dd"),
+      index, // Store the correct index
+      dossierId: dossier.id, // Use dossier's ID
+      name: dossier.name,
+      date: format(log.date.toDate(), "yyyy-MM-dd"), // Keep the string format for the UI
       description: log.description,
       min: minutes, // Use calculated minutes
       uur: hours, // Use calculated hours
@@ -98,40 +123,56 @@
       assignee: log.assignee,
       location: log.location,
     });
+
     document.getElementById("editDialog").showModal();
-    console.log("Current log:", log); // Console log the current log to debug
+    console.log("Current log:", get(currentLog)); // Console log the current log to debug
   }
 
   async function saveLog() {
     const editedLog = get(currentLog);
     console.log("Edited log:", editedLog); // Debug log to see the current state of editedLog
-    // Ensure that the billable and assignee fields are correctly set
-    editedLog.billable = editedLog.billable === "Ja" ? "Ja" : "Nee";
 
-    // Ensure the ID is present in the request body
-    if (!editedLog.id) {
-      alert("ID ontbreekt");
-      return;
-    }
+    // Convert the date string back to a Firestore Timestamp
+    const [year, month, day] = editedLog.date.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    const firestoreTimestamp = Timestamp.fromDate(dateObj);
 
-    // Send the updated log to the server to save in Google Sheets
+    // Get the reference to the specific dossier document in Firestore
+    const dossierRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "files",
+      editedLog.dossierId,
+    );
+
     try {
-      const response = await fetch("https://www.wms.conceptgen.nl/updateRow", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(editedLog),
-      });
-      if (response.ok) {
+      // Fetch the dossier document to retrieve the existing timetracking array
+      const docSnap = await getDoc(dossierRef);
+
+      if (docSnap.exists()) {
+        const timetracking = docSnap.data().timetracking || [];
+
+        // Update the specific entry at the stored index
+        timetracking[editedLog.index] = {
+          ...timetracking[editedLog.index],
+          ...editedLog,
+          date: firestoreTimestamp, // Use the Firestore Timestamp
+          minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
+        };
+
+        // Update the Firestore document with the updated timetracking array
+        await updateDoc(dossierRef, {
+          timetracking: timetracking,
+        });
+
         alert("Urenregistratie succesvol bijgewerkt");
         // Close the dialog after saving
         closeDialog();
         // Fetch and update logs to reflect the changes
         fetchAndUpdateLogs();
       } else {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
+        console.error("Dossier document not found");
         alert("Fout bij het updaten van urenregistratie");
       }
     } catch (error) {
@@ -280,14 +321,16 @@
       <p class="legend">Gelogde taken</p>
       <div class="logs-container">
         <ul>
-          {#each $logs as log}
+          {#each $logs as log, i}
+            <!-- 'i' is the index of the log -->
             <li
-              on:pointerdown={() => handleMouseDown(log)}
-              on:mousedown={() => handleMouseDown(log)}
+              on:pointerdown={() => handleMouseDown(log, i)}
+              on:mousedown={() => handleMouseDown(log, i)}
               on:pointerup={handleMouseUp}
               on:mouseup={handleMouseUp}
               on:mouseleave={handleMouseLeave}
             >
+              {i}
               <div class="log-header">
                 <strong>{log.name}</strong>
                 <div class="total-revenue">
