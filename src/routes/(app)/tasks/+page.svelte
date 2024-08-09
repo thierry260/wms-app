@@ -2,16 +2,37 @@
   import { db } from "$lib/firebase";
   import { onMount } from "svelte";
   import Sortable from "sortablejs";
-  import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+  import {
+    collection,
+    getDocs,
+    doc,
+    setDoc,
+    getDoc,
+    updateDoc,
+    arrayUnion,
+  } from "firebase/firestore";
   import { writable } from "svelte/store";
 
-  let tasks = writable({
-    "To do": [],
-    "In progress": [],
-    Done: [],
-  });
+  let taskStatuses = writable([]);
+  let tasks = writable({});
+
+  async function fetchTaskStatuses() {
+    const workspaceRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace")
+    );
+    const workspaceSnap = await getDoc(workspaceRef);
+    const workspaceData = workspaceSnap.data();
+
+    // Assumes statuses are stored in a field named "taskStatuses" which is an array
+    const statuses = workspaceData.taskStatuses || [];
+    taskStatuses.set(statuses);
+    return statuses;
+  }
 
   async function fetchTasks() {
+    const statuses = await fetchTaskStatuses();
     const tasksRef = collection(
       db,
       "workspaces",
@@ -19,21 +40,19 @@
       "tasks"
     );
     const taskSnapshots = await getDocs(tasksRef);
-    const categorizedTasks = {
-      "To do": [],
-      "In progress": [],
-      Done: [],
-    };
+
+    const categorizedTasks = {};
+    statuses.forEach((status) => {
+      categorizedTasks[status.id] = [];
+    });
 
     taskSnapshots.docs.forEach((doc) => {
       const taskData = { id: doc.id, ...doc.data() };
+      const taskStatus = taskData.status;
 
-      // Normalize status to match your defined keys
-      //   let taskStatus = taskData.status.toLowerCase().replace(" ", "");
-      let taskStatus = taskData.status;
-
-      if (categorizedTasks[taskStatus]) {
-        categorizedTasks[taskStatus].push(taskData);
+      const status = statuses.find((status) => status.name === taskStatus);
+      if (status) {
+        categorizedTasks[status.id].push(taskData);
       } else {
         console.warn(`Unknown task status: ${taskStatus}`);
       }
@@ -54,96 +73,38 @@
   }
 
   function setupSortable() {
-    // ["todo", "inProgress", "done"].forEach((status) => {
-    //   new Sortable(document.getElementById(status), {
-    //     group: "tasks",
-    //     animation: 150,
-    //     onEnd: async (evt) => {
-    //       const movedTaskId = evt.item.getAttribute("data-id");
-    //       const newStatus = evt.to.getAttribute("data-status");
-    //       await updateTaskStatus(movedTaskId, newStatus);
-    //     },
-    //   });
-    // });
+    taskStatuses.subscribe((statuses) => {
+      document
+        .querySelectorAll(".kanban-column-content")
+        .forEach((taskColumn) => {
+          Sortable.create(taskColumn, {
+            group: "taskColumnTasks",
+            sort: false,
+            animation: 250,
+            onEnd: async function (evt) {
+              const itemEl = evt.item;
+              const oldStatusId = evt.from.closest(".kanban-column").dataset.id;
+              const newStatusId = evt.to.closest(".kanban-column").dataset.id;
+              const taskId = itemEl.dataset.id;
 
-    document
-      .querySelectorAll(".kanban-column-content")
-      ?.forEach((taskColumn) => {
-        Sortable.create(taskColumn, {
-          group: "taskColumn",
-          sort: false,
-          animation: 250,
-          // handle: ".eg_sales_item_drag",
-          // filter: ".eg_sales_item_actions",
-          // Element dragging ended
-          onEnd: async function (/**Event*/ evt) {
-            var itemEl = evt.item; // dragged HTMLElement
-            evt.to; // target list
-            evt.from; // previous list
-            evt.oldIndex; // element's old index within old parent
-            evt.newIndex; // element's new index within new parent
-            evt.oldDraggableIndex; // element's old index within old parent, only counting draggable elements
-            evt.newDraggableIndex; // element's new index within new parent, only counting draggable elements
-            evt.clone; // the clone element
-            evt.pullMode; // when item is in another sortable: `"clone"` if cloning, `true` if moving
-
-            if (evt.from != evt.to) {
-              const oldtaskColumnId = evt.from.closest(".eg_sales_taskColumn")
-                .dataset.id;
-              const taskColumnId = evt.to.closest(".eg_sales_taskColumn")
-                .dataset.id;
-              const taskId = itemEl.dataset.sales_id;
-              const taskDocRef = doc(
-                db,
-                "workspaces",
-                getLocalUserData().workspace_id,
-                "sales",
-                "pipelines",
-                "standard_pipeline",
-                "tasks",
-                "active",
-                taskId
-              );
-              const oldDataSnap = await getDoc(taskDocRef);
-              const oldData = oldDataSnap.data();
-
-              let newData = {
-                taskColumn: taskColumnId,
-              };
-
-              let changesMade = {};
-              let updateData = {};
-
-              for (let property in oldData) {
-                if (
-                  newData[property] !== undefined &&
-                  oldData[property] !== newData[property]
-                ) {
-                  changesMade[property] = {
-                    old: oldData[property],
-                    new: newData[property],
-                  };
-                  updateData[property] = newData[property]; // Only store the changed fields
-                }
+              if (oldStatusId !== newStatusId) {
+                await updateTaskStatus(
+                  taskId,
+                  statuses.find((status) => status.id === newStatusId).name
+                );
               }
-
-              let newEdit = {
-                edited_by: document.querySelector(".user_card_name").innerText,
-                edited_at: new Date(),
-                changes_made: changesMade,
-              };
-
-              // Update the fields that were changed
-              await updateDoc(taskDocRef, {
-                ...updateData,
-                edit_history: arrayUnion(newEdit),
-              }).catch((err) => {
-                console.error(err);
-              });
-            }
-          },
+            },
+          });
         });
+
+      Sortable.create(document.querySelector(".kanban-board"), {
+        group: "taskColumn",
+        animation: 250,
+        onEnd: async function (evt) {
+          // Handle column reordering here if needed
+        },
       });
+    });
   }
 
   onMount(async () => {
@@ -153,34 +114,59 @@
 </script>
 
 <div class="kanban-board">
-  {#each Object.keys($tasks) as status}
-    <div class="kanban-column">
-      <div class="kanban-column-header">
-        <h3>{status}</h3>
+  {#if $taskStatuses.length > 0}
+    {#each $taskStatuses as status (status.id)}
+      <div class="kanban-column" data-id={status.id}>
+        <div class="kanban-column-header">
+          <h3>{status.name}</h3>
+        </div>
+        <ul
+          id={status.id}
+          class="kanban-column-content"
+          data-status={status.id}
+        >
+          {#if $tasks[status.id]}
+            {#each $tasks[status.id] as task (task.id)}
+              <li class="kanban-task" data-id={task.id}>
+                <h4>{task.title}</h4>
+                <p>{task.description}</p>
+              </li>
+            {/each}
+          {/if}
+        </ul>
+        <button class="kanban-task-add basic" data-status={status.id}>
+          + Add Task
+        </button>
       </div>
-      <ul id={status} class="kanban-column-content" data-status={status}>
-        {#each $tasks[status] as task}
-          <li class="kanban-task" data-id={task.id}>
-            <h4>{task.title}</h4>
-            <p>{task.description}</p>
-          </li>
-        {/each}
-      </ul>
-      <button class="kanban-task-add basic" data-status={status}
-        >+ Voeg een taak toe</button
-      >
-    </div>
-  {/each}
+    {/each}
+  {/if}
 </div>
 
 <style lang="scss">
   .kanban-board {
     display: flex;
     justify-content: space-between;
+
+    flex-grow: 1;
+    flex-basis: 0;
+    display: flex;
+    align-items: start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-inline: auto;
+    padding-inline: max(50px, (100% - var(--container) + 100px) / 2);
+    padding-inline: max(50px, (100% - var(--container)) / 2);
+    padding-bottom: 40px;
+    max-width: 100%;
+    display: grid;
+    grid-auto-columns: 400px;
+    grid-auto-flow: column;
+    grid-column-gap: 2rem;
+    grid-template-rows: minmax(0, 1fr);
+    cursor: grab;
   }
 
   .kanban-column {
-    width: 30%;
     background-color: var(--background);
     border-radius: 8px;
     padding: 16px;
