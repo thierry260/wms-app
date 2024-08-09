@@ -166,11 +166,14 @@
           </li>
         {/each}
       </ul>
+      <button class="kanban-task-add basic" data-status={status}
+        >+ Voeg een taak toe</button
+      >
     </div>
   {/each}
 </div>
 
-<style>
+<style lang="scss">
   .kanban-board {
     display: flex;
     justify-content: space-between;
@@ -178,21 +181,25 @@
 
   .kanban-column {
     width: 30%;
-    background-color: #f4f4f4;
+    background-color: var(--background);
     border-radius: 8px;
     padding: 16px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
+    display: flex;
+    flex-direction: column;
 
-  .kanban-column-header {
-    text-align: center;
-    margin-bottom: 8px;
+    .kanban-column-header {
+      h3 {
+        font-size: 1.8rem;
+      }
+    }
   }
 
   .kanban-column-content {
-    min-height: 100px;
+    /* min-height: 100px; */
     list-style: none;
     padding: 0;
+    flex-grow: 1;
   }
 
   .kanban-task {
