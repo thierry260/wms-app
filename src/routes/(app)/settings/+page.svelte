@@ -106,7 +106,7 @@
       const user = auth.currentUser;
       const credential = EmailAuthProvider.credential(
         user.email,
-        currentPassword
+        currentPassword,
       );
 
       await reauthenticateWithCredential(user, credential);
@@ -153,7 +153,7 @@
       }
 
       const inviteId = btoa(`${workspaceId},${inviteEmail}`);
-      const link = `${window.location.origin}/get-mailgen?id=${inviteId}`;
+      const link = `${window.location.origin}/get-wms?id=${inviteId}`;
       inviteLink.set(link);
       inviteSuccess.set("Uitnodigingslink gegenereerd.");
     } catch (error) {

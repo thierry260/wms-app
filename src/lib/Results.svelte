@@ -22,6 +22,7 @@
     CaretCircleLeft,
     CaretCircleRight,
     TrashSimple,
+    X,
   } from "phosphor-svelte";
 
   const logs = writable([]);
@@ -31,7 +32,6 @@
 
   let allLogs = [];
   let currentLog = writable(null);
-  let longPressTimer;
 
   let dossiers = []; // Define dossiers array
   let dossiersData = [];
@@ -156,58 +156,50 @@
     const editedLog = get(currentLog);
     console.log("Edited log:", editedLog); // Debug log to see the current state of editedLog
 
-    // Extract the id from dossierId and originalDossierId
     const dossierId = editedLog.dossierId.id;
     const originalDossierId = editedLog.originalDossierId || dossierId;
 
     console.log("Dossier ID:", dossierId);
     console.log("Original Dossier ID:", originalDossierId);
 
-    // Convert the date string back to a Firestore Timestamp
     const [year, month, day] = editedLog.date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
     const firestoreTimestamp = Timestamp.fromDate(dateObj);
 
-    // Reference to the original dossier
     const originalDossierRef = doc(
       db,
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId, // Use the original dossier ID if available
+      originalDossierId,
     );
 
-    // Reference to the new dossier
     const newDossierRef = doc(
       db,
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId, // Use the current dossier ID
+      dossierId,
     );
 
     try {
-      // Fetch the original dossier document
       const originalDocSnap = await getDoc(originalDossierRef);
       let originalTimetracking = [];
 
       if (originalDocSnap.exists()) {
         originalTimetracking = originalDocSnap.data().timetracking || [];
 
-        // Remove the specific log entry from the original dossier's timetracking array
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
             (entry, index) => index !== editedLog.index,
           );
 
-          // Update the original dossier with the updated timetracking array
           await updateDoc(originalDossierRef, {
             timetracking: originalTimetracking,
           });
         }
       }
 
-      // Fetch the new dossier document
       const newDocSnap = await getDoc(newDossierRef);
       let newTimetracking = [];
 
@@ -215,32 +207,38 @@
         newTimetracking = newDocSnap.data().timetracking || [];
       } else {
         console.error("New Dossier document not found, creating a new one.");
-
-        // Optional: Create the new dossier document if it doesn't exist
         await setDoc(newDossierRef, {
           timetracking: newTimetracking,
         });
       }
 
-      // Add the log entry to the new dossier's timetracking array
-      newTimetracking.push({
-        ...editedLog,
-        date: firestoreTimestamp, // Use the Firestore Timestamp
-        minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
-      });
+      const existingIndex = newTimetracking.findIndex(
+        (entry) => entry.index === editedLog.index,
+      );
 
-      // Update the new dossier with the updated timetracking array
+      if (existingIndex !== -1) {
+        // If log exists, update it
+        newTimetracking[existingIndex] = {
+          ...editedLog,
+          date: firestoreTimestamp,
+          minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
+        };
+      } else {
+        // Otherwise, add it as a new entry
+        newTimetracking.push({
+          ...editedLog,
+          date: firestoreTimestamp,
+          minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
+        });
+      }
+
       await updateDoc(newDossierRef, {
         timetracking: newTimetracking,
       });
 
       alert("Urenregistratie succesvol bijgewerkt");
-
-      // Dispatch the 'logUpdated' event to update the results list
       window.dispatchEvent(new CustomEvent("logUpdated"));
-
       closeDialog();
-      // Fetch and update logs to reflect the changes
       fetchAndUpdateLogs();
     } catch (error) {
       console.error("Fout bij het bijwerken van urenregistratie:", error);
@@ -346,18 +344,6 @@
     });
   }
 
-  function handleMouseDown(log) {
-    longPressTimer = setTimeout(() => handleLongPress(log), 1000);
-  }
-
-  function handleMouseUp() {
-    clearTimeout(longPressTimer);
-  }
-
-  function handleMouseLeave() {
-    clearTimeout(longPressTimer);
-  }
-
   function closeDialog() {
     document.getElementById("editDialog").close();
   }
@@ -394,13 +380,7 @@
         <ul>
           {#each $logs as log, i}
             <!-- 'i' is the index of the log -->
-            <li
-              on:pointerdown={() => handleMouseDown(log, i)}
-              on:mousedown={() => handleMouseDown(log, i)}
-              on:pointerup={handleMouseUp}
-              on:mouseup={handleMouseUp}
-              on:mouseleave={handleMouseLeave}
-            >
+            <li on:click={() => handleLongPress(log)}>
               <div class="log-header">
                 <strong>{log.name}</strong>
                 <div class="total-revenue">
@@ -443,9 +423,7 @@
       {#if $currentLog}
         <div class="top">
           <h6>Log bewerken</h6>
-          <button class="basic" on:click={deleteLog}
-            ><TrashSimple size="16" /></button
-          >
+          <button class="basic" on:click={closeDialog}><X size="16" /></button>
         </div>
         <div>
           <label class="legend">Dossiernaam</label>
@@ -494,8 +472,15 @@
           <input type="checkbox" bind:checked={$currentLog.billable} />
         </div>
         <div class="buttons">
-          <button class="outline" on:click={closeDialog}>Annuleren</button>
-          <button on:click={saveLog}>Opslaan</button>
+          <button class="basic" on:click={deleteLog}
+            ><TrashSimple size="16" /></button
+          >
+          <div>
+            <button class="basic" type="button" on:click={closeDialog}
+              >Annuleren</button
+            >
+            <button on:click={saveLog}>Opslaan</button>
+          </div>
         </div>
       {/if}
     </dialog>
@@ -546,6 +531,7 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     position: relative;
+    cursor: pointer;
   }
 
   li p {
@@ -627,5 +613,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    margin-top: 20px;
+    div {
+      display: flex;
+      gap: inherit;
+
+      .basic {
+        @media (max-width: $sm) {
+          display: none;
+        }
+      }
+    }
   }
 </style>

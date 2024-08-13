@@ -101,6 +101,18 @@
     width: 100%;
     top: 0;
     left: 0;
+
+    @media (max-width: $sm) {
+      white-space: nowrap;
+      overflow-x: auto;
+      display: block;
+
+      -ms-overflow-style: none; /* Internet Explorer 10+ */
+      scrollbar-width: none; /* Firefox */
+      &::-webkit-scrollbar {
+        display: none; /* Safari and Chrome */
+      }
+    }
   }
 
   .bottom-nav button {

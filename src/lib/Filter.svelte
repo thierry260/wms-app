@@ -38,15 +38,20 @@
   let showFilters = false;
 
   let dossiers = []; // Define dossiers array
+  let dossiersData = [];
 
   onMount(async () => {
     try {
-      let dossiers = await fetchWorkspaceFilesData();
-      const data = dossiers.flatMap((dossier) =>
+      dossiersData = await fetchWorkspaceFilesData();
+      dossiers = dossiersData.map((dossier) => ({
+        id: dossier.id,
+        label: `${dossier.id} - ${dossier.name}`,
+      }));
+      const data = dossiersData.flatMap((dossier) =>
         (dossier.timetracking || []).map((entry) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
-        }))
+        })),
       );
       allLogs = data;
       updateLogsForSearch();
@@ -74,7 +79,7 @@
           log.name.toLowerCase().includes(searchValue) ||
           log.description.toLowerCase().includes(searchValue) ||
           log.assignee.toLowerCase().includes(searchValue) ||
-          log.location.toLowerCase().includes(searchValue)
+          log.location.toLowerCase().includes(searchValue),
       );
     }
 
@@ -155,12 +160,34 @@
   }
 
   function handleLongPress(log) {
+    const dossier = dossiersData.find((dossier) => dossier.name === log.name);
+
+    if (!dossier || !dossier.timetracking) {
+      console.error("Dossier or timetracking array not found");
+      return;
+    }
+
+    const index = dossier.timetracking.findIndex(
+      (entry) =>
+        entry.date.isEqual(log.date) &&
+        entry.description === log.description &&
+        entry.assignee === log.assignee &&
+        entry.location === log.location,
+    );
+
+    if (index === -1) {
+      console.error("Log entry not found in dossier's timetracking array");
+      return;
+    }
+
     const { hours, minutes } = calculateHoursAndMinutes(log.minutes);
 
     currentLog.set({
-      id: log.id, // Ensure the id is set
-      name: log.name,
-      date: format(log.date.toDate(), "yyyy-MM-dd"),
+      index, // Store the correct index
+      dossierId: dossier.id, // Use dossier's ID
+      originalDossierId: dossier.id, // Track the original dossier ID
+      name: dossier.name,
+      date: format(log.date.toDate(), "yyyy-MM-dd"), // Keep the string format for the UI
       description: log.description,
       min: minutes, // Use calculated minutes
       uur: hours, // Use calculated hours
@@ -169,7 +196,7 @@
       assignee: log.assignee,
       location: log.location,
     });
-    document.getElementById("editDialog").showModal();
+    document.getElementById("editDialogInFilter").showModal();
     console.log("Current log:", log); // Console log the current log to debug
   }
 
@@ -353,13 +380,7 @@
       <div class="logs-container">
         <ul>
           {#each $logs as log}
-            <li
-              on:pointerdown={() => handleMouseDown(log)}
-              on:mousedown={() => handleMouseDown(log)}
-              on:pointerup={handleMouseUp}
-              on:mouseup={handleMouseUp}
-              on:mouseleave={handleMouseLeave}
-            >
+            <li on:click={() => handleLongPress(log)}>
               <div class="log-header">
                 <strong>{log.name}</strong>
                 <div class="total-revenue">
@@ -384,21 +405,19 @@
       {#if $currentLog}
         <div class="top">
           <h6>Log bewerken</h6>
-          <button class="basic" on:click={deleteLog}
-            ><TrashSimple size="16" /></button
-          >
+          <button class="basic" on:click={closeDialog}><X size="16" /></button>
         </div>
         <div>
           <label class="legend">Dossiernaam</label>
           <Select
             items={dossiers}
-            bind:value={$currentLog}
-            getOptionLabel={(option) => option.name}
+            bind:value={$currentLog.dossierId}
+            getOptionLabel={(option) => option.label}
             getOptionValue={(option) => option.id}
-            getSelectionLabel={(option) => option?.name || $currentLog.name}
-            placeholder={$currentLog.name}
-            optionIdentifier="id"
-            isClearable={false}
+            getSelectionLabel={(option) => option?.label || $currentLog.name}
+            placeholder="Select dossier"
+            itemId="id"
+            clearable={false}
           />
         </div>
         <div>
@@ -407,18 +426,18 @@
         </div>
         <div>
           <label class="legend">Omschrijving</label>
-          <textarea bind:value={$currentLog.omschrijving}></textarea>
+          <textarea bind:value={$currentLog.description}></textarea>
         </div>
         <div>
           <label class="legend">Uitvoerder</label>
-          <select bind:value={$currentLog.uitvoerder}>
+          <select bind:value={$currentLog.assignee}>
             <option value="Michel">Michel</option>
             <option value="Toon">Toon</option>
           </select>
         </div>
         <div>
           <label class="legend">Locatie</label>
-          <input type="text" bind:value={$currentLog.locatie} />
+          <input type="text" bind:value={$currentLog.location} />
         </div>
         <div class="columns" data-col="2">
           <div>
@@ -435,8 +454,15 @@
           <input type="checkbox" bind:checked={$currentLog.billable} />
         </div>
         <div class="buttons">
-          <button class="outline" on:click={closeDialog}>Annuleren</button>
-          <button on:click={saveLog}>Opslaan</button>
+          <button class="basic" on:click={deleteLog}
+            ><TrashSimple size="16" /></button
+          >
+          <div>
+            <button class="basic" type="button" on:click={closeDialog}
+              >Annuleren</button
+            >
+            <button on:click={saveLog}>Opslaan</button>
+          </div>
         </div>
       {/if}
     </dialog>
@@ -487,6 +513,7 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     position: relative;
+    cursor: pointer;
   }
 
   li p {
@@ -608,6 +635,25 @@
     }
     .date_input {
       margin-top: 0;
+    }
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    margin-top: 20px;
+    div {
+      display: flex;
+      gap: inherit;
+
+      .basic {
+        @media (max-width: $sm) {
+          display: none;
+        }
+      }
     }
   }
 </style>

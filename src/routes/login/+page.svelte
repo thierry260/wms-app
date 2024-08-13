@@ -25,7 +25,7 @@
         step = 2;
       } else {
         workspaceErrorMessage.set(
-          "Deze workspace is niet bij ons bekend. Probeer het nog een keer."
+          "Deze workspace is niet bij ons bekend. Probeer het nog een keer.",
         );
       }
     } catch (error) {
@@ -38,7 +38,7 @@
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password
+        password,
       );
       const user = userCredential.user;
 
@@ -78,8 +78,7 @@
     </label>
     <button class="button" type="submit">Door naar inloggen</button>
     <p class="form_note">
-      <small>Nieuw met MailGen? </small><a href="/get-mailgen"
-        >Maak een workspace aan</a
+      <small>Nieuw met WMS? </small><a href="/get-wms">Maak een workspace aan</a
       >
     </p>
     {#if $workspaceErrorMessage}

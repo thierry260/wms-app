@@ -27,6 +27,7 @@
     let submitting = writable(false);
     let errorMessage = writable("");
     let successMessage = writable("");
+    let files = writable([]);
 
     onMount(async () => {
         // Fetch all clients to populate the client select box
@@ -54,6 +55,12 @@
             "files",
         );
         const filesSnapshots = await getDocs(filesRef);
+
+        // Store fetched files in the reactive variable
+        files.set(
+            filesSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+        );
+
         const lastFileId = filesSnapshots.docs.reduce(
             (max, doc) => Math.max(max, parseInt(doc.id)),
             0,
@@ -164,7 +171,7 @@
 
     <form on:submit|preventDefault={handleSubmit}>
         <label>
-            Dossiernummer (Voorstel: {fileId}):
+            <span class="legend">Dossiernummer (Voorstel: {fileId})</span>
             <input
                 type="number"
                 bind:value={fileId}
@@ -173,7 +180,7 @@
         </label>
 
         <label>
-            Contact:
+            <span class="legend">Contact</span>
             <Select
                 items={clients}
                 bind:value={client_id}
@@ -186,7 +193,7 @@
         </label>
 
         <label>
-            Dossierstatus:
+            <span class="legend">Dossierstatus</span>
             <select bind:value={dossierstatus}>
                 <option value="Actief">Actief</option>
                 <option value="Afgewikkeld">Afgewikkeld</option>
@@ -199,17 +206,17 @@
         </label>
 
         <label>
-            Dossiernaam:
+            <span class="legend">Dossiernaam</span>
             <input type="text" bind:value={name} placeholder="Dossiernaam" />
         </label>
 
         <label>
-            Opvolgdatum:
+            <span class="legend">Opvolgdatum</span>
             <input type="date" bind:value={opvolgdatum} />
         </label>
 
         <label>
-            Uurtarief:
+            <span class="legend">Uurtarief</span>
             <input
                 type="number"
                 bind:value={uurtarief}
@@ -218,7 +225,7 @@
         </label>
 
         <label>
-            Projectkosten:
+            <span class="legend">Projectkosten</span>
             <input
                 type="number"
                 bind:value={projectkosten}
@@ -227,7 +234,7 @@
         </label>
 
         <label>
-            Administratiestatus:
+            <span class="legend">Administratiestatus</span>
             <select bind:value={administratiestatus}>
                 <option value="Betaald">Betaald</option>
                 <option value="Factureren">Factureren</option>
@@ -239,7 +246,7 @@
         </label>
 
         <label>
-            Administratieafspraak:
+            <span class="legend">Administratieafspraak</span>
             <textarea
                 bind:value={administratieafspraak}
                 placeholder="Administratieafspraak"
@@ -247,7 +254,7 @@
         </label>
 
         <label>
-            Gekoppelde facturen:
+            <span class="legend">Gekoppelde facturen</span>
             <textarea
                 bind:value={gekoppelde_facturen}
                 placeholder="Gekoppelde facturen (elke factuur op een nieuwe regel)"
@@ -256,7 +263,53 @@
 
         <button type="submit" disabled={$submitting}>Voeg dossier toe</button>
     </form>
+
+    <section class="files_section">
+        <h2>Dossiers</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dossiernummer</th>
+                    <th>Naam</th>
+                    <th>Status</th>
+                    <th>Contact</th>
+                    <th>Opvolgdatum</th>
+                    <th>Uurtarief</th>
+                    <th>Projectkosten</th>
+                </tr>
+            </thead>
+            <tbody>
+                {#each $files as file}
+                    <tr>
+                        <td>{file.id}</td>
+                        <td>{file.name}</td>
+                        <td>{file.dossierstatus}</td>
+                        <td
+                            >{clients.find(
+                                (client) => client.id === file.client_id,
+                            )?.label || "Onbekend"}</td
+                        >
+                        <td
+                            >{file.opvolgdatum
+                                ? new Date(
+                                      file.opvolgdatum.seconds * 1000,
+                                  ).toLocaleDateString()
+                                : "Geen"}</td
+                        >
+                        <td>€{file.uurtarief}</td>
+                        <td>€{file.projectkosten}</td>
+                    </tr>
+                {/each}
+            </tbody>
+        </table>
+    </section>
 </main>
 
 <style lang="scss">
+    .files_section {
+        margin-top: 60px;
+    }
+    .legend {
+        margin-top: 0;
+    }
 </style>

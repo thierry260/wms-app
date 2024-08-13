@@ -34,9 +34,17 @@
   main {
     flex: 1;
     padding: 60px;
+    @media (max-width: $sm) {
+      padding: 30px;
+    }
+
     &:has(.bottom-nav) {
       padding: 120px 60px 60px 60px;
+      @media (max-width: $sm) {
+        padding: 90px 30px 30px 30px;
+      }
     }
+
     overflow-y: auto;
     position: relative;
     display: flex;

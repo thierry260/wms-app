@@ -1,10 +1,10 @@
 <script>
   import { db } from "$lib/firebase";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import Sortable from "sortablejs";
   import { writable, get } from "svelte/store";
   import Select from "svelte-select"; // Import svelte-select
-
+  import { format } from "date-fns";
   import {
     collection,
     getDocs,
@@ -20,11 +20,18 @@
     deleteDoc,
     writeBatch,
   } from "firebase/firestore";
-  import { Clock, TrashSimple, PencilSimple } from "phosphor-svelte";
+  import {
+    Clock,
+    TrashSimple,
+    PencilSimple,
+    X,
+    DotsSixVertical,
+  } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
   let tasks = writable({});
-  let newTask = writable({
+  let currentTask = writable({
+    id: undefined,
     title: "",
     description: "",
     assignees: [],
@@ -34,25 +41,42 @@
     status_id: "",
     deadline: "",
   });
+  let newStatusName = writable("");
   let modal;
   let assignees = writable([]);
   let files = writable([]);
-  let clients = writable([]);
 
-  async function fetchTaskStatuses() {
-    const workspaceRef = doc(
+  let sortOrder = writable("asc");
+  let sortType = writable("deadline");
+  let filters = writable({
+    assignees: [],
+  });
+
+  onMount(async () => {
+    // Fetch assignees (Example: hardcoded, adjust based on your structure)
+    assignees.set(["Michel", "Mike", "Toon", "Thierry"]);
+
+    // Fetch files
+    const filesRef = collection(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
+      "files",
     );
-    const workspaceSnap = await getDoc(workspaceRef);
-    const workspaceData = workspaceSnap.data();
+    const fileSnapshots = await getDocs(filesRef);
+    files.set(
+      fileSnapshots.docs.map((doc) => ({
+        id: doc.id,
+        label: `${doc.id} - ${doc.data().name}`,
+      })),
+    );
 
-    // Assumes statuses are stored in a field named "taskStatuses" which is an array
-    const statuses = workspaceData.taskStatuses || [];
-    taskStatuses.set(statuses);
-    return statuses;
-  }
+    // Fetch task statuses
+    await fetchTaskStatuses();
+    await fetchTasks();
+    sortAndFilterTasks(get(sortOrder));
+    setupSortable();
+  });
 
   async function fetchTasks() {
     const statuses = await fetchTaskStatuses();
@@ -60,28 +84,25 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const taskSnapshots = await getDocs(tasksRef);
 
-    const categorizedTasks = {};
+    const tasksArray = []; // Use an array instead of an object
     const fileRefs = new Map();
-
-    statuses.forEach((status) => {
-      categorizedTasks[status.id] = [];
-    });
 
     // Process tasks and collect file references
     taskSnapshots.docs.forEach((doc) => {
       const taskData = { id: doc.id, ...doc.data() };
-      const taskStatusId = taskData.status_id;
-      const fileId = taskData.file_id;
+      taskData.assignees =
+        taskData.assignees && taskData.assignees.length > 0
+          ? taskData.assignees
+          : ["Onbepaald"];
 
-      if (categorizedTasks[taskStatusId]) {
-        categorizedTasks[taskStatusId].push(taskData);
-      } else {
-        console.warn(`Unknown task status ID: ${taskStatusId}`);
-      }
+      // Push each task to the tasksArray
+      tasksArray.push(taskData);
+
+      const fileId = String(taskData.file_id); // Ensure it's a string
 
       // Collect file references
       if (fileId) {
@@ -113,16 +134,80 @@
     });
 
     // Combine task and file data
-    Object.keys(categorizedTasks).forEach((statusId) => {
-      categorizedTasks[statusId] = categorizedTasks[statusId].map((task) => ({
-        ...task,
-        fileData: fileDataMap.get(task.file_id) || null,
-      }));
+    tasksArray.forEach((task) => {
+      task.fileData = fileDataMap.get(task.file_id) || null;
     });
 
-    tasks.set(categorizedTasks);
+    // Set the tasks store to the array
+    tasks.set(tasksArray);
 
-    console.log(categorizedTasks);
+    console.log(tasksArray);
+  }
+
+  function sortAndFilterTasks(tasks, type, order) {
+    // Ensure that `tasks` is an array, not an object
+    let filteredTasks = tasks;
+
+    // Apply filtering
+    const activeFilters = get(filters);
+
+    if (activeFilters.assignees.length > 0) {
+      filteredTasks = filteredTasks.filter((task) => {
+        // If task.assignees is undefined, default it to an empty array
+        if (!Array.isArray(task.assignees)) {
+          console.warn(
+            `Task ${task.id} has undefined assignees, defaulting to empty array.`,
+          );
+          task.assignees = [];
+        }
+
+        const result =
+          task.assignees.length > 0 &&
+          activeFilters.assignees.some((assignee) =>
+            task.assignees
+              .map((a) => a.toLowerCase())
+              .includes(assignee.toLowerCase()),
+          );
+
+        console.log("Filter Result:", result);
+        return result;
+      });
+    }
+
+    // Apply sorting
+    return filteredTasks.sort((a, b) => {
+      let aValue, bValue;
+
+      if (type === "deadline") {
+        aValue = a.deadline ? a.deadline.toDate() : new Date(0);
+        bValue = b.deadline ? b.deadline.toDate() : new Date(0);
+      } else if (type === "priority") {
+        const priorityOrder = { Low: 1, Medium: 2, High: 3 };
+        aValue = priorityOrder[a.priority] || 0;
+        bValue = priorityOrder[b.priority] || 0;
+      }
+
+      if (order === "asc") {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+  }
+
+  async function fetchTaskStatuses() {
+    const workspaceRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+    );
+    const workspaceSnap = await getDoc(workspaceRef);
+    const workspaceData = workspaceSnap.data();
+
+    // Assumes statuses are stored in a field named "taskStatuses" which is an array
+    const statuses = workspaceData.taskStatuses || [];
+    taskStatuses.set(statuses);
+    return statuses;
   }
 
   async function updateTaskStatus(taskId, newStatusId) {
@@ -131,7 +216,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "tasks",
-      taskId
+      taskId,
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
@@ -140,12 +225,12 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
     const updatedStatuses = workspaceData.taskStatuses.map((status) =>
-      status.id === statusId ? { ...status, name: newName } : status
+      status.id === statusId ? { ...status, name: newName } : status,
     );
     await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
   }
@@ -155,7 +240,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const q = query(tasksRef, where("status_id", "==", statusId));
     const taskSnapshots = await getDocs(q);
@@ -170,12 +255,12 @@
       const workspaceRef = doc(
         db,
         "workspaces",
-        localStorage.getItem("workspace")
+        localStorage.getItem("workspace"),
       );
       const workspaceSnap = await getDoc(workspaceRef);
       const workspaceData = workspaceSnap.data();
       const updatedStatuses = workspaceData.taskStatuses.filter(
-        (status) => status.id !== statusId
+        (status) => status.id !== statusId,
       );
 
       if (taskSnapshots.size > 0) {
@@ -237,6 +322,7 @@
             group: "taskColumnTasks",
             sort: false,
             animation: 250,
+            handle: ".drag-handle",
             onEnd: async function (evt) {
               const itemEl = evt.item;
               const oldStatusId = evt.from.closest(".kanban-column").dataset.id;
@@ -253,23 +339,28 @@
       // Set up column sorting
       Sortable.create(document.querySelector(".kanban-board"), {
         group: "taskColumn",
+        filter: ".kanban-column-content",
+        handle: ".drag-column",
         animation: 250,
         onEnd: async function (evt) {
-          const newOrder = Array.from(evt.from.children).map(
-            (child) => child.dataset.id
-          );
+          const newOrder = Array.from(evt.from.children)
+            .map((child) => child.dataset.id)
+            .filter((id) => id); // Filters out null, undefined, and empty strings
+
           const workspaceRef = doc(
             db,
             "workspaces",
-            localStorage.getItem("workspace")
+            localStorage.getItem("workspace"),
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
 
+          console.log(newOrder);
+
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
             taskStatuses: newOrder.map((id) =>
-              workspaceData.taskStatuses.find((status) => status.id === id)
+              workspaceData.taskStatuses.find((status) => status.id === id),
             ),
           });
         },
@@ -277,17 +368,27 @@
     });
   }
 
-  function openModal(statusId) {
-    newTask.update((n) => ({
-      ...n,
-      title: "",
-      description: "",
-      assignees: [],
-      file_id: "",
-      priority: "Medium",
-      status_id: statusId, // Set the status ID here
-      deadline: "",
-    }));
+  function openModal(task, statusId) {
+    if (task) {
+      currentTask.set({
+        ...task,
+        deadline: task.deadline
+          ? format(task.deadline.toDate(), "yyyy-MM-dd")
+          : "", // Convert and format the date
+      });
+    } else {
+      currentTask.update((n) => ({
+        ...n,
+        id: undefined,
+        title: "",
+        description: "",
+        assignees: [],
+        file_id: "",
+        priority: "Medium",
+        status_id: statusId, // Set the status ID here
+        deadline: "",
+      }));
+    }
 
     modal.showModal();
   }
@@ -297,63 +398,82 @@
   }
 
   // Ensure `updated_at` is saved every time
-  async function addTask() {
-    const taskData = get(newTask);
+  async function saveTask() {
+    const taskData = get(currentTask);
 
-    // Convert deadline to Firestore timestamp
     if (taskData.deadline) {
       taskData.deadline = Timestamp.fromDate(new Date(taskData.deadline));
     }
 
-    try {
-      const tasksRef = collection(
+    if (taskData.id) {
+      // Update existing task
+      const taskRef = doc(
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks"
+        "tasks",
+        taskData.id,
       );
-      await addDoc(tasksRef, {
+      await updateDoc(taskRef, {
         ...taskData,
-        created_at: Timestamp.now(),
-        updated_at: Timestamp.now(), // Ensure updated_at is set when saving
+        updated_at: Timestamp.now(), // Ensure updated_at is set when updating
       });
       await fetchTasks(); // Refresh tasks to show the new task
       closeModal();
-    } catch (error) {
-      console.error("Error adding task: ", error);
+    } else {
+      // Add new task
+      delete taskData.id;
+      try {
+        const tasksRef = collection(
+          db,
+          "workspaces",
+          localStorage.getItem("workspace"),
+          "tasks",
+        );
+        await addDoc(tasksRef, {
+          ...taskData,
+          created_at: Timestamp.now(),
+          updated_at: Timestamp.now(), // Ensure updated_at is set when saving
+        });
+        await fetchTasks(); // Refresh tasks to show the new task
+        closeModal();
+      } catch (error) {
+        console.error("Error adding task: ", error);
+      }
     }
   }
 
-  onMount(async () => {
-    // Fetch assignees (Example: hardcoded, adjust based on your structure)
-    assignees.set(["Michel", "Mike", "Toon", "Thierry"]);
+  async function deleteTask() {
+    if (!confirm("Weet je zeker dat je deze taak wilt verwijderen?")) {
+      return;
+    }
 
-    // Fetch files
-    const filesRef = collection(
-      db,
-      "workspaces",
-      localStorage.getItem("workspace"),
-      "files"
-    );
-    const fileSnapshots = await getDocs(filesRef);
-    files.set(
-      fileSnapshots.docs.map((doc) => ({
-        id: doc.id,
-        label: `${doc.id} - ${doc.data().name}`,
-      }))
-    );
+    const taskData = get(currentTask);
 
-    // dossiers = dossiersData.map((dossier) => ({
-    //     id: dossier.id,
-    //     label: `${dossier.id} - ${dossier.name}`,
-    //   }));
+    if (taskData.id) {
+      try {
+        // Reference to the specific task document to be deleted
+        const taskRef = doc(
+          db,
+          "workspaces",
+          localStorage.getItem("workspace"),
+          "tasks",
+          taskData.id,
+        );
 
-    console.log(files);
-    // Fetch task statuses
-    await fetchTaskStatuses();
-    await fetchTasks();
-    setupSortable();
-  });
+        // Delete the document
+        await deleteDoc(taskRef);
+
+        // Optionally, refresh the task list to reflect the deletion
+        await fetchTasks();
+        closeModal();
+      } catch (error) {
+        console.error("Error deleting task: ", error);
+      }
+    } else {
+      console.error("No task ID provided, cannot delete task.");
+    }
+  }
 
   // Utility functions
   function formatDate(timestamp) {
@@ -377,8 +497,6 @@
     return "";
   }
 
-  let newStatusName = writable(""); // Track the new column name
-
   async function addNewStatus() {
     const statusName = get(newStatusName).trim();
     if (!statusName) return; // Exit if the input is empty
@@ -387,7 +505,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const newStatus = { id: newStatusId, name: statusName };
 
@@ -404,13 +522,87 @@
       console.error("Error adding new status:", error);
     }
   }
+
+  // Function to get the image source
+  function getImageSrc(assignee) {
+    // Convert assignee to lowercase and append .jpg
+    const filename = `${assignee.toLowerCase()}.jpg`;
+    return `/img/people/${filename}`; // Update with the correct path to your images
+  }
 </script>
 
+<div class="filter-sort-controls">
+  <label>Uitvoerder:</label>
+  <div class="assignee-filters">
+    {#each $assignees as assignee}
+      <label>
+        <input
+          type="checkbox"
+          value={assignee}
+          name="[]"
+          on:change={(e) => {
+            filters.update((f) => {
+              let updatedFilters;
+              if (e.target.checked) {
+                // Add assignee to the filters
+                updatedFilters = {
+                  ...f,
+                  assignees: [...f.assignees, assignee],
+                };
+              } else {
+                // Remove assignee from the filters
+                updatedFilters = {
+                  ...f,
+                  assignees: f.assignees.filter((a) => a !== assignee),
+                };
+              }
+              console.log("Updated Filters:", updatedFilters);
+              return updatedFilters;
+            });
+
+            // Use a tick to ensure the update has been processed before proceeding
+            tick().then(() => {
+              sortAndFilterTasks($tasks, $sortType, $sortOrder);
+            });
+          }}
+        />
+        {assignee}
+      </label>
+    {/each}
+  </div>
+
+  <label for="sortTypeDropdown">Sorteer op:</label>
+  <select
+    id="sortTypeDropdown"
+    on:change={(e) => {
+      sortType.set(e.target.value);
+      sortAndFilterTasks($tasks, e.target.value, $sortOrder);
+    }}
+  >
+    <option value="deadline" selected>Deadline</option>
+    <option value="priority">Prioriteit</option>
+  </select>
+  <button
+    class="sort-order-toggle"
+    on:click={() => {
+      const newOrder = $sortOrder === "asc" ? "desc" : "asc";
+      sortOrder.set(newOrder);
+      sortAndFilterTasks($tasks, $sortType, newOrder);
+    }}
+  >
+    {#if $sortOrder === "asc"}
+      ↑
+    {:else}
+      ↓
+    {/if}
+  </button>
+</div>
 <div class="kanban-board">
   {#if $taskStatuses.length > 0}
     {#each $taskStatuses as status (status.id)}
       <div class="kanban-column" data-id={status.id}>
         <div class="kanban-column-header">
+          <div class="drag-column"><DotsSixVertical size="18" /></div>
           <h3
             on:keydown={handleKeyDown}
             on:blur={handleBlur}
@@ -428,24 +620,48 @@
           class="kanban-column-content"
           data-status={status.id}
         >
-          {#if $tasks[status.id]}
-            {#each $tasks[status.id] as task (task.id)}
+          {#if Array.isArray($tasks)}
+            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder, ) as task (task.id)}
               <li
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
+                on:click={() => openModal(task)}
               >
-                <div class="top">
-                  <h4>{task.title}</h4>
-                  <span class="subtitle"
-                    >{task.fileData ? task.fileData.name : ""}</span
-                  >
-                </div>
-                <!-- <p>{task.description}</p> -->
-                {#if task.deadline}
-                  <div class="task-deadline">
-                    <Clock size="18" />{formatDate(task.deadline)}
+                <div class="drag-handle"><DotsSixVertical size="16" /></div>
+                <div class="main">
+                  <div class="top">
+                    <div class="text">
+                      <h4>{task.title}</h4>
+                      <span class="subtitle"
+                        >{task.file_id
+                          ? task.file_id.label
+                          : "Geen dossier"}</span
+                      >
+                    </div>
+                    <div class="assignees">
+                      {#each task.assignees as assignee}
+                        <img
+                          width="30px"
+                          height="30px"
+                          src={getImageSrc(assignee)}
+                          alt="{assignee} profielfoto"
+                          on:error={() => (src = "/img/people/placeholder.jpg")}
+                        />
+                      {/each}
+                    </div>
                   </div>
-                {/if}
+                  <div class="bottom">
+                    {#if task.priority}
+                      <span class="priority" data-priority={task.priority}
+                      ></span>
+                    {/if}
+                    {#if task.deadline}
+                      <div class="task-deadline">
+                        <Clock size="18" />{formatDate(task.deadline)}
+                      </div>
+                    {/if}
+                  </div>
+                </div>
               </li>
             {/each}
           {/if}
@@ -453,7 +669,7 @@
         <button
           class="kanban-task-add basic"
           data-status={status.id}
-          on:click={() => openModal(status.id)}
+          on:click={() => openModal(null, status.id)}
         >
           + Taak toevoegen
         </button>
@@ -478,21 +694,28 @@
 </div>
 
 <dialog bind:this={modal} class="task-modal">
-  <h2>Taak toevoegen</h2>
-  <form on:submit|preventDefault={addTask}>
+  {#if $currentTask.id}
+    <div class="top">
+      <h6>Taak bewerken</h6>
+      <button class="basic" on:click={closeModal}><X size="16" /></button>
+    </div>
+  {:else}
+    <h6>Taak toevoegen</h6>
+  {/if}
+  <form on:submit|preventDefault={saveTask}>
     <label
       ><span class="legend">Titel</span>
-      <input type="text" bind:value={$newTask.title} required />
+      <input type="text" bind:value={$currentTask.title} required />
     </label>
 
     <label
       ><span class="legend">Beschrijving</span>
-      <textarea bind:value={$newTask.description}></textarea>
+      <textarea bind:value={$currentTask.description}></textarea>
     </label>
 
     <label
       ><span class="legend">Uitvoerders</span>
-      <select bind:value={$newTask.assignees} multiple>
+      <select bind:value={$currentTask.assignees} multiple>
         {#each $assignees as assignee}
           <option value={assignee}>{assignee}</option>
         {/each}
@@ -503,7 +726,7 @@
       ><span class="legend">Dossier</span>
       <Select
         items={$files}
-        bind:value={$newTask.file_id}
+        bind:value={$currentTask.file_id}
         getOptionLabel={(file) => `${file.id} - ${file.name}`}
         getOptionValue={(file) => file.id}
         getSelectionLabel={(option) =>
@@ -516,7 +739,7 @@
 
     <label
       ><span class="legend">Prioriteit</span>
-      <select bind:value={$newTask.priority} required>
+      <select bind:value={$currentTask.priority} required>
         <option value="Low">Laag</option>
         <option value="Medium">Medium</option>
         <option value="High">Hoog</option>
@@ -525,7 +748,7 @@
 
     <label
       ><span class="legend">Status</span>
-      <select bind:value={$newTask.status_id} required>
+      <select bind:value={$currentTask.status_id} required>
         <option value="" disabled selected>Selecteer een status</option>
         {#each $taskStatuses as status}
           <option value={status.id}>{status.name}</option>
@@ -535,14 +758,19 @@
 
     <label
       ><span class="legend">Deadline</span>
-      <input type="datetime-local" bind:value={$newTask.deadline} />
+      <input type="date" bind:value={$currentTask.deadline} />
     </label>
 
     <div class="buttons">
-      <button class="basic" type="button" on:click={closeModal}
-        >Annuleren</button
+      <button class="basic" on:click={deleteTask}
+        ><TrashSimple size="16" /></button
       >
-      <button type="submit">Opslaan</button>
+      <div>
+        <button class="basic" type="button" on:click={closeModal}
+          >Annuleren</button
+        >
+        <button type="submit">Opslaan</button>
+      </div>
     </div>
   </form>
 </dialog>
@@ -573,6 +801,9 @@
     grid-column-gap: 2rem;
     grid-template-rows: minmax(0, 1fr);
     cursor: grab;
+    @media (max-width: $sm) {
+      grid-auto-columns: max(75vw, 300px);
+    }
   }
 
   .kanban-column {
@@ -598,6 +829,10 @@
         flex-grow: 1;
         margin-bottom: 0;
         outline: none;
+        cursor: text;
+      }
+      > div {
+        cursor: pointer;
       }
     }
 
@@ -623,55 +858,186 @@
     list-style: none;
     padding: 0;
     flex-grow: 1;
+
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+    /* Chrome, Edge, and Safari */
+    &::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: #d1d1d1;
+      border-radius: 10px;
+      //   border: 3px solid #ffffff;
+      border-left: 4px solid var(--background);
+    }
   }
 
   .kanban-task {
     background-color: #fff;
     border-radius: 4px;
-    padding: 15px;
+    padding: 20px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
     cursor: pointer;
+
+    .drag-handle {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      color: var(--gray-400);
+    }
+
+    @media (max-width: $md) {
+      padding: 0;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+
+      .drag-handle {
+        position: relative;
+        opacity: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 5px;
+        border-right: 1px solid #f1f1f1;
+      }
+      .main {
+        padding: 20px;
+      }
+    }
+
     &:not(:last-child) {
       margin-bottom: 8px;
+    }
+
+    .top {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+
+      .text {
+        flex-grow: 1;
+        overflow: hidden;
+        position: relative;
+
+        .subtitle {
+          // text-transform: uppercase;
+          opacity: 0.6;
+          font-size: 1.3rem;
+          margin-top: 0.35em;
+          display: block;
+
+          max-width: 100%;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+
+          &:empty {
+            display: none;
+          }
+        }
+      }
+      .assignees {
+        display: flex;
+        flex-direction: row-reverse;
+        &:empty {
+          display: none;
+        }
+
+        img {
+          border-radius: 50%;
+          border: 3px solid #fff;
+          filter: brightness(0.95);
+
+          &:not(:first-child) {
+            margin-right: -15px;
+          }
+        }
+      }
+    }
+    .bottom {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+      .priority {
+        &[data-priority=""] {
+          display: none;
+        }
+
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+
+        &[data-priority="High"] {
+          background-color: $error;
+        }
+        &[data-priority="Medium"] {
+          background-color: $warning;
+        }
+        &[data-priority="Low"] {
+          background-color: var(--gray-300);
+        }
+      }
     }
 
     .task-deadline {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 3px 5px;
+      padding: 3px 0;
       border-radius: 5px;
       font-size: 13px;
-      margin-top: 15px;
       color: var(--text-light);
     }
 
     &.today .task-deadline {
       background-color: $warning;
       color: #fff;
+      padding: 3px 5px;
     }
     &.overdue .task-deadline {
       background-color: $error;
       color: #fff;
+      padding: 3px 5px;
     }
 
-    .subtitle {
-      text-transform: uppercase;
-      opacity: 0.6;
-      font-size: 1.4rem;
-      margin-top: 0.5em;
-      display: block;
-      &:empty {
-        display: none;
-      }
-    }
     h4 {
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       margin-bottom: 0;
     }
   }
   .legend {
     margin-bottom: 0.5em;
     display: block;
+  }
+
+  dialog .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+    div {
+      display: flex;
+      gap: inherit;
+
+      .basic {
+        @media (max-width: $sm) {
+          display: none;
+        }
+      }
+    }
   }
 </style>

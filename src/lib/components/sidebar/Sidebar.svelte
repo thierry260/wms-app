@@ -14,7 +14,7 @@
   } from "phosphor-svelte";
 
   let showMore = false;
-  let isMobile = false;
+  let isMobile = true;
 
   const menuItems = [
     {
@@ -23,7 +23,7 @@
       icon: Timer,
     },
     {
-      label: "CRM",
+      label: "Contacten",
       route: "/crm",
       icon: Users,
     },

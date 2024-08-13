@@ -1,7 +1,8 @@
 <script>
   import { db } from "$lib/firebase"; // Import your Firebase instance
-  import { collection, addDoc, Timestamp } from "firebase/firestore"; // Import Firestore functions
+  import { collection, addDoc, Timestamp, getDocs } from "firebase/firestore"; // Import Firestore functions
   import { writable } from "svelte/store";
+  import { onMount } from "svelte";
 
   let voornaam = "";
   let tussenvoegsels = "";
@@ -18,6 +19,26 @@
   let submitting = writable(false);
   let errorMessage = writable("");
   let successMessage = writable("");
+
+  let clientsList = writable([]);
+
+  onMount(async () => {
+    await fetchClients();
+  });
+
+  async function fetchClients() {
+    const clientsRef = collection(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "clients",
+    );
+    const clientSnapshots = await getDocs(clientsRef);
+    clientsList.set(
+      clientSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    );
+    console.log(clientsList);
+  }
 
   async function handleSubmit() {
     // Ensure all required fields are filled out
@@ -61,6 +82,7 @@
 
       successMessage.set("Contact succesvol toegevoegd!");
       resetForm();
+      await fetchClients();
     } catch (error) {
       console.error("Error adding client: ", error);
       errorMessage.set("Toevoegen mislukt.");
@@ -97,12 +119,12 @@
 
   <form on:submit|preventDefault={handleSubmit}>
     <label>
-      Voornaam:
+      <span class="legend">Voornaam</span>
       <input type="text" bind:value={voornaam} placeholder="Voornaam" />
     </label>
 
     <label>
-      Tussenvoegsels:
+      <span class="legend">Tussenvoegsels</span>
       <input
         type="text"
         bind:value={tussenvoegsels}
@@ -111,12 +133,12 @@
     </label>
 
     <label>
-      Achternaam:
+      <span class="legend">Achternaam</span>
       <input type="text" bind:value={achternaam} placeholder="Achternaam" />
     </label>
 
     <label>
-      Bedrijfsnaam:
+      <span class="legend">Bedrijfsnaam</span>
       <input
         type="text"
         bind:value={bedrijfsnaam}
@@ -125,7 +147,7 @@
     </label>
 
     <label>
-      Functienaam:
+      <span class="legend">Functienaam</span>
       <input
         type="text"
         bind:value={functienaam}
@@ -134,23 +156,23 @@
     </label>
 
     <label>
-      Geboortedatum:
+      <span class="legend">Geboortedatum</span>
       <input type="date" bind:value={geboortedatum} />
     </label>
 
     <label>
-      Notities:
+      <span class="legend">Notities</span>
       <textarea bind:value={notities} placeholder="Notities (optioneel)"
       ></textarea>
     </label>
 
     <label>
-      E-mail adres:
+      <span class="legend">E-mail adres</span>
       <input type="email" bind:value={email} placeholder="E-mail adres" />
     </label>
 
     <label>
-      Telefoonnummer:
+      <span class="legend">Telefoonnummer</span>
       <input
         type="tel"
         bind:value={telefoonnummer}
@@ -159,12 +181,12 @@
     </label>
 
     <label>
-      Adres:
+      <span class="legend">Adres:</span>
       <input type="text" bind:value={adres} placeholder="Adres" />
     </label>
 
     <label>
-      Website:
+      <span class="legend">Website:</span>
       <input
         type="text"
         bind:value={website}
@@ -174,7 +196,47 @@
 
     <button type="submit" disabled={$submitting}>Contact toevoegen</button>
   </form>
+
+  <section class="clients_section">
+    <h2>Overzicht van contacten</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Voornaam</th>
+          <th>Achternaam</th>
+          <th>Bedrijfsnaam</th>
+          <th>Functienaam</th>
+          <th>E-mail</th>
+          <th>Telefoonnummer</th>
+          <th>Adres</th>
+          <th>Website</th>
+        </tr>
+      </thead>
+      <tbody>
+        {#each $clientsList as client}
+          <tr>
+            <td>{client.voornaam}</td>
+            <td>{client.achternaam}</td>
+            <td>{client.bedrijfsnaam}</td>
+            <td>{client.functienaam}</td>
+            <td>{client.email}</td>
+            <td>{client.telefoonnummer}</td>
+            <td>{client.adres}</td>
+            <td
+              ><a href={client.website} target="_blank">{client.website}</a></td
+            >
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </section>
 </main>
 
 <style lang="scss">
+  .clients_section {
+    margin-top: 60px;
+  }
+  .legend {
+    margin-top: 0;
+  }
 </style>

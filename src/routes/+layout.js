@@ -12,7 +12,7 @@ export async function load({ url }) {
   if (
     !user &&
     !url.pathname.startsWith("/login") &&
-    !url.pathname.startsWith("/get-mailgen")
+    !url.pathname.startsWith("/get-wms")
   ) {
     console.log(auth, auth.currentUser);
     // throw redirect(302, "/login");
