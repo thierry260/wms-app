@@ -3,6 +3,8 @@
   import { writable, derived, get } from "svelte/store";
   import Select from "svelte-select"; // Import Select component
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
+  import { doc, getDoc, updateDoc } from "firebase/firestore";
+  import { auth, db } from "$lib/firebase";
 
   import {
     parse,
@@ -51,15 +53,14 @@
         (dossier.timetracking || []).map((entry) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
-        })),
+        }))
       );
       allLogs = data;
       updateLogsForSearch();
 
       // Add event listener for updateLogs event
       window.addEventListener("updateLogs", (event) => {
-        allLogs = event.detail;
-        updateLogsForSearch();
+        updateLogsForSearch(dossiersData); // Re-fetch and update the logs
       });
     } catch (error) {
       console.error("Error fetching logs:", error);
@@ -79,7 +80,7 @@
           log.name.toLowerCase().includes(searchValue) ||
           log.description.toLowerCase().includes(searchValue) ||
           log.assignee.toLowerCase().includes(searchValue) ||
-          log.location.toLowerCase().includes(searchValue),
+          log.location.toLowerCase().includes(searchValue)
       );
     }
 
@@ -172,7 +173,7 @@
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location,
+        entry.location === log.location
     );
 
     if (index === -1) {
@@ -219,7 +220,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId,
+      originalDossierId
     );
 
     const newDossierRef = doc(
@@ -227,7 +228,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId,
+      dossierId
     );
 
     try {
@@ -239,7 +240,7 @@
 
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
-            (entry, index) => index !== editedLog.index,
+            (entry, index) => index !== editedLog.index
           );
 
           await updateDoc(originalDossierRef, {
@@ -261,7 +262,7 @@
       }
 
       const existingIndex = newTimetracking.findIndex(
-        (entry) => entry.index === editedLog.index,
+        (entry) => entry.index === editedLog.index
       );
 
       if (existingIndex !== -1) {
@@ -287,7 +288,6 @@
       alert("Urenregistratie succesvol bijgewerkt");
       window.dispatchEvent(new CustomEvent("logUpdated"));
       closeDialog();
-      fetchAndUpdateLogs();
     } catch (error) {
       console.error("Fout bij het bijwerken van urenregistratie:", error);
       alert("Fout bij het bijwerken van urenregistratie");
@@ -308,7 +308,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId.id, // Access the id property of dossierId
+      logToDelete.dossierId.id // Access the id property of dossierId
     );
 
     try {
@@ -320,7 +320,7 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index,
+          (entry, index) => index !== logToDelete.index
         );
 
         // Update the Firestore document with the updated timetracking array
@@ -334,8 +334,6 @@
         window.dispatchEvent(new CustomEvent("logUpdated"));
 
         closeDialog();
-        // Fetch and update logs to reflect the changes
-        fetchAndUpdateLogs();
       } else {
         console.error("Dossier document not found");
         alert("Fout bij het verwijderen van urenregistratie");
@@ -719,7 +717,7 @@
     .search_filter button {
       min-width: 42px;
     }
-    .card > .columns {
+    main > .columns {
       grid-template-columns: 100%;
       padding-top: 20px;
     }

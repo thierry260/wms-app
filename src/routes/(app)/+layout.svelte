@@ -36,6 +36,7 @@
     padding: 60px;
     @media (max-width: $sm) {
       padding: 30px;
+      padding-bottom: 100px;
     }
 
     &:has(.bottom-nav) {

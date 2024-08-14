@@ -66,14 +66,14 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const fileSnapshots = await getDocs(filesRef);
     files.set(
       fileSnapshots.docs.map((doc) => ({
         id: doc.id,
         label: `${doc.id} - ${doc.data().name}`,
-      })),
+      }))
     );
 
     // Fetch task statuses
@@ -90,7 +90,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks",
+      "tasks"
     );
     const taskSnapshots = await getDocs(tasksRef);
 
@@ -125,10 +125,10 @@
             "workspaces",
             localStorage.getItem("workspace"),
             "files",
-            fileId,
-          ),
-        ),
-      ),
+            fileId
+          )
+        )
+      )
     );
 
     // Map file data to file IDs
@@ -162,7 +162,7 @@
 
         // Check if task includes all selected assignees
         const matches = activeFilters.assignees.every((filterAssignee) =>
-          taskAssignees.includes(filterAssignee.toLowerCase()),
+          taskAssignees.includes(filterAssignee.toLowerCase())
         );
         return matches;
       });
@@ -193,7 +193,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -210,7 +210,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "tasks",
-      taskId,
+      taskId
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
@@ -219,12 +219,12 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
     const updatedStatuses = workspaceData.taskStatuses.map((status) =>
-      status.id === statusId ? { ...status, name: newName } : status,
+      status.id === statusId ? { ...status, name: newName } : status
     );
     await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
   }
@@ -234,7 +234,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks",
+      "tasks"
     );
     const q = query(tasksRef, where("status_id", "==", statusId));
     const taskSnapshots = await getDocs(q);
@@ -249,12 +249,12 @@
       const workspaceRef = doc(
         db,
         "workspaces",
-        localStorage.getItem("workspace"),
+        localStorage.getItem("workspace")
       );
       const workspaceSnap = await getDoc(workspaceRef);
       const workspaceData = workspaceSnap.data();
       const updatedStatuses = workspaceData.taskStatuses.filter(
-        (status) => status.id !== statusId,
+        (status) => status.id !== statusId
       );
 
       if (taskSnapshots.size > 0) {
@@ -345,7 +345,7 @@
       // Set up column sorting
       Sortable.create(document.querySelector(".kanban-board"), {
         group: "taskColumn",
-        filter: ".kanban-column-content",
+        // filter: ".kanban-column-content",
         handle: ".drag-column",
         animation: 250,
         onEnd: async function (evt) {
@@ -356,7 +356,7 @@
           const workspaceRef = doc(
             db,
             "workspaces",
-            localStorage.getItem("workspace"),
+            localStorage.getItem("workspace")
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
@@ -364,7 +364,7 @@
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
             taskStatuses: newOrder.map((id) =>
-              workspaceData.taskStatuses.find((status) => status.id === id),
+              workspaceData.taskStatuses.find((status) => status.id === id)
             ),
           });
         },
@@ -416,7 +416,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "tasks",
-        taskData.id,
+        taskData.id
       );
       await updateDoc(taskRef, {
         ...taskData,
@@ -432,7 +432,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks",
+          "tasks"
         );
         await addDoc(tasksRef, {
           ...taskData,
@@ -462,7 +462,7 @@
           "workspaces",
           localStorage.getItem("workspace"),
           "tasks",
-          taskData.id,
+          taskData.id
         );
 
         // Delete the document
@@ -509,7 +509,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const newStatus = { id: newStatusId, name: statusName };
 
@@ -558,56 +558,54 @@
 </script>
 
 <div class="filter-sort-controls">
-  <div>
-    <div class="assignee-filters">
-      {#each $assignees as assignee}
-        <label>
-          <input
-            type="checkbox"
-            value={assignee}
-            name="[]"
-            on:change={async (e) => {
-              filters.update((f) => {
-                let updatedFilters;
-                if (e.target.checked) {
-                  // Add assignee to the filters
-                  updatedFilters = {
-                    ...f,
-                    assignees: [...f.assignees, assignee],
-                  };
-                } else {
-                  // Remove assignee from the filters
-                  updatedFilters = {
-                    ...f,
-                    assignees: f.assignees.filter((a) => a !== assignee),
-                  };
-                }
-                return updatedFilters;
-              });
+  <div class="assignee-filters">
+    {#each $assignees as assignee}
+      <label>
+        <input
+          type="checkbox"
+          value={assignee}
+          name="[]"
+          on:change={async (e) => {
+            filters.update((f) => {
+              let updatedFilters;
+              if (e.target.checked) {
+                // Add assignee to the filters
+                updatedFilters = {
+                  ...f,
+                  assignees: [...f.assignees, assignee],
+                };
+              } else {
+                // Remove assignee from the filters
+                updatedFilters = {
+                  ...f,
+                  assignees: f.assignees.filter((a) => a !== assignee),
+                };
+              }
+              return updatedFilters;
+            });
 
-              // Wait for the state to update before sorting and filtering
-              await tick();
+            // Wait for the state to update before sorting and filtering
+            await tick();
 
-              // Always start from the full list of tasks
-              const filteredAndSortedTasks =
-                get(filters).assignees.length === 0
-                  ? allTasks // Show all tasks if no filters are selected
-                  : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
+            // Always start from the full list of tasks
+            const filteredAndSortedTasks =
+              get(filters).assignees.length === 0
+                ? allTasks // Show all tasks if no filters are selected
+                : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
 
-              tasks.set(filteredAndSortedTasks);
-            }}
+            tasks.set(filteredAndSortedTasks);
+          }}
+        />
+        <figure>
+          <img
+            src="/img/people/{assignee.toLowerCase()}.jpg"
+            width="25px"
+            height="25px"
           />
-          <figure>
-            <img
-              src="/img/people/{assignee.toLowerCase()}.jpg"
-              width="25px"
-              height="25px"
-            />
-          </figure>
-          {assignee}
-        </label>
-      {/each}
-    </div>
+        </figure>
+        {assignee}
+      </label>
+    {/each}
   </div>
 
   <div class="sorting">
@@ -667,7 +665,7 @@
           data-status={status.id}
         >
           {#if Array.isArray($tasks)}
-            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder, ) as task (task.id)}
+            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder ) as task (task.id)}
               <li
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
@@ -829,6 +827,8 @@
     justify-content: space-between;
     align-items: flex-end;
     margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px 20px;
 
     .assignee-filters {
       label {
@@ -882,6 +882,18 @@
           }
         }
       }
+      @media (max-width: $xs) {
+        overflow-x: auto;
+        white-space: nowrap;
+        -ms-overflow-style: none; /* Internet Explorer 10+ */
+        scrollbar-width: none; /* Firefox */
+        margin-inline: -30px;
+        padding-inline: 30px;
+
+        &::-webkit-scrollbar {
+          display: none; /* Safari and Chrome */
+        }
+      }
     }
 
     select {
@@ -917,7 +929,7 @@
     overflow-y: hidden;
     margin-inline: -60px;
     margin-bottom: -60px;
-    width: calc(100% + 120px);
+    // width: calc(100% + 120px);
     // padding-inline: max(50px, (100% - var(--container) + 100px) / 2);
     // padding-inline: max(50px, (100% - var(--container)) / 2);
     padding-inline: 60px;
@@ -931,6 +943,9 @@
     cursor: grab;
     @media (max-width: $sm) {
       grid-auto-columns: max(75vw, 300px);
+      margin-inline: -30px;
+      // margin-bottom: 0;
+      padding-inline: 30px;
     }
   }
 
@@ -991,6 +1006,11 @@
       flex-grow: 1;
 
       max-height: calc(100vh - 300px);
+      max-height: calc(100dvh - 300px);
+      @media (max-width: $sm) {
+        max-height: calc(100vh - 400px);
+        max-height: calc(100dvh - 400px);
+      }
       overflow-y: auto;
       /* Chrome, Edge, and Safari */
       &::-webkit-scrollbar {
@@ -1032,6 +1052,7 @@
           inset: 0;
           opacity: 0;
           color: var(--gray-400);
+          pointer-events: none;
         }
 
         @media (max-width: $md) {
@@ -1041,6 +1062,7 @@
           overflow: hidden;
 
           .drag-handle {
+            pointer-events: auto;
             position: relative;
             opacity: 1;
             display: flex;
@@ -1155,6 +1177,9 @@
         h4 {
           font-size: 1.6rem;
           margin-bottom: 0;
+          @media (max-width: $sm) {
+            font-size: 1.4rem;
+          }
         }
       }
     }
