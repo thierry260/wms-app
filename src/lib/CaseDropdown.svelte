@@ -11,12 +11,14 @@
   let selectedDossier;
   let datum = "";
   let tijdsduur = "00:15";
-  let assignee = "Toon"; // Default value
+  let assignee = "Toon";
   let description = "";
   let billable = true;
-  let location = ""; // Default value
+  let location = "";
   let isAuthenticated = writable(false);
-  const dispatch = createEventDispatcher(); // Add event dispatcher
+  const dispatch = createEventDispatcher();
+  let isExternal = false;
+  let kilometers = "";
 
   // Dropdown options for assignee
   const assigneeOptions = [
@@ -63,7 +65,9 @@
       totaal,
       billable,
       assignee,
-      location,
+      isExternal,
+      location: isExternal ? location : "HIER",
+      kilometers: isExternal ? kilometers : "",
     };
 
     try {
@@ -93,6 +97,8 @@
       description = "";
       billable = true;
       location = "";
+      kilometers = "";
+      isExternal = false;
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Fout bij verzenden van formulier");
@@ -143,16 +149,49 @@
               <span>Tijdsduur *</span>
             </label>
 
-            <label class="add_row_field">
-              <input type="text" bind:value={location} on:focus={handleFocus} />
-              <span>Locatie</span>
-            </label>
-
             <label class="add_row_field spacing_bottom">
               <input type="text" bind:value={assignee} on:focus={handleFocus} />
               <span>Uitvoerder *</span>
             </label>
+
+            <label class="add_row_field">
+              <input
+                type="checkbox"
+                bind:checked={isExternal}
+                on:change={() => {
+                  if (!isExternal) {
+                    location = "";
+                    kilometers = "";
+                  }
+                }}
+              />
+              <span>Extern?</span>
+            </label>
           </div>
+
+          <!-- Conditionally render the location and kilometers fields -->
+          {#if isExternal}
+            <div class="add_row_field_columns">
+              <label class="add_row_field">
+                <input
+                  type="text"
+                  bind:value={location}
+                  on:focus={handleFocus}
+                />
+                <span>Locatie</span>
+              </label>
+
+              <label class="add_row_field">
+                <input
+                  type="number"
+                  min="0"
+                  bind:value={kilometers}
+                  on:focus={handleFocus}
+                />
+                <span>Kilometers</span>
+              </label>
+            </div>
+          {/if}
 
           <label class="add_row_field full-width">
             <textarea bind:value={description} on:focus={handleFocus}

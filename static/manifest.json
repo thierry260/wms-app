@@ -1,4 +1,3 @@
-// static/manifest.json
 {
     "name": "WMS app",
     "short_name": "WMS app",
@@ -9,9 +8,42 @@
     "theme_color": "#34e89e",
     "icons": [
         {
-            "src": "/img/wms-logo.png",
-            "type": "image/svg+xml",
-            "sizes": "any"
+            "purpose": "maskable",
+            "sizes": "144x144",
+            "src": "/img/icon144_maskable.png",
+            "type": "image/png"
+        },
+        {
+            "purpose": "any",
+            "sizes": "144x144",
+            "src": "/img/icon144_rounded.png",
+            "type": "image/png"
+        },
+        {
+            "purpose": "maskable",
+            "sizes": "512x512",
+            "src": "/img/icon512_maskable.png",
+            "type": "image/png"
+        },
+        {
+            "purpose": "any",
+            "sizes": "512x512",
+            "src": "/img/icon512_rounded.png",
+            "type": "image/png"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/img/screenshot-mobile.png",
+            "sizes": "375x667", // Example size for mobile
+            "type": "image/png",
+            "form_factor": "narrow"
+        },
+        {
+            "src": "/img/screenshot-wide.png",
+            "sizes": "1280x720", // Dimensions of the screenshot
+            "type": "image/png",
+            "form_factor": "wide"
         }
     ]
 }

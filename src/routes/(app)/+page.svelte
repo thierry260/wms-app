@@ -1,218 +1,340 @@
 <script>
-  import { onMount } from "svelte";
-  import { fetchWorkspaceData } from "$lib/utils/get";
+    import { onMount, createEventDispatcher } from "svelte";
+    import { fetchWorkspaceData } from "$lib/utils/get";
+    import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+    import CaseDropdown from "$lib/CaseDropdown.svelte";
+    import Result from "$lib/Results.svelte";
+    import Filter from "$lib/Filter.svelte";
+    import { writable } from "svelte/store";
+    import {
+        CaretCircleLeft,
+        CaretCircleRight,
+        TrashSimple,
+        Funnel,
+        X,
+    } from "phosphor-svelte";
+    import Select from "svelte-select";
+    import { fetchWorkspaceFilesData } from "$lib/utils/get";
+    import { db } from "$lib/firebase"; // Import the Firebase instance
 
-  import CaseDropdown from "$lib/CaseDropdown.svelte";
-  import Result from "$lib/Results.svelte";
-  import Filter from "$lib/Filter.svelte";
-  import { writable } from "svelte/store";
+    const defaults = {
+        client_id: "",
+        datum: "",
+        tijdsduur: "00:15",
+        assignee: "Toon",
+        description: "",
+        billable: true,
+        location: "",
+        isExternal: false,
+        kilometers: "",
+    };
+    const dispatch = createEventDispatcher();
+    let currentTimetracking = writable(defaults);
+    let updateLogs = writable(false); // Add writable store to trigger logs update
+    let dossiers = [];
+    let dossiersData = [];
+    let dialogEl = "";
 
-  let data = [];
+    onMount(async () => {
+        try {
+            // Set datum to today's date
+            const today = new Date().toISOString().split("T")[0];
+            $currentTimetracking.datum = today;
 
-  const currentIndex = writable(0);
-  let dragging = false;
-  let xStart = 0;
-  let translateX = writable(0);
-  let isAuthenticated = writable(true);
-  let updateLogs = writable(false); // Add writable store to trigger logs update
+            dossiersData = await fetchWorkspaceFilesData();
 
-  onMount(async () => {
-    try {
-      window.addEventListener("updateLogs", (event) => {
-        updateLogs.set(true);
-      });
+            // Extract and concatenate all timetracking arrays into timetrackingEntries
+            dossiers = dossiersData.map((dossier) => ({
+                id: dossier.id,
+                name: dossier.name, // Ensure that name is set correctly
+                label: `${dossier.id} - ${dossier.name}`, // Use both id and name for display in the dropdown
+            }));
 
-      // Add event listener for keydown to handle arrow keys
-      window.addEventListener("keydown", handleKeydown);
-    } catch (error) {
-      console.error("Error checking authentication status:", error);
-    }
-  });
+            console.log("Dossiers:", dossiers);
 
-  const pages = [
-    { component: CaseDropdown, name: "Urenregistratie" },
-    { component: Result, name: "Weekoverzichten" },
-    { component: Filter, name: "Opzoeken" },
-  ];
+            window.addEventListener("updateLogs", (event) => {
+                updateLogs.set(true);
+            });
+        } catch (error) {
+            console.error("Error checking authentication status:", error);
+        }
+    });
 
-  function swipeLeft() {
-    currentIndex.update((n) => (n < pages.length - 1 ? n + 1 : n));
-  }
-
-  function swipeRight() {
-    currentIndex.update((n) => (n > 0 ? n - 1 : n));
-  }
-
-  function handleKeydown(event) {
-    if (event.key === "ArrowLeft") {
-      swipeRight();
-    } else if (event.key === "ArrowRight") {
-      swipeLeft();
-    }
-  }
-
-  function handleTouchStart(event) {
-    startDragging(event.touches[0].clientX);
-  }
-
-  function handleMouseDown(event) {
-    startDragging(event.clientX);
-  }
-
-  function startDragging(position) {
-    xStart = position;
-    dragging = true;
-  }
-
-  function handleTouchMove(event) {
-    if (!dragging) return;
-    moveDragging(event.touches[0].clientX);
-  }
-
-  function handleMouseMove(event) {
-    if (!dragging) return;
-    moveDragging(event.clientX);
-  }
-
-  function moveDragging(currentPosition) {
-    translateX.set(currentPosition - xStart);
-  }
-
-  function handleTouchEnd() {
-    endDragging();
-  }
-
-  function handleMouseUp() {
-    endDragging();
-  }
-
-  function handleMouseLeave() {
-    if (dragging) endDragging();
-  }
-
-  function endDragging() {
-    dragging = false;
-    const moveThreshold = 100;
-    const movedBy = $translateX;
-
-    if (movedBy < -moveThreshold) {
-      swipeLeft();
-    } else if (movedBy > moveThreshold) {
-      swipeRight();
+    function handleRowAdded() {
+        updateLogs.set(true); // Trigger logs update
+        const event = new CustomEvent("rowAdded");
+        window.dispatchEvent(event); // Dispatch event when row is added
     }
 
-    translateX.set(0);
-  }
+    async function handleSubmit() {
+        if (!$currentTimetracking.client_id) {
+            alert("Selecteer een dossier");
+            return;
+        }
 
-  function handleRowAdded() {
-    updateLogs.set(true); // Trigger logs update
-    const event = new CustomEvent("rowAdded");
-    window.dispatchEvent(event); // Dispatch event when row is added
-  }
+        console.log("Client ID:", $currentTimetracking.client_id);
 
-  $: carouselStyle = `transform: translateX(calc(-${$currentIndex * 100}% + ${$translateX}px)); transition: ${dragging ? "none" : "transform 0.3s ease-in-out"}`;
+        // Split tijdsduur into uur and min
+        const [uur, min] = $currentTimetracking.tijdsduur
+            .split(":")
+            .map(Number);
+        const totaal = (uur + min / 60).toFixed(2);
 
-  $: $currentIndex; // Ensure reactivity
+        // Prepare the row object to be sent
+        const row = {
+            date: new Date($currentTimetracking.datum),
+            description: $currentTimetracking.description,
+            minutes: uur * 60 + min,
+            totaal: totaal,
+            billable: $currentTimetracking.billable,
+            assignee: $currentTimetracking.assignee,
+            isExternal: $currentTimetracking.isExternal,
+            location: $currentTimetracking.isExternal
+                ? $currentTimetracking.location
+                : "HIER",
+            kilometers: $currentTimetracking.isExternal
+                ? $currentTimetracking.kilometers
+                : "",
+        };
+
+        // console.log(row);
+        // return;
+
+        try {
+            // Get the dossier document reference
+            const dossierRef = doc(
+                db,
+                "workspaces",
+                localStorage.getItem("workspace"),
+                "files",
+                $currentTimetracking.client_id.id,
+            );
+
+            // Update the timetracking array in the Firestore document
+            await updateDoc(dossierRef, {
+                timetracking: arrayUnion(row),
+            });
+
+            dispatch("rowAdded"); // Dispatch event when row is added
+            window.dispatchEvent(new CustomEvent("logUpdated"));
+
+            dialogEl.close();
+
+            // Reset form fields
+            currentTimetracking.set(defaults);
+        } catch (error) {
+            console.error("Error submitting form:", error);
+            alert("Fout bij verzenden van formulier");
+            dispatch("logUpdated");
+        }
+    }
+
+    function openModal() {
+        // console.log(file);
+        // if (file && file.id) {
+        //   currentTimetracking.set({
+        //     ...file,
+        //     fileId: file.id,
+        //     opvolgdatum: file.opvolgdatum
+        //       ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
+        //       : "", // Convert and format the date
+        //   });
+        // } else {
+        //   currentTimetracking.set(defaults);
+        // }
+
+        currentTimetracking.set(defaults);
+
+        dialogEl.showModal();
+    }
 </script>
 
-<main
-  on:touchstart={handleTouchStart}
-  on:touchmove={handleTouchMove}
-  on:touchend={handleTouchEnd}
-  on:mousedown={handleMouseDown}
-  on:mousemove={handleMouseMove}
-  on:mouseup={handleMouseUp}
-  on:mouseleave={handleMouseLeave}
->
-  <div class="carousel" style={carouselStyle}>
-    {#each pages as { component: PageComponent }, i}
-      <div class="carousel-item">
-        <svelte:component
-          this={PageComponent}
-          {updateLogs}
-          on:rowAdded={handleRowAdded}
-        />
-      </div>
-    {/each}
-  </div>
-</main>
+<section class="timetracking_section">
+    <div class="top">
+        <h2>Urenregistratie</h2>
+        <div class="buttons">
+            <button on:click={() => openModal()}>+ Uren registreren</button>
+        </div>
+    </div>
+</section>
+<Result />
+<dialog id="timetrackingDialog" bind:this={dialogEl}>
+    {#if $currentTimetracking.id}
+        <div class="top">
+            <h6>Timetracking bewerken</h6>
+            <button class="basic" on:click={() => dialogEl.close()}>
+                <X size="16" />
+            </button>
+        </div>
+    {:else}
+        <div class="top">
+            <h6>Timetracking toevoegen</h6>
+            <button class="basic" on:click={() => dialogEl.close()}>
+                <X size="16" />
+            </button>
+        </div>
+    {/if}
 
-<div class="bottom-nav-outer">
-  <nav class="bottom-nav">
-    {#each pages as { name }, i}
-      <button
-        on:click={() => currentIndex.set(i)}
-        class:active={$currentIndex === i}>{name}</button
-      >
-    {/each}
-  </nav>
-</div>
+    <form on:submit|preventDefault={handleSubmit}>
+        <div class="content">
+            <div class="form">
+                <fieldset>
+                    <label class="add_row_field full-width spacing_bottom">
+                        <Select
+                            items={dossiers}
+                            bind:value={$currentTimetracking.client_id}
+                            getOptionLabel={(option) => option.name}
+                            getOptionValue={(option) => option.id}
+                            getSelectionLabel={(option) =>
+                                option?.name ||
+                                `No name found for dossier ${option.id}`}
+                            placeholder="Dossier zoeken"
+                            itemId="id"
+                        />
+                    </label>
+
+                    <div class="add_row_field_columns">
+                        <label class="add_row_field">
+                            <input
+                                type="date"
+                                bind:value={$currentTimetracking.datum}
+                                on:focus={(e) => e.target.select}
+                            />
+                            <span>Datum *</span>
+                        </label>
+
+                        <label class="add_row_field">
+                            <input
+                                type="time"
+                                bind:value={$currentTimetracking.tijdsduur}
+                                on:focus={(e) => e.target.select}
+                            />
+                            <span>Tijdsduur *</span>
+                        </label>
+
+                        <label class="add_row_field spacing_bottom">
+                            <input
+                                type="text"
+                                bind:value={$currentTimetracking.assignee}
+                                on:focus={(e) => e.target.select}
+                            />
+                            <span>Uitvoerder *</span>
+                        </label>
+
+                        <label class="add_row_field">
+                            <input
+                                type="checkbox"
+                                bind:checked={$currentTimetracking.isExternal}
+                                on:change={() => {
+                                    if (!$currentTimetracking.isExternal) {
+                                        location = "";
+                                        kilometers = "";
+                                    }
+                                }}
+                            />
+                            <span>Extern?</span>
+                        </label>
+                    </div>
+
+                    <!-- Conditionally render the location and kilometers fields -->
+                    {#if $currentTimetracking.isExternal}
+                        <div class="add_row_field_columns spacing_bottom">
+                            <label class="add_row_field">
+                                <input
+                                    type="text"
+                                    bind:value={$currentTimetracking.location}
+                                    on:focus={(e) => e.target.select}
+                                />
+                                <span>Locatie</span>
+                            </label>
+
+                            <label class="add_row_field">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    bind:value={$currentTimetracking.kilometers}
+                                    on:focus={(e) => e.target.select}
+                                />
+                                <span>Kilometers</span>
+                            </label>
+                        </div>
+                    {/if}
+
+                    <label class="add_row_field full-width">
+                        <textarea
+                            bind:value={$currentTimetracking.description}
+                            on:focus={(e) => e.target.select}
+                        ></textarea>
+                        <span>Omschrijving *</span>
+                    </label>
+                </fieldset>
+            </div>
+        </div>
+        <div class="actions">
+            <label class="add_row_field consent">
+                <input
+                    type="checkbox"
+                    bind:checked={$currentTimetracking.billable}
+                />
+                <span>Facturabel</span>
+            </label>
+            <button type="submit">Registreren</button>
+        </div>
+    </form>
+</dialog>
 
 <style lang="scss">
-  main {
-    // height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    overflow: hidden; /* Ensure overflow is hidden to manage swipes */
-    flex-grow: 1;
-  }
+    section {
+        .top {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 10px 30px;
+            flex-wrap: wrap;
+            padding-block: 30px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 50px;
 
-  .carousel {
-    display: flex;
-    width: 100%;
-    flex: 1;
-  }
+            h2 {
+                margin-bottom: 0;
+            }
 
-  .carousel-item {
-    flex: 0 0 100%;
-    width: 100%;
-  }
-
-  .bottom-nav-outer {
-    // position: absolute;
-  }
-
-  .bottom-nav {
-    display: flex;
-    justify-content: space-around;
-    background-color: #fff;
-    /* padding: 10px 0; */
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    position: absolute;
-    width: 100%;
-    top: 0;
-    left: 0;
-
-    @media (max-width: $sm) {
-      white-space: nowrap;
-      overflow-x: auto;
-      display: block;
-
-      -ms-overflow-style: none; /* Internet Explorer 10+ */
-      scrollbar-width: none; /* Firefox */
-      &::-webkit-scrollbar {
-        display: none; /* Safari and Chrome */
-      }
+            // position: sticky;
+            // top: 0px;
+            // z-index: 1;
+            // background-color: #f8f8f8;
+        }
     }
-  }
+    .legend {
+        margin-top: 0;
+    }
 
-  .bottom-nav button {
-    flex: 1;
-    border: none;
-    background: none;
-    font-size: 1.4rem;
-    color: var(--text);
-    cursor: pointer;
-    transition: color 0.3s ease;
-    padding-block: 20px;
-    border-bottom: 3px solid transparent;
-    border-radius: 0;
-    font-weight: 500;
-  }
+    dialog .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-  .bottom-nav button.active {
-    color: var(--primary);
-    border-color: var(--primary);
-  }
+    dialog .buttons {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-top: 1px solid var(--border);
+        padding-top: 20px;
+        margin-top: 20px;
+
+        &:has(> :first-child:last-child) {
+            justify-content: flex-end;
+        }
+        div {
+            display: flex;
+            gap: inherit;
+
+            .basic {
+                @media (max-width: $sm) {
+                    display: none;
+                }
+            }
+        }
+    }
 </style>

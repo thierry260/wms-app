@@ -11,15 +11,22 @@
     X,
     SignOut,
     ListChecks,
+    Layout,
   } from "phosphor-svelte";
 
   let showMore = false;
   let isMobile = true;
 
   const menuItems = [
+    // {
+    //   label: "Dashboard",
+    //   route: "/",
+    //   icon: Layout,
+    // },
     {
       label: "Urenregistratie",
       route: "/",
+      // route: "/timetracking",
       icon: Timer,
     },
     {
@@ -42,7 +49,7 @@
 
   const checkIsMobile = () => {
     if (typeof window !== "undefined") {
-      isMobile = window.innerWidth < 768;
+      isMobile = window.innerWidth < 992;
     }
   };
 

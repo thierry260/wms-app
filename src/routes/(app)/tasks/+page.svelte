@@ -46,11 +46,16 @@
   let assignees = writable([]);
   let files = writable([]);
 
+  let allTasks = [];
   let sortOrder = writable("asc");
   let sortType = writable("deadline");
   let filters = writable({
     assignees: [],
   });
+
+  let isDragging = false;
+  let startX;
+  let scrollLeft;
 
   onMount(async () => {
     // Fetch assignees (Example: hardcoded, adjust based on your structure)
@@ -74,6 +79,7 @@
     // Fetch task statuses
     await fetchTaskStatuses();
     await fetchTasks();
+    allTasks = get(tasks);
     sortAndFilterTasks(get(sortOrder));
     setupSortable();
   });
@@ -97,7 +103,7 @@
       taskData.assignees =
         taskData.assignees && taskData.assignees.length > 0
           ? taskData.assignees
-          : ["Onbepaald"];
+          : ["placeholder"];
 
       // Push each task to the tasksArray
       tasksArray.push(taskData);
@@ -140,37 +146,25 @@
 
     // Set the tasks store to the array
     tasks.set(tasksArray);
-
-    console.log(tasksArray);
   }
 
-  function sortAndFilterTasks(tasks, type, order) {
-    // Ensure that `tasks` is an array, not an object
-    let filteredTasks = tasks;
+  function sortAndFilterTasks(tasksArray, type, order) {
+    // Ensure tasksArray is an array
+    let filteredTasks = Array.isArray(tasksArray) ? tasksArray : [];
 
     // Apply filtering
     const activeFilters = get(filters);
 
     if (activeFilters.assignees.length > 0) {
       filteredTasks = filteredTasks.filter((task) => {
-        // If task.assignees is undefined, default it to an empty array
-        if (!Array.isArray(task.assignees)) {
-          console.warn(
-            `Task ${task.id} has undefined assignees, defaulting to empty array.`,
-          );
-          task.assignees = [];
-        }
+        // Normalize the task assignees to lowercase
+        const taskAssignees = task.assignees.map((a) => a.toLowerCase());
 
-        const result =
-          task.assignees.length > 0 &&
-          activeFilters.assignees.some((assignee) =>
-            task.assignees
-              .map((a) => a.toLowerCase())
-              .includes(assignee.toLowerCase()),
-          );
-
-        console.log("Filter Result:", result);
-        return result;
+        // Check if task includes all selected assignees
+        const matches = activeFilters.assignees.every((filterAssignee) =>
+          taskAssignees.includes(filterAssignee.toLowerCase()),
+        );
+        return matches;
       });
     }
 
@@ -312,17 +306,21 @@
     updateTaskStatusName(statusId, newName);
   }
 
+  function isMobileViewport() {
+    return window.innerWidth < 768;
+  }
+
   function setupSortable() {
     // Set up task sorting within columns
     taskStatuses.subscribe((statuses) => {
       document
         .querySelectorAll(".kanban-column-content")
         .forEach((taskColumn) => {
-          Sortable.create(taskColumn, {
+          // Configuration object for Sortable
+          const sortableConfig = {
             group: "taskColumnTasks",
             sort: false,
             animation: 250,
-            handle: ".drag-handle",
             onEnd: async function (evt) {
               const itemEl = evt.item;
               const oldStatusId = evt.from.closest(".kanban-column").dataset.id;
@@ -333,7 +331,15 @@
                 await updateTaskStatus(taskId, newStatusId);
               }
             },
-          });
+          };
+
+          // Add the handle option only for mobile viewports
+          if (isMobileViewport()) {
+            sortableConfig.handle = ".drag-handle";
+          }
+
+          // Initialize Sortable with the conditional configuration
+          Sortable.create(taskColumn, sortableConfig);
         });
 
       // Set up column sorting
@@ -354,8 +360,6 @@
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
-
-          console.log(newOrder);
 
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
@@ -529,78 +533,120 @@
     const filename = `${assignee.toLowerCase()}.jpg`;
     return `/img/people/${filename}`; // Update with the correct path to your images
   }
+
+  function handleMouseDown(event) {
+    // Only start dragging if the mouse is pressed down directly on the board container
+    if (event.target === event.currentTarget) {
+      isDragging = true;
+      startX = event.pageX - event.currentTarget.offsetLeft;
+      scrollLeft = event.currentTarget.scrollLeft;
+      event.currentTarget.style.cursor = "grabbing";
+    }
+  }
+
+  function handleMouseUp(event) {
+    isDragging = false;
+    event.currentTarget.style.cursor = "grab";
+  }
+
+  function handleMouseMove(event) {
+    if (!isDragging) return;
+    const x = event.pageX - event.currentTarget.offsetLeft;
+    const walk = (x - startX) * 3; // Scroll speed multiplier
+    event.currentTarget.scrollLeft = scrollLeft - walk;
+  }
 </script>
 
 <div class="filter-sort-controls">
-  <label>Uitvoerder:</label>
-  <div class="assignee-filters">
-    {#each $assignees as assignee}
-      <label>
-        <input
-          type="checkbox"
-          value={assignee}
-          name="[]"
-          on:change={(e) => {
-            filters.update((f) => {
-              let updatedFilters;
-              if (e.target.checked) {
-                // Add assignee to the filters
-                updatedFilters = {
-                  ...f,
-                  assignees: [...f.assignees, assignee],
-                };
-              } else {
-                // Remove assignee from the filters
-                updatedFilters = {
-                  ...f,
-                  assignees: f.assignees.filter((a) => a !== assignee),
-                };
-              }
-              console.log("Updated Filters:", updatedFilters);
-              return updatedFilters;
-            });
+  <div>
+    <div class="assignee-filters">
+      {#each $assignees as assignee}
+        <label>
+          <input
+            type="checkbox"
+            value={assignee}
+            name="[]"
+            on:change={async (e) => {
+              filters.update((f) => {
+                let updatedFilters;
+                if (e.target.checked) {
+                  // Add assignee to the filters
+                  updatedFilters = {
+                    ...f,
+                    assignees: [...f.assignees, assignee],
+                  };
+                } else {
+                  // Remove assignee from the filters
+                  updatedFilters = {
+                    ...f,
+                    assignees: f.assignees.filter((a) => a !== assignee),
+                  };
+                }
+                return updatedFilters;
+              });
 
-            // Use a tick to ensure the update has been processed before proceeding
-            tick().then(() => {
-              sortAndFilterTasks($tasks, $sortType, $sortOrder);
-            });
-          }}
-        />
-        {assignee}
-      </label>
-    {/each}
+              // Wait for the state to update before sorting and filtering
+              await tick();
+
+              // Always start from the full list of tasks
+              const filteredAndSortedTasks =
+                get(filters).assignees.length === 0
+                  ? allTasks // Show all tasks if no filters are selected
+                  : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
+
+              tasks.set(filteredAndSortedTasks);
+            }}
+          />
+          <figure>
+            <img
+              src="/img/people/{assignee.toLowerCase()}.jpg"
+              width="25px"
+              height="25px"
+            />
+          </figure>
+          {assignee}
+        </label>
+      {/each}
+    </div>
   </div>
 
-  <label for="sortTypeDropdown">Sorteer op:</label>
-  <select
-    id="sortTypeDropdown"
-    on:change={(e) => {
-      sortType.set(e.target.value);
-      sortAndFilterTasks($tasks, e.target.value, $sortOrder);
-    }}
-  >
-    <option value="deadline" selected>Deadline</option>
-    <option value="priority">Prioriteit</option>
-  </select>
-  <button
-    class="sort-order-toggle"
-    on:click={() => {
-      const newOrder = $sortOrder === "asc" ? "desc" : "asc";
-      sortOrder.set(newOrder);
-      sortAndFilterTasks($tasks, $sortType, newOrder);
-    }}
-  >
-    {#if $sortOrder === "asc"}
-      ↑
-    {:else}
-      ↓
-    {/if}
-  </button>
+  <div class="sorting">
+    <label for="sortTypeDropdown">Sorteer op:</label>
+    <select
+      id="sortTypeDropdown"
+      on:change={(e) => {
+        sortType.set(e.target.value);
+        sortAndFilterTasks($tasks, e.target.value, $sortOrder);
+      }}
+    >
+      <option value="deadline" selected>Deadline</option>
+      <option value="priority">Prioriteit</option>
+    </select>
+    <button
+      class="basic sort-order-toggle"
+      on:click={() => {
+        const newOrder = $sortOrder === "asc" ? "desc" : "asc";
+        sortOrder.set(newOrder);
+        sortAndFilterTasks($tasks, $sortType, newOrder);
+      }}
+    >
+      {#if $sortOrder === "asc"}
+        ↑
+      {:else}
+        ↓
+      {/if}
+    </button>
+  </div>
 </div>
-<div class="kanban-board">
+<div
+  class="kanban-board"
+  on:mousedown={handleMouseDown}
+  on:mouseup={handleMouseUp}
+  on:mousemove={handleMouseMove}
+>
   {#if $taskStatuses.length > 0}
     {#each $taskStatuses as status (status.id)}
-      <div class="kanban-column" data-id={status.id}>
+      <div class="kanban-column" data-id={status.id} data-name={status.name}>
         <div class="kanban-column-header">
           <div class="drag-column"><DotsSixVertical size="18" /></div>
           <h3
@@ -610,9 +656,9 @@
           >
             {status.name}
           </h3>
-          <div on:click={handleEditClick}><PencilSimple size={18} /></div>
+          <div on:click={handleEditClick}><PencilSimple size={16} /></div>
           <div on:click={() => deleteTaskStatus(status.id)}>
-            <TrashSimple size={18} />
+            <TrashSimple size={16} />
           </div>
         </div>
         <ul
@@ -625,6 +671,7 @@
               <li
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
+                data-priority={task.priority}
                 on:click={() => openModal(task)}
               >
                 <div class="drag-handle"><DotsSixVertical size="16" /></div>
@@ -776,6 +823,86 @@
 </dialog>
 
 <style lang="scss">
+  .filter-sort-controls {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 30px;
+
+    .assignee-filters {
+      label {
+        padding: 5px 10px 5px 6px;
+        border-radius: 55px;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background-color: #fff;
+        font-size: 1.3rem;
+        user-select: none;
+        cursor: pointer;
+        input[type="checkbox"] {
+          display: none;
+        }
+        figure {
+          margin: 0;
+          border-radius: 50%;
+          display: inline-flex;
+          position: relative;
+
+          &::before {
+            content: "";
+            position: absolute;
+            border-radius: inherit;
+            inset: -0.99px;
+            background-color: rgba(5, 2, 41, 0.3);
+            backdrop-filter: blur(1px);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23ffffff' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23ffffff' viewBox='0 0 256 256'%3E%3Cpath d='M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z'%3E%3C/path%3E%3C/svg%3E");
+
+            // background-color: $success;
+            // background-color: hsl(120, 58%, 92%);
+            // background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234ccf4c' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+
+            background-repeat: no-repeat;
+            background-size: 12px;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 0.1s ease-out;
+          }
+        }
+        img {
+          border-radius: inherit;
+        }
+
+        &:has(:checked) {
+          figure::before {
+            opacity: 1;
+          }
+        }
+      }
+    }
+
+    select {
+      font-size: 1.4rem;
+    }
+
+    div {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      align-items: stretch;
+      label {
+        flex-shrink: 0;
+        align-self: center;
+        font-size: 1.4rem;
+      }
+      button.basic {
+        min-width: 40px;
+      }
+    }
+  }
   .kanban-board {
     --container: 1520px;
     display: flex;
@@ -791,8 +918,9 @@
     margin-inline: -60px;
     margin-bottom: -60px;
     width: calc(100% + 120px);
-    padding-inline: max(50px, (100% - var(--container) + 100px) / 2);
-    padding-inline: max(50px, (100% - var(--container)) / 2);
+    // padding-inline: max(50px, (100% - var(--container) + 100px) / 2);
+    // padding-inline: max(50px, (100% - var(--container)) / 2);
+    padding-inline: 60px;
     padding-bottom: 40px;
     // max-width: 100%;
     display: grid;
@@ -814,6 +942,8 @@
     display: flex;
     flex-direction: column;
     gap: 15px;
+    cursor: default;
+    user-select: none;
 
     .kanban-column-header {
       display: flex;
@@ -833,6 +963,9 @@
       }
       > div {
         cursor: pointer;
+        &:first-child {
+          cursor: grab;
+        }
       }
     }
 
@@ -851,167 +984,201 @@
         outline: none;
       }
     }
-  }
-
-  .kanban-column-content {
-    min-height: 100px;
-    list-style: none;
-    padding: 0;
-    flex-grow: 1;
-
-    max-height: calc(100vh - 300px);
-    overflow-y: auto;
-    /* Chrome, Edge, and Safari */
-    &::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background-color: #d1d1d1;
-      border-radius: 10px;
-      //   border: 3px solid #ffffff;
-      border-left: 4px solid var(--background);
-    }
-  }
-
-  .kanban-task {
-    background-color: #fff;
-    border-radius: 4px;
-    padding: 20px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    position: relative;
-    cursor: pointer;
-
-    .drag-handle {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      color: var(--gray-400);
-    }
-
-    @media (max-width: $md) {
+    .kanban-column-content {
+      min-height: 100px;
+      list-style: none;
       padding: 0;
-      display: flex;
-      flex-direction: row;
-      overflow: hidden;
+      flex-grow: 1;
 
-      .drag-handle {
-        position: relative;
-        opacity: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 5px;
-        border-right: 1px solid #f1f1f1;
+      max-height: calc(100vh - 300px);
+      overflow-y: auto;
+      /* Chrome, Edge, and Safari */
+      &::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
       }
-      .main {
+
+      &::-webkit-scrollbar-thumb {
+        background-color: #d1d1d1;
+        border-radius: 10px;
+        //   border: 3px solid #ffffff;
+        border-left: 4px solid var(--background);
+      }
+      .kanban-task {
+        background-color: #fff;
+        border-radius: 4px;
         padding: 20px;
-      }
-    }
-
-    &:not(:last-child) {
-      margin-bottom: 8px;
-    }
-
-    .top {
-      display: flex;
-      flex-direction: row;
-      gap: 20px;
-
-      .text {
-        flex-grow: 1;
-        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         position: relative;
-
-        .subtitle {
-          // text-transform: uppercase;
-          opacity: 0.6;
-          font-size: 1.3rem;
-          margin-top: 0.35em;
-          display: block;
-
-          max-width: 100%;
-          text-overflow: ellipsis;
-          overflow: hidden;
-          white-space: nowrap;
-
-          &:empty {
-            display: none;
-          }
-        }
-      }
-      .assignees {
-        display: flex;
-        flex-direction: row-reverse;
-        &:empty {
-          display: none;
-        }
-
-        img {
-          border-radius: 50%;
-          border: 3px solid #fff;
-          filter: brightness(0.95);
-
-          &:not(:first-child) {
-            margin-right: -15px;
-          }
-        }
-      }
-    }
-    .bottom {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 10px;
-      margin-top: 20px;
-      .priority {
-        &[data-priority=""] {
-          display: none;
-        }
-
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
+        cursor: pointer;
+        border-left: 3px solid transparent;
 
         &[data-priority="High"] {
-          background-color: $error;
+          border-left: 3px solid $error;
         }
         &[data-priority="Medium"] {
-          background-color: $warning;
+          // border-left: 3px solid $warning;
         }
         &[data-priority="Low"] {
-          background-color: var(--gray-300);
+          border-left: 3px solid var(--gray-300);
+          // background-color: rgba(255, 255, 255, 0.4);
+          // h4 {
+          //   // opacity: 0.5;
+          // }
+        }
+
+        .drag-handle {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+          color: var(--gray-400);
+        }
+
+        @media (max-width: $md) {
+          padding: 0;
+          display: flex;
+          flex-direction: row;
+          overflow: hidden;
+
+          .drag-handle {
+            position: relative;
+            opacity: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 5px;
+            border-right: 1px solid #f1f1f1;
+          }
+          .main {
+            padding: 20px;
+          }
+        }
+
+        &:not(:last-child) {
+          margin-bottom: 8px;
+        }
+
+        .top {
+          display: flex;
+          flex-direction: row;
+          gap: 20px;
+
+          .text {
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
+
+            .subtitle {
+              // text-transform: uppercase;
+              opacity: 0.6;
+              font-size: 1.3rem;
+              margin-top: 0.35em;
+              display: block;
+
+              max-width: 100%;
+              text-overflow: ellipsis;
+              overflow: hidden;
+              white-space: nowrap;
+
+              &:empty {
+                display: none;
+              }
+            }
+          }
+          .assignees {
+            display: flex;
+            flex-direction: row-reverse;
+            &:empty {
+              display: none;
+            }
+
+            img {
+              border-radius: 50%;
+              border: 3px solid #fff;
+              filter: brightness(0.95);
+
+              &:not(:first-child) {
+                margin-right: -15px;
+              }
+            }
+          }
+        }
+        .bottom {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 10px;
+          margin-top: 20px;
+          .priority {
+            display: none;
+            &[data-priority=""] {
+              display: none;
+            }
+
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+
+            &[data-priority="High"] {
+              background-color: $error;
+            }
+            &[data-priority="Medium"] {
+              background-color: $warning;
+            }
+            &[data-priority="Low"] {
+              background-color: var(--gray-300);
+            }
+          }
+        }
+
+        .task-deadline {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 0;
+          border-radius: 5px;
+          font-size: 13px;
+          color: var(--text-light);
+        }
+
+        &.today .task-deadline {
+          background-color: $warning;
+          color: #fff;
+          padding: 3px 5px;
+        }
+        &.overdue .task-deadline {
+          background-color: $error;
+          color: #fff;
+          padding: 3px 5px;
+        }
+
+        h4 {
+          font-size: 1.6rem;
+          margin-bottom: 0;
         }
       }
     }
 
-    .task-deadline {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 0;
-      border-radius: 5px;
-      font-size: 13px;
-      color: var(--text-light);
-    }
-
-    &.today .task-deadline {
-      background-color: $warning;
-      color: #fff;
-      padding: 3px 5px;
-    }
-    &.overdue .task-deadline {
-      background-color: $error;
-      color: #fff;
-      padding: 3px 5px;
-    }
-
-    h4 {
-      font-size: 1.6rem;
-      margin-bottom: 0;
+    &[data-name="Done"] {
+      .kanban-task.kanban-task:not(.force_red) {
+        border-left: 0;
+      }
+      .priority {
+        display: none;
+      }
+      .task-deadline.task-deadline:not(.force_red) {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 0;
+        border-radius: 5px;
+        font-size: 13px;
+        background-color: transparent;
+        color: var(--text-light);
+      }
     }
   }
+
   .legend {
     margin-bottom: 0.5em;
     display: block;

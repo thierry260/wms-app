@@ -1,28 +1,46 @@
 table {
+    --border-radius: 10px;
     width: 100%;
     border-radius: 5px;
     border-spacing: 0;
     font-size: 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    border-collapse: separate;
 
-    // Temp mobile fix
-    overflow-x: auto;
-    white-space: nowrap;
-    // width: 100%;
-    display: block;
-    margin-inline: -60px;
-    padding-inline: 60px;
-    width: calc(100% + 120px);
+    // // Temp mobile fix
+    // overflow-x: auto;
+    // white-space: nowrap;
+    // // width: 100%;
+    // display: block;
+    // margin-inline: -60px;
+    // padding-inline: 60px;
+    // width: calc(100% + 120px);
 
     thead {
-        border-top: 1px solid var(--border);
         border-bottom: 1px solid var(--border);
+        border-top-left-radius: var(--border-radius);
+        border-top-right-radius: var(--border-radius);
+
 
         tr {
             height: 60px;
-            background-color: #fff !important;
+
+            &:nth-of-type(odd) {
+                background-color: #fff;
+                border-top-left-radius: var(--border-radius);
+                border-top-right-radius: var(--border-radius);
+            }
 
             th {
                 vertical-align: middle;
+
+
+                font-size: 1.2rem;
+                margin-top: 1em;
+                text-transform: uppercase;
+                font-weight: 500;
+                color: var(--text);
 
                 span {
                     vertical-align: middle;
@@ -67,9 +85,16 @@ table {
 
         td[data-type="company_name"],
         td[data-type="contact_name"] {
-            max-width: 20vw;
+            max-width: 25vw;
             white-space: nowrap;
             overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        td.limit_width {
+            overflow: hidden;
+            white-space: nowrap;
+            max-width: 20vw;
             text-overflow: ellipsis;
         }
 
@@ -176,7 +201,8 @@ table {
         }
 
         td {
-            font-weight: 300;
+            font-weight: 400;
+            color: var(--text);
             vertical-align: middle;
 
             &[data-source="assignee"] {
@@ -264,7 +290,7 @@ table {
             }
 
             td {
-                font-size: 1.4rem;
+                font-size: 1.3rem;
             }
         }
     }
@@ -272,11 +298,32 @@ table {
     td,
     th {
         padding: 0 15px;
+
+        @media (max-width: $sm) {
+            padding: 0 10px;
+
+            &.hide_mobile {
+                display: none;
+            }
+        }
+
+        &.stretch {
+            width: 100%;
+        }
     }
 
     tr td,
     thead tr th span {
         font-size: 1.4rem;
+
+        @media (max-width: $sm) {
+            font-size: 1.3rem;
+        }
+    }
+
+    tr:last-child {
+        border-botto-left-radius: var(--border-radius);
+        border-bottom-right-radius: var(--border-radius);
     }
 }
 

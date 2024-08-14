@@ -3,8 +3,6 @@
   import { writable, derived, get } from "svelte/store";
   import Select from "svelte-select"; // Import Select component
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
-  import { Timestamp, getDoc, doc, updateDoc } from "firebase/firestore";
-  import { db } from "$lib/firebase";
 
   import {
     parse,
@@ -22,16 +20,22 @@
     CaretCircleLeft,
     CaretCircleRight,
     TrashSimple,
+    Funnel,
     X,
   } from "phosphor-svelte";
+
+  const searchQuery = writable(""); // Store for the search query
+  const searchQueryFrom = writable(""); // Store for the search query
+  const searchQueryTo = writable(""); // Store for the search query
 
   const logs = writable([]);
   const totalRevenue = writable(0);
   const loading = writable(true);
   const currentWeek = writable(new Date());
-
   let allLogs = [];
   let currentLog = writable(null);
+  let longPressTimer;
+  let showFilters = false;
 
   let dossiers = []; // Define dossiers array
   let dossiersData = [];
@@ -50,54 +54,100 @@
         })),
       );
       allLogs = data;
-      updateLogsForCurrentWeek();
+      updateLogsForSearch();
 
       // Add event listener for updateLogs event
       window.addEventListener("updateLogs", (event) => {
         allLogs = event.detail;
-        updateLogsForCurrentWeek();
+        updateLogsForSearch();
       });
     } catch (error) {
       console.error("Error fetching logs:", error);
     } finally {
       loading.set(false);
     }
-
-    // Listen for the custom event to update logs
-    window.addEventListener("logUpdated", fetchAndUpdateLogs);
-
-    // Cleanup listener when component is destroyed
-    return () => {
-      window.removeEventListener("logUpdated", fetchAndUpdateLogs);
-    };
   });
 
-  async function fetchAndUpdateLogs() {
-    try {
-      dossiersData = await fetchWorkspaceFilesData();
-      const data = dossiersData.flatMap((dossier) =>
-        (dossier.timetracking || []).map((entry) => ({
-          ...entry,
-          name: dossier.name, // Add the dossier's name to each timetracking entry
-        })),
+  function updateLogsForSearch(data = allLogs) {
+    const searchValue = get(searchQuery).trim().toLowerCase();
+    const fromDate = get(searchQueryFrom);
+    const toDate = get(searchQueryTo);
+
+    if (searchValue) {
+      data = data.filter(
+        (log) =>
+          log.name.toLowerCase().includes(searchValue) ||
+          log.description.toLowerCase().includes(searchValue) ||
+          log.assignee.toLowerCase().includes(searchValue) ||
+          log.location.toLowerCase().includes(searchValue),
       );
-      allLogs = data;
-      updateLogsForCurrentWeek(); // Update the logs for the current week
-    } catch (error) {
-      console.error("Error fetching logs:", error);
     }
+
+    // Filter based on date range
+    if (fromDate || toDate) {
+      data = data.filter((log) => {
+        // Parse log date in YYYY-MM-DD format for comparison
+        const logDate = new Date(format(log.date.toDate(), "yyyy-MM-dd"));
+
+        let isValidLog = true;
+        if (fromDate) {
+          const from = new Date(fromDate);
+          from.setHours(0, 0, 0, 0); // Ensure the time part is zeroed out
+          isValidLog = isValidLog && logDate >= from;
+        }
+        if (toDate) {
+          const to = new Date(toDate);
+          to.setHours(23, 59, 59, 999); // Ensure the time part includes the full day
+          isValidLog = isValidLog && logDate <= to;
+        }
+        return isValidLog;
+      });
+    }
+
+    data.sort((a, b) => {
+      let dateA = new Date(format(a.date.toDate(), "yyyy-MM-dd"));
+      let dateB = new Date(format(b.date.toDate(), "yyyy-MM-dd"));
+      return dateB - dateA;
+    });
+
+    data = data.slice(0, 50);
+
+    logs.set(data);
   }
 
-  function updateLogsForCurrentWeek() {
-    const currentDate = get(currentWeek);
-    const thisWeekLogs = filterLogsForThisWeek(allLogs, currentDate);
-    logs.set(thisWeekLogs);
-    console.log(thisWeekLogs);
-    const revenue = thisWeekLogs.reduce(
-      (acc, log) => acc + parseFloat(calculateRevenue(log)),
-      0,
-    );
-    totalRevenue.set(revenue.toFixed(2));
+  function handleSearchInput(event) {
+    searchQuery.set(event.target.value);
+    updateLogsForSearch();
+  }
+
+  function handleSearchInputFrom() {
+    const fromDate = new Date(get(searchQueryFrom));
+    const toDate = get(searchQueryTo);
+
+    // Check if "From" date is after the "To" date
+    if (toDate && fromDate > new Date(toDate)) {
+      searchQueryFrom.set(toDate); // Reset "From" date to "To" date
+    }
+
+    updateLogsForSearch();
+  }
+
+  function handleSearchInputTo() {
+    const toDate = new Date(get(searchQueryTo));
+    const fromDate = get(searchQueryFrom);
+
+    // Check if "To" date is before the "From" date
+    if (fromDate && toDate < new Date(fromDate)) {
+      searchQueryTo.set(fromDate); // Reset "To" date to "From" date
+    }
+
+    // Check if "To" date is in the future and set to today's date if so
+    const today = new Date();
+    if (toDate > today) {
+      searchQueryTo.set(today.toISOString().split("T")[0]); // Reset "To" date to today
+    }
+
+    updateLogsForSearch();
   }
 
   function calculateHoursAndMinutes(totalMinutes) {
@@ -146,10 +196,8 @@
       assignee: log.assignee,
       location: log.location,
     });
-
-    // Ensure currentLog is set before opening the dialog
     document.getElementById("editDialog").showModal();
-    console.log("Current log:", get(currentLog)); // Console log the current log to debug
+    console.log("Current log:", log); // Console log the current log to debug
   }
 
   async function saveLog() {
@@ -370,16 +418,48 @@
 </script>
 
 <main>
-  <div class="card">
-    {#if $loading}
-      <p class="loading-text">Laden...</p>
-    {:else}
-      <h2>Weekomzet: €{$totalRevenue}</h2>
-      <p class="legend">Gelogde taken</p>
-      <div class="logs-container">
-        <ul>
-          {#each $logs as log, i}
-            <!-- 'i' is the index of the log -->
+  {#if $loading}
+    <p class="loading-text">Laden...</p>
+  {:else}
+    <div class="search_filter">
+      <input
+        type="text"
+        placeholder="Zoek op dossiernaam, omschrijving, uitvoerder of locatie"
+        on:input={handleSearchInput}
+        bind:value={$searchQuery}
+      />
+      <button class="basic" on:click={() => (showFilters = !showFilters)}>
+        {#if !showFilters}
+          <Funnel size="18" />
+        {:else}
+          <X size="18" />
+        {/if}
+      </button>
+    </div>
+    {#if showFilters}
+      <div class="columns" data-col="2">
+        <div class="date_input">
+          <label class="legend">Van</label>
+          <input
+            type="date"
+            bind:value={$searchQueryFrom}
+            on:input={handleSearchInputFrom}
+          />
+        </div>
+        <div class="date_input">
+          <label class="legend">Tot</label>
+          <input
+            type="date"
+            bind:value={$searchQueryTo}
+            on:input={handleSearchInputTo}
+          />
+        </div>
+      </div>
+    {/if}
+    <div class="logs-container">
+      <ul>
+        {#if $logs.length > 0}
+          {#each $logs as log}
             <li on:click={() => handleLongPress(log)}>
               <div class="log-header">
                 <strong>{log.name}</strong>
@@ -397,106 +477,101 @@
               <p class="date">{format(log.date.toDate(), "dd-MM-yyyy")}</p>
             </li>
           {/each}
-        </ul>
+        {:else}
+          Geen logs gevonden
+        {/if}
+      </ul>
+    </div>
+  {/if}
+
+  <dialog id="editDialog">
+    {#if $currentLog}
+      <div class="top">
+        <h6>Log bewerken</h6>
+        <button class="basic" on:click={closeDialog}><X size="16" /></button>
+      </div>
+      <div>
+        <label class="legend">Dossiernaam</label>
+        <Select
+          items={dossiers}
+          bind:value={$currentLog.dossierId}
+          getOptionLabel={(option) => option.label}
+          getOptionValue={(option) => option.id}
+          getSelectionLabel={(option) => option?.label || $currentLog.name}
+          placeholder="Select dossier"
+          itemId="id"
+          clearable={false}
+        />
+      </div>
+      <div>
+        <label class="legend">Datum</label>
+        <input type="date" bind:value={$currentLog.date} />
+      </div>
+      <div>
+        <label class="legend">Omschrijving</label>
+        <textarea bind:value={$currentLog.description}></textarea>
+      </div>
+      <div>
+        <label class="legend">Uitvoerder</label>
+        <select bind:value={$currentLog.assignee}>
+          <option value="Michel">Michel</option>
+          <option value="Toon">Toon</option>
+        </select>
+      </div>
+      <div>
+        <label class="legend">Extern?</label>
+        <input
+          type="checkbox"
+          bind:checked={$currentLog.isExternal}
+          on:change={() => {
+            if (!$currentLog.isExternal) {
+              $currentLog.location = ""; // Clear location if not external
+              $currentLog.kilometers = ""; // Clear kilometers if not external
+            }
+          }}
+        />
       </div>
 
-      <div class="week-navigation">
-        <span
-          class="prev_week"
-          on:click={(event) => navigateWeek("prev", event)}
-          ><CaretCircleLeft size={20} /></span
-        >
-        <span class="week-date"
-          ><p class="formatted_current_week">{$formattedCurrentWeek}</p></span
-        >
-        <span
-          class="next_week"
-          on:click={$isCurrentWeek
-            ? null
-            : (event) => navigateWeek("next", event)}
-          class:disabled={$isCurrentWeek}><CaretCircleRight size={20} /></span
-        >
-      </div>
-    {/if}
-
-    <dialog id="editDialog">
-      {#if $currentLog}
-        <div class="top">
-          <h6>Log bewerken</h6>
-          <button class="basic" on:click={closeDialog}><X size="16" /></button>
-        </div>
-        <div>
-          <label class="legend">Dossiernaam</label>
-          <Select
-            items={dossiers}
-            bind:value={$currentLog.dossierId}
-            getOptionLabel={(option) => option.label}
-            getOptionValue={(option) => option.id}
-            getSelectionLabel={(option) => option?.label || $currentLog.name}
-            placeholder="Select dossier"
-            itemId="id"
-            clearable={false}
-          />
-        </div>
-        <div>
-          <label class="legend">Datum</label>
-          <input type="date" bind:value={$currentLog.date} />
-        </div>
-        <div>
-          <label class="legend">Omschrijving</label>
-          <textarea bind:value={$currentLog.description}></textarea>
-        </div>
-        <div>
-          <label class="legend">Uitvoerder</label>
-          <select bind:value={$currentLog.assignee}>
-            <option value="Michel">Michel</option>
-            <option value="Toon">Toon</option>
-          </select>
-        </div>
+      {#if $currentLog.isExternal}
         <div>
           <label class="legend">Locatie</label>
           <input type="text" bind:value={$currentLog.location} />
         </div>
-        <div class="columns" data-col="2">
-          <div>
-            <label class="legend">Minuten</label>
-            <input type="text" bind:value={$currentLog.min} />
-          </div>
-          <div>
-            <label class="legend">Uren</label>
-            <input type="text" bind:value={$currentLog.uur} />
-          </div>
-        </div>
         <div>
-          <label class="legend">Facturabel</label>
-          <input type="checkbox" bind:checked={$currentLog.billable} />
-        </div>
-        <div class="buttons">
-          <button class="basic" on:click={deleteLog}
-            ><TrashSimple size="16" /></button
-          >
-          <div>
-            <button class="basic" type="button" on:click={closeDialog}
-              >Annuleren</button
-            >
-            <button on:click={saveLog}>Opslaan</button>
-          </div>
+          <label class="legend">Kilometers</label>
+          <input type="number" bind:value={$currentLog.kilometers} min="0" />
         </div>
       {/if}
-    </dialog>
-  </div>
+      <div class="columns" data-col="2">
+        <div>
+          <label class="legend">Minuten</label>
+          <input type="text" bind:value={$currentLog.min} />
+        </div>
+        <div>
+          <label class="legend">Uren</label>
+          <input type="text" bind:value={$currentLog.uur} />
+        </div>
+      </div>
+      <div>
+        <label class="legend">Facturabel</label>
+        <input type="checkbox" bind:checked={$currentLog.billable} />
+      </div>
+      <div class="buttons">
+        <button class="basic" on:click={deleteLog}
+          ><TrashSimple size="16" /></button
+        >
+        <div>
+          <button class="basic" type="button" on:click={closeDialog}
+            >Annuleren</button
+          >
+          <button on:click={saveLog}>Opslaan</button>
+        </div>
+      </div>
+    {/if}
+  </dialog>
 </main>
 
 <style lang="scss">
-  main {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    /* padding-bottom: 80px;
-		height: 100%; */
-  }
-
   .card {
     display: inline-flex;
     flex-direction: column;
@@ -511,11 +586,7 @@
   }
 
   .logs-container {
-    flex-grow: 1;
-    width: 100%;
-    max-height: calc(100vh - 350px);
-    overflow-y: auto; /* Scrollbaar maken */
-    margin-bottom: 20px; /* Ruimte tussen de lijst en de tekst */
+    margin-top: 30px; /* Ruimte tussen de lijst en de tekst */
   }
 
   ul {
@@ -527,7 +598,7 @@
   li {
     background-color: #f9f9f9;
     margin-bottom: 10px;
-    padding: 10px;
+    padding: 15px;
     border: 1px solid #ddd;
     border-radius: 5px;
     position: relative;
@@ -613,6 +684,48 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .date_input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  .date_input label {
+    margin-bottom: 0;
+  }
+  .card > input,
+  .card > .columns input {
+    padding: 12px 15px;
+    font-size: 1.4rem;
+  }
+
+  .search_filter {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .search_filter input {
+    flex-grow: 1;
+    font-size: 1.4rem;
+  }
+  .search_filter button {
+    // min-width: 50px;
+  }
+  @media (max-width: 575px) {
+    .search_filter button {
+      min-width: 42px;
+    }
+    .card > .columns {
+      grid-template-columns: 100%;
+      padding-top: 20px;
+    }
+    .date_input {
+      margin-top: 0;
+    }
   }
 
   .buttons {
