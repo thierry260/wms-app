@@ -65,11 +65,11 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients",
+      "clients"
     );
     const clientSnapshots = await getDocs(clientsRef);
     clientsList.set(
-      clientSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      clientSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
     );
     console.log(clientsList);
   }
@@ -96,7 +96,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "clients",
+        "clients"
       );
 
       // Add a new document with the client data
@@ -145,92 +145,101 @@
 
   <dialog id="clientDialog" bind:this={dialogEl}>
     <div class="top">
-      <h2>{#if $editingClient}Contact bewerken{:else}Nieuw contact toevoegen{/if}</h2>
+      <h2>
+        {#if $editingClient}
+          Contact bewerken
+        {:else}
+          Nieuw contact toevoegen
+        {/if}
+      </h2>
       <button class="basic" on:click={closeModal}><X size="16" /></button>
     </div>
 
     <form on:submit|preventDefault={handleSubmit}>
+      <label>
+        <span class="legend">Voornaam:</span>
+        <input type="text" bind:value={voornaam} placeholder="Voornaam" />
+      </label>
 
-    <label>
-      <span class="legend">Voornaam:</span>
-      <input type="text" bind:value={voornaam} placeholder="Voornaam" />
-    </label>
+      <label>
+        <span class="legend">Tussenvoegsels:</span>
+        <input
+          type="text"
+          bind:value={tussenvoegsels}
+          placeholder="Tussenvoegsels (optioneel)"
+        />
+      </label>
 
-    <label>
-      <span class="legend">Tussenvoegsels:</span>
-      <input
-        type="text"
-        bind:value={tussenvoegsels}
-        placeholder="Tussenvoegsels (optioneel)"
-      />
-    </label>
+      <label>
+        <span class="legend">Achternaam:</span>
+        <input type="text" bind:value={achternaam} placeholder="Achternaam" />
+      </label>
 
-    <label>
-      <span class="legend">Achternaam:</span>
-      <input type="text" bind:value={achternaam} placeholder="Achternaam" />
-    </label>
+      <label>
+        <span class="legend">Bedrijfsnaam:</span>
+        <input
+          type="text"
+          bind:value={bedrijfsnaam}
+          placeholder="Bedrijfsnaam (optioneel)"
+        />
+      </label>
 
-    <label>
-      <span class="legend">Bedrijfsnaam:</span>
-      <input
-        type="text"
-        bind:value={bedrijfsnaam}
-        placeholder="Bedrijfsnaam (optioneel)"
-      />
-    </label>
+      <label>
+        <span class="legend">Functienaam:</span>
+        <input
+          type="text"
+          bind:value={functienaam}
+          placeholder="Functienaam (optioneel)"
+        />
+      </label>
 
-    <label>
-      <span class="legend">Functienaam:</span>
-      <input
-        type="text"
-        bind:value={functienaam}
-        placeholder="Functienaam (optioneel)"
-      />
-    </label>
+      <label>
+        <span class="legend">Geboortedatum:</span>
+        <input type="date" bind:value={geboortedatum} />
+      </label>
 
-    <label>
-      <span class="legend">Geboortedatum:</span>
-      <input type="date" bind:value={geboortedatum} />
-    </label>
+      <label>
+        <span class="legend">Notities:</span>
+        <textarea bind:value={notities} placeholder="Notities (optioneel)"
+        ></textarea>
+      </label>
 
-    <label>
-      <span class="legend">Notities:</span>
-      <textarea bind:value={notities} placeholder="Notities (optioneel)"
-      ></textarea>
-    </label>
+      <label>
+        <span class="legend">E-mail adres:</span>
+        <input type="email" bind:value={email} placeholder="E-mail adres" />
+      </label>
 
-    <label>
-      <span class="legend">E-mail adres:</span>
-      <input type="email" bind:value={email} placeholder="E-mail adres" />
-    </label>
+      <label>
+        <span class="legend">Telefoonnummer:</span>
+        <input
+          type="tel"
+          bind:value={telefoonnummer}
+          placeholder="Telefoonnummer"
+        />
+      </label>
 
-    <label>
-      <span class="legend">Telefoonnummer:</span>
-      <input
-        type="tel"
-        bind:value={telefoonnummer}
-        placeholder="Telefoonnummer"
-      />
-    </label>
+      <label>
+        <span class="legend">Adres:</span>
+        <input type="text" bind:value={adres} placeholder="Adres" />
+      </label>
 
-    <label>
-      <span class="legend">Adres:</span>
-      <input type="text" bind:value={adres} placeholder="Adres" />
-    </label>
+      <label>
+        <span class="legend">Website:</span>
+        <input
+          type="text"
+          bind:value={website}
+          placeholder="Website (optioneel)"
+        />
+      </label>
 
-    <label>
-      <span class="legend">Website:</span>
-      <input
-        type="text"
-        bind:value={website}
-        placeholder="Website (optioneel)"
-      />
-    </label>
-
-   <div class="buttons">
+      <div class="buttons">
         <button type="button" on:click={closeModal}>Annuleren</button>
         <button type="submit" disabled={$submitting}>
-          {#if $editingClient}Opslaan{#else}Toevoegen{/if}
+          {#if $editingClient}
+            Opslaan
+          {:else}
+            Toevoegen
+          {/if}
         </button>
       </div>
     </form>
