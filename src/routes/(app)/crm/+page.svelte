@@ -145,7 +145,7 @@
 
   <dialog id="clientDialog" bind:this={dialogEl}>
     <div class="top">
-      <h2>{#if $editingClient}Contact bewerken{#else}Nieuw contact toevoegen{/if}</h2>
+      <h2>{#if $editingClient}Contact bewerken{:else}Nieuw contact toevoegen{/if}</h2>
       <button class="basic" on:click={closeModal}><X size="16" /></button>
     </div>
 
