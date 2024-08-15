@@ -59,12 +59,22 @@
     } catch (error) {
       console.error("Error checking authentication status:", error);
     }
+
+    const handleLogUpdate = () => updateLogs.set(true);
+
+    window.addEventListener("logUpdated", handleLogUpdate);
+
+    return () => {
+      window.removeEventListener("logUpdated", handleLogUpdate);
+    };
   });
 
   function handleRowAdded() {
+    console.log("rowAdded");
     updateLogs.set(true); // Trigger logs update
-    const event = new CustomEvent("rowAdded");
-    window.dispatchEvent(event); // Dispatch event when row is added
+    setTimeout(() => {
+      updateLogs.set(false); // Reset after the UI has had time to react
+    }, 100); // Allow a small delay to ensure the UI updates correctly
   }
 
   async function handleSubmit() {
@@ -90,7 +100,7 @@
       isExternal: $currentTimetracking.isExternal,
       location: $currentTimetracking.isExternal
         ? $currentTimetracking.location
-        : "HIER",
+        : "",
       kilometers: $currentTimetracking.isExternal
         ? $currentTimetracking.kilometers
         : "",
@@ -106,7 +116,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        $currentTimetracking.client_id.id
+        $currentTimetracking.client_id.id,
       );
 
       // Update the timetracking array in the Firestore document
@@ -114,7 +124,7 @@
         timetracking: arrayUnion(row),
       });
 
-      dispatch("rowAdded"); // Dispatch event when row is added
+      handleRowAdded();
       window.dispatchEvent(new CustomEvent("logUpdated"));
 
       dialogEl.close();
@@ -158,7 +168,7 @@
     </div>
   </div>
 </section>
-<Result />
+<Result {updateLogs} />
 <dialog id="timetrackingDialog" bind:this={dialogEl}>
   {#if $currentTimetracking.id}
     <div class="top">
@@ -213,12 +223,10 @@
             </label>
 
             <label class="add_row_field spacing_bottom">
-              <input
-                type="text"
-                bind:value={$currentTimetracking.assignee}
-                on:focus={(e) => e.target.select}
-              />
-              <span>Uitvoerder *</span>
+              <select bind:value={$currentTimetracking.assignee}>
+                <option value="Michel">Michel</option>
+                <option value="Toon">Toon</option>
+              </select>
             </label>
 
             <label class="add_row_field">
