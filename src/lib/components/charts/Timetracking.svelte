@@ -3,9 +3,34 @@
   import { onMount, afterUpdate } from "svelte";
 
   export let logs = [];
-  export let period = ""; // "week" or "month"
+  export let period = ""; // "week" or "maand"
+  export let percentualChange;
 
   let chart;
+  let previousTurnover = 0; // Store previous period's turnover
+  let currentTurnover = 0; // Store current period's turnover
+
+  function getDateRange(period, offset = 0) {
+    const now = new Date();
+    let start, end;
+
+    if (period === "week") {
+      // Calculate the start and end of the week with an offset
+      const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+      start = new Date(weekStart.setDate(weekStart.getDate() - offset * 7));
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 0, 0);
+    } else if (period === "maand") {
+      // Calculate the start and end of the month with an offset
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      start = new Date(monthStart.setMonth(monthStart.getMonth() - offset));
+      end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    }
+
+    return { start, end };
+  }
 
   function transformLogsToChartData(logs, period) {
     if (!Array.isArray(logs)) {
@@ -21,21 +46,12 @@
     // Sort logs by date in ascending order
     logs.sort((a, b) => a.date.seconds - b.date.seconds);
 
+    const { start, end } = getDateRange(period);
+
     const categories = [];
     const hoursSeries = [];
     const turnoverSeries = [];
     const billabilitySeries = [];
-
-    const now = new Date();
-    const start =
-      period === "week"
-        ? new Date(now.setDate(now.getDate() - now.getDay())) // Start of the week
-        : new Date(now.getFullYear(), now.getMonth(), 1); // Start of the month
-
-    const end =
-      period === "week"
-        ? new Date(now.setDate(start.getDate() + 6)) // End of the week
-        : new Date(now.getFullYear(), now.getMonth() + 1, 0); // End of the month
 
     // Generate all dates for the selected period
     let currentDate = new Date(start);
@@ -75,12 +91,54 @@
         hoursSeries[i] > 0 ? (billabilitySeries[i] / hoursSeries[i]) * 100 : 0;
     }
 
+    // Store current period's turnover
+    currentTurnover = turnoverSeries.reduce((a, b) => a + b, 0);
+
     return {
       categories,
       hoursSeries,
       turnoverSeries,
-      billabilitySeries, // return this series to use it later
+      billabilitySeries,
     };
+  }
+
+  function calculatePercentualChange(previousTurnover, currentTurnover) {
+    if (previousTurnover === 0) return 0; // Avoid division by zero
+    const change =
+      ((currentTurnover - previousTurnover) / previousTurnover) * 100;
+    return Math.round(change); // Round to the nearest integer
+  }
+
+  function fetchPreviousPeriodTurnover(period) {
+    // Get date range for the previous period
+    const { start, end } = getDateRange(period, 1); // offset by 1 period (week or month)
+
+    console.log({ start, end });
+
+    // Filter logs to only include those in the previous period
+    const previousPeriodLogs = logs.filter((log) => {
+      const date = new Date(log.date.seconds * 1000);
+      return date >= start && date <= end;
+    });
+
+    let previousPeriodTurnover = 0;
+
+    previousPeriodLogs.forEach((log) => {
+      const date = new Date(log.date.seconds * 1000);
+      const hours = parseFloat((log.minutes / 60).toFixed(2)); // Convert minutes to hours
+
+      // Only consider logs within the selected period
+      if (date >= start && date <= end) {
+        const turnover = log.billable
+          ? parseFloat((hours * 250).toFixed(2))
+          : 0; // Calculate turnover
+
+        previousPeriodTurnover += turnover;
+      }
+    });
+
+    console.log("previousPeriodLogs", previousPeriodLogs);
+    return previousPeriodTurnover; // Return total turnover for previous period
   }
 
   function renderChart() {
@@ -141,11 +199,11 @@
             formatter: function () {
               const index = this.points[0].point.index;
               return `
-              <b>${this.x}</b><br/>
-              Uren: ${chartData.hoursSeries[index]}<br/>
-              Omzet: €${chartData.turnoverSeries[index]}<br/>
-              Declarabiliteit: ${chartData.billabilitySeries[index].toFixed(2)}%
-            `;
+                <b>${this.x}</b><br/>
+                Uren: ${chartData.hoursSeries[index]}<br/>
+                Omzet: €${chartData.turnoverSeries[index]}<br/>
+                Declarabiliteit: ${chartData.billabilitySeries[index].toFixed(2)}%
+              `;
             },
           },
           yAxis: [
@@ -252,11 +310,11 @@
             formatter: function () {
               const index = this.points[0].point.index;
               return `
-              <b>${this.x}</b><br/>
-              Uren: ${chartData.hoursSeries[index]}<br/>
-              Omzet: €${chartData.turnoverSeries[index]}<br/>
-              <b>Billability: ${chartData.billabilitySeries[index].toFixed(2)}%</b>
-            `;
+                <b>${this.x}</b><br/>
+                Uren: ${chartData.hoursSeries[index]}<br/>
+                Omzet: €${chartData.turnoverSeries[index]}<br/>
+                <b>Billability: ${chartData.billabilitySeries[index].toFixed(2)}%</b>
+              `;
             },
           },
           series: [
@@ -295,8 +353,19 @@
           ],
         });
       }
+
+      // Fetch previous period's turnover
+      previousTurnover = fetchPreviousPeriodTurnover(period);
+
+      // Calculate percentual change
+      percentualChange = calculatePercentualChange(
+        previousTurnover,
+        currentTurnover
+      );
+
+      console.log("Percentual Change:", percentualChange);
     } catch (error) {
-      console.error("Chart rendering error:", error);
+      console.error("Error rendering chart:", error);
     }
   }
 
@@ -310,3 +379,9 @@
 </script>
 
 <div id="chart-container"></div>
+
+<style>
+  #chart-container {
+    height: 260px;
+  }
+</style>

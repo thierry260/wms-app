@@ -1,27 +1,8 @@
 <script>
-  import { onMount, createEventDispatcher } from "svelte";
-  import { fetchWorkspaceData } from "$lib/utils/get";
-  import {
-    doc,
-    updateDoc,
-    arrayUnion,
-    collection,
-    getDocs,
-    getDoc,
-  } from "firebase/firestore";
-  import CaseDropdown from "$lib/CaseDropdown.svelte";
-  import Result from "$lib/Results.svelte";
-  import Filter from "$lib/Filter.svelte";
+  import { onMount } from "svelte";
+  import { doc, collection, getDocs, getDoc } from "firebase/firestore";
   import { writable, derived } from "svelte/store";
-  import {
-    CaretCircleLeft,
-    CaretCircleRight,
-    TrashSimple,
-    Funnel,
-    X,
-    Plus,
-    CaretRight,
-  } from "phosphor-svelte";
+  import { CaretRight, TrendUp, TrendDown } from "phosphor-svelte";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
   import { db } from "$lib/firebase"; // Import the Firebase instance
   import TimeTrackingChart from "$lib/components/charts/Timetracking.svelte";
@@ -33,6 +14,7 @@
   const loading = writable(true);
   const selectedTab = writable("today");
   const selectedPeriod = writable("week");
+  let percentualChange = 0;
 
   //// Data ////
 
@@ -274,7 +256,27 @@
     <!-- Other cards -->
     <div class="card timetracking">
       <div class="top">
-        <h2>Omzet</h2>
+        <h2>
+          Omzet
+          {#if percentualChange}
+            <div>
+              <span
+                class="change"
+                data-change={percentualChange}
+                data-tooltip="Omzet t.o.v. vorige {$selectedPeriod}"
+                data-flow="top"
+              >
+                {#if percentualChange > 0}
+                  <TrendUp size={16} />
+                {:else if percentualChange < 0}
+                  <TrendDown size={16} />
+                {/if}
+                {#if percentualChange > 0}+{/if}{percentualChange}%</span
+              >
+            </div>
+          {/if}
+        </h2>
+        <!-- Percentual increase/decrease here -->
         <div class="tabs">
           <button
             class:active={$selectedPeriod === "week"}
@@ -283,8 +285,8 @@
             Week
           </button>
           <button
-            class:active={$selectedPeriod === "month"}
-            on:click={() => selectedPeriod.set("month")}
+            class:active={$selectedPeriod === "maand"}
+            on:click={() => selectedPeriod.set("maand")}
           >
             Maand
           </button>
@@ -293,7 +295,11 @@
 
       <div class="main">
         {#if $logs.length > 0}
-          <TimeTrackingChart logs={$logs} period={$selectedPeriod} />
+          <TimeTrackingChart
+            logs={$logs}
+            period={$selectedPeriod}
+            bind:percentualChange
+          />
         {/if}
       </div>
     </div>
@@ -384,7 +390,7 @@
         border-radius: 15px;
         border: 1px solid var(--border);
         box-shadow: none;
-        overflow: hidden;
+        overflow: unset;
         display: flex;
         flex-direction: column;
         gap: 30px;
@@ -392,17 +398,19 @@
         max-width: unset;
         margin: unset;
 
-        &:nth-of-type(1) {
-          margin-right: 50px;
-        }
-        &:nth-of-type(2) {
-          margin-left: -50px;
-        }
-        &:nth-of-type(3) {
-          margin-right: -50px;
-        }
-        &:nth-of-type(4) {
-          margin-left: 50px;
+        @media (min-width: $xxl) {
+          &:nth-of-type(1) {
+            margin-right: 50px;
+          }
+          &:nth-of-type(2) {
+            margin-left: -50px;
+          }
+          &:nth-of-type(3) {
+            margin-right: -50px;
+          }
+          &:nth-of-type(4) {
+            margin-left: 50px;
+          }
         }
 
         .top {
@@ -415,6 +423,24 @@
         h2 {
           font-size: 1.8rem;
           margin-bottom: 0;
+          display: flex;
+          gap: 10px;
+          align-items: center;
+
+          .change {
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            color: $success;
+            font-size: 1.3rem;
+            display: inline-flex;
+            padding: 3px 6px 2px;
+            align-items: center;
+            gap: 2px;
+            line-height: 1;
+            &[data-change^="-"] {
+              color: $warning;
+            }
+          }
         }
 
         .tabs {
@@ -426,18 +452,18 @@
             border-radius: 0;
             background: none;
             cursor: pointer;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             transition: color 0.2s;
             color: var(--text);
             border-bottom: 1px solid transparent;
 
             span {
               background-color: var(--text);
-              padding: 2px 4px;
+              padding: 1px 5px;
               border-radius: 5px;
               color: #fff;
               font-weight: 500;
-              font-size: 1rem;
+              font-size: 1.2rem;
             }
 
             &:hover {
@@ -461,9 +487,16 @@
 
         .main {
           flex-grow: 1;
-          display: flex;
-          align-items: flex-end;
+          // display: flex;
           justify-content: stretch;
+
+          &:not(:has(ul)) {
+            align-items: flex-end;
+          }
+
+          > div {
+            width: 100%;
+          }
           ul {
             list-style-type: none;
             padding-left: 0;
