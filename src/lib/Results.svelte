@@ -3,7 +3,7 @@
   import { writable, derived, get } from "svelte/store";
   import Select from "svelte-select"; // Import Select component
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
-  import { doc, getDoc, updateDoc } from "firebase/firestore";
+  import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
   import { auth, db } from "$lib/firebase";
 
   import {
@@ -26,9 +26,9 @@
     X,
   } from "phosphor-svelte";
 
-  const searchQuery = writable(""); // Store for the search query
-  const searchQueryFrom = writable(""); // Store for the search query
-  const searchQueryTo = writable(""); // Store for the search query
+  const searchQuery = writable("");
+  const searchQueryFrom = writable("");
+  const searchQueryTo = writable("");
 
   const logs = writable([]);
   const totalRevenue = writable(0);
@@ -39,8 +39,19 @@
   let longPressTimer;
   let showFilters = false;
 
-  let dossiers = []; // Define dossiers array
+  let dossiers = [];
   let dossiersData = [];
+
+  export let updateLogs; // Receive the updateLogs prop
+
+  $: if ($currentLog && $currentLog.date) {
+    $currentLog.date = new Date($currentLog.date).toISOString().split("T")[0];
+  }
+
+  $: if (updateLogs) {
+    console.log("updateLogs triggered"); // Add this for debugging
+    updateLogsForSearch(); // Re-fetch and update the logs when updateLogs changes
+  }
 
   onMount(async () => {
     try {
@@ -50,10 +61,12 @@
         label: `${dossier.id} - ${dossier.name}`,
       }));
       const data = dossiersData.flatMap((dossier) =>
-        (dossier.timetracking || []).map((entry) => ({
+        (dossier.timetracking || []).map((entry, index) => ({
           ...entry,
           name: dossier.name, // Add the dossier's name to each timetracking entry
-        }))
+          id: dossier.id,
+          index: index,
+        })),
       );
       allLogs = data;
       updateLogsForSearch();
@@ -77,10 +90,13 @@
     if (searchValue) {
       data = data.filter(
         (log) =>
-          log.name.toLowerCase().includes(searchValue) ||
+          dossiersData
+            .find((dossier) => dossier.id === log.dossierId)
+            ?.name.toLowerCase()
+            .includes(searchValue) ||
           log.description.toLowerCase().includes(searchValue) ||
           log.assignee.toLowerCase().includes(searchValue) ||
-          log.location.toLowerCase().includes(searchValue)
+          log.location.toLowerCase().includes(searchValue),
       );
     }
 
@@ -161,23 +177,39 @@
   }
 
   function handleLongPress(log) {
-    const dossier = dossiersData.find((dossier) => dossier.name === log.name);
+    console.log("Log received:", log); // Debug log
 
-    if (!dossier || !dossier.timetracking) {
-      console.error("Dossier or timetracking array not found");
+    // Use dossierId directly from the log
+    const dossier = dossiersData.find((dossier) => dossier.id === log.id);
+
+    if (!dossier) {
+      console.error("Dossier not found for ID:", log.id);
       return;
     }
 
+    // Ensure the timetracking array exists
+    if (!dossier.timetracking || dossier.timetracking.length === 0) {
+      console.error(
+        "Timetracking array not found or empty for dossier ID:",
+        dossier.id,
+      );
+      return;
+    }
+
+    // Using index of the timetracking entry for accuracy
     const index = dossier.timetracking.findIndex(
       (entry) =>
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location
+        entry.location === log.location,
     );
 
     if (index === -1) {
-      console.error("Log entry not found in dossier's timetracking array");
+      console.error(
+        "Log entry not found in dossier's timetracking array for dossier ID:",
+        dossier.id,
+      );
       return;
     }
 
@@ -198,19 +230,13 @@
       location: log.location,
     });
     document.getElementById("editDialog").showModal();
-    console.log("Current log:", log); // Console log the current log to debug
+    console.log("Current log after setting:", get(currentLog)); // Debug log to check currentLog state
   }
 
   async function saveLog() {
     const editedLog = get(currentLog);
-    console.log("Edited log:", editedLog); // Debug log to see the current state of editedLog
-
     const dossierId = editedLog.dossierId.id;
     const originalDossierId = editedLog.originalDossierId || dossierId;
-
-    console.log("Dossier ID:", dossierId);
-    console.log("Original Dossier ID:", originalDossierId);
-
     const [year, month, day] = editedLog.date.split("-").map(Number);
     const dateObj = new Date(year, month - 1, day);
     const firestoreTimestamp = Timestamp.fromDate(dateObj);
@@ -220,7 +246,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId
+      originalDossierId,
     );
 
     const newDossierRef = doc(
@@ -228,7 +254,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId
+      dossierId,
     );
 
     try {
@@ -240,13 +266,17 @@
 
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
-            (entry, index) => index !== editedLog.index
+            (entry, index) => index !== editedLog.index,
           );
 
           await updateDoc(originalDossierRef, {
             timetracking: originalTimetracking,
           });
         }
+      } else {
+        console.warn(
+          `Original dossier (ID: ${originalDossierId}) does not exist.`,
+        );
       }
 
       const newDocSnap = await getDoc(newDossierRef);
@@ -262,7 +292,7 @@
       }
 
       const existingIndex = newTimetracking.findIndex(
-        (entry) => entry.index === editedLog.index
+        (entry, idx) => idx === editedLog.index,
       );
 
       if (existingIndex !== -1) {
@@ -308,7 +338,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId.id // Access the id property of dossierId
+      logToDelete.dossierId.id, // Access the id property of dossierId
     );
 
     try {
@@ -320,7 +350,7 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index
+          (entry, index) => index !== logToDelete.index,
         );
 
         // Update the Firestore document with the updated timetracking array
@@ -409,10 +439,6 @@
     const minutes = totalMinutes % 60;
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
-
-  $: if ($currentLog && $currentLog.date) {
-    $currentLog.date = new Date($currentLog.date).toISOString().split("T")[0];
-  }
 </script>
 
 <main>
@@ -460,7 +486,7 @@
           {#each $logs as log}
             <li on:click={() => handleLongPress(log)}>
               <div class="log-header">
-                <strong>{log.name}</strong>
+                <strong>{log.id}. {log.name}</strong>
                 <div class="total-revenue">
                   <span>{formatMinutesToHHMM(log.minutes)}</span>
                   <span class="total-revenue-single"

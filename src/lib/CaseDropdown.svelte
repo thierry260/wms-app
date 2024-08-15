@@ -150,8 +150,12 @@
             </label>
 
             <label class="add_row_field spacing_bottom">
-              <input type="text" bind:value={assignee} on:focus={handleFocus} />
-              <span>Uitvoerder *</span>
+              <Select
+                items={assigneeOptions}
+                bind:value={assignee}
+                on:focus={handleFocus}
+              />
+              <span>UitvoerderSSSS *</span>
             </label>
 
             <label class="add_row_field">
