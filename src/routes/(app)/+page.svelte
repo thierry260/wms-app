@@ -32,6 +32,7 @@
   //// States ////
   const loading = writable(true);
   const selectedTab = writable("today");
+  const selectedPeriod = writable("week");
 
   //// Data ////
 
@@ -239,7 +240,7 @@
                 </li>
               {/each}
               {#if $groupedTasks.dueToday.length === 0}
-                <p>Geen taken die vandaag verlopen.</p>
+                <p>Geen taken die vandaag verlopen</p>
               {/if}
             {/if}
 
@@ -254,7 +255,7 @@
                 </li>
               {/each}
               {#if $groupedTasks.overdue.length === 0}
-                <p>Geen verlopen taken.</p>
+                <p>Geen verlopen taken</p>
               {/if}
             {/if}
           </ul>
@@ -265,12 +266,26 @@
     <!-- Other cards -->
     <div class="card timetracking">
       <div class="top">
-        <h2>Uren</h2>
+        <h2>Omzet</h2>
+        <div class="tabs">
+          <button
+            class:active={$selectedPeriod === "week"}
+            on:click={() => selectedPeriod.set("week")}
+          >
+            Week
+          </button>
+          <button
+            class:active={$selectedPeriod === "month"}
+            on:click={() => selectedPeriod.set("month")}
+          >
+            Maand
+          </button>
+        </div>
       </div>
 
       <div class="main">
         {#if $logs.length > 0}
-          <TimeTrackingChart logs={$logs} />
+          <TimeTrackingChart logs={$logs} period={$selectedPeriod} />
         {/if}
       </div>
     </div>
@@ -437,12 +452,17 @@
         }
 
         .main {
+          flex-grow: 1;
+          display: flex;
+          align-items: flex-end;
+          justify-content: stretch;
           ul {
             list-style-type: none;
             padding-left: 0;
+            width: 100%;
 
             &.task-items {
-              max-height: 30vh;
+              max-height: 260px;
               overflow-y: auto;
 
               /* ===== Scrollbar CSS ===== */
@@ -461,6 +481,19 @@
                 background-color: #e0e0e0;
                 border-radius: 10px;
                 border: 3px solid #ffffff;
+              }
+
+              p {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                padding: 30px;
+                min-height: 120px;
+                color: var(--gray-400);
+                font-size: 1.4rem;
+                border-radius: 15px;
+                background-color: var(--background);
               }
             }
 

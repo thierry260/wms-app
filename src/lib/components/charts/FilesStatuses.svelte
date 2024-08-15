@@ -43,9 +43,54 @@
         chart = Highcharts.chart("pie-container", {
           chart: {
             type: "pie",
+            height: 260, // Set the height of the chart
           },
           title: {
-            text: "File Status Distribution",
+            text: "",
+            style: {
+              fontSize: "12px", // Set the title font size
+            },
+          },
+          credits: {
+            enabled: false, // Disable Highcharts branding
+          },
+          tooltip: {
+            style: {
+              fontSize: "12px", // Set tooltip font size
+            },
+          },
+          plotOptions: {
+            pie: {
+              dataLabels: {
+                style: {
+                  fontSize: "12px", // Set data labels font size
+                },
+              },
+            },
+          },
+          legend: {
+            itemStyle: {
+              fontSize: "12px", // Set legend font size
+            },
+          },
+          xAxis: {
+            labels: {
+              style: {
+                fontSize: "12px", // Set x-axis labels font size
+              },
+            },
+          },
+          yAxis: {
+            title: {
+              style: {
+                fontSize: "12px", // Set y-axis title font size
+              },
+            },
+            labels: {
+              style: {
+                fontSize: "12px", // Set y-axis labels font size
+              },
+            },
           },
           series: [
             {
@@ -71,9 +116,3 @@
 </script>
 
 <div id="pie-container"></div>
-
-<style lang="scss">
-  svg {
-    font-size: 1.6rem !important;
-  }
-</style>
