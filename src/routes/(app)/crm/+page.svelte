@@ -22,9 +22,43 @@
 
   let clientsList = writable([]);
 
+  let dialogEl = ""; // Reference to the dialog element
+  let editingClient = writable(null); // To track if we're editing a client
+
   onMount(async () => {
     await fetchClients();
   });
+
+  function openModal(client = null) {
+    if (client) {
+      // If client is provided, set the form data to edit mode
+      editingClient.set(client);
+      voornaam = client.voornaam || "";
+      tussenvoegsels = client.tussenvoegsels || "";
+      achternaam = client.achternaam || "";
+      bedrijfsnaam = client.bedrijfsnaam || "";
+      functienaam = client.functienaam || "";
+      geboortedatum = client.geboortedatum
+        ? new Date(client.geboortedatum.seconds * 1000)
+            .toISOString()
+            .substr(0, 10)
+        : "";
+      notities = client.notities || "";
+      email = client.email || "";
+      telefoonnummer = client.telefoonnummer || "";
+      adres = client.adres || "";
+      website = client.website || "";
+    } else {
+      // Reset form for a new client
+      resetForm();
+      editingClient.set(null);
+    }
+    dialogEl.showModal();
+  }
+
+  function closeModal() {
+    dialogEl.close();
+  }
 
   async function fetchClients() {
     const clientsRef = collection(
@@ -107,24 +141,23 @@
 </script>
 
 <main>
-  <h1>Contact toevoegen</h1>
+  <button on:click={() => openModal()}>Nieuw contact toevoegen</button>
 
-  {#if $errorMessage}
-    <p style="color: red;">{$errorMessage}</p>
-  {/if}
+  <dialog id="clientDialog" bind:this={dialogEl}>
+    <div class="top">
+      <h2>{#if $editingClient}Contact bewerken{#else}Nieuw contact toevoegen{/if}</h2>
+      <button class="basic" on:click={closeModal}><X size="16" /></button>
+    </div>
 
-  {#if $successMessage}
-    <p style="color: green;">{$successMessage}</p>
-  {/if}
+    <form on:submit|preventDefault={handleSubmit}>
 
-  <form on:submit|preventDefault={handleSubmit}>
     <label>
-      <span class="legend">Voornaam</span>
+      <span class="legend">Voornaam:</span>
       <input type="text" bind:value={voornaam} placeholder="Voornaam" />
     </label>
 
     <label>
-      <span class="legend">Tussenvoegsels</span>
+      <span class="legend">Tussenvoegsels:</span>
       <input
         type="text"
         bind:value={tussenvoegsels}
@@ -133,12 +166,12 @@
     </label>
 
     <label>
-      <span class="legend">Achternaam</span>
+      <span class="legend">Achternaam:</span>
       <input type="text" bind:value={achternaam} placeholder="Achternaam" />
     </label>
 
     <label>
-      <span class="legend">Bedrijfsnaam</span>
+      <span class="legend">Bedrijfsnaam:</span>
       <input
         type="text"
         bind:value={bedrijfsnaam}
@@ -147,7 +180,7 @@
     </label>
 
     <label>
-      <span class="legend">Functienaam</span>
+      <span class="legend">Functienaam:</span>
       <input
         type="text"
         bind:value={functienaam}
@@ -156,23 +189,23 @@
     </label>
 
     <label>
-      <span class="legend">Geboortedatum</span>
+      <span class="legend">Geboortedatum:</span>
       <input type="date" bind:value={geboortedatum} />
     </label>
 
     <label>
-      <span class="legend">Notities</span>
+      <span class="legend">Notities:</span>
       <textarea bind:value={notities} placeholder="Notities (optioneel)"
       ></textarea>
     </label>
 
     <label>
-      <span class="legend">E-mail adres</span>
+      <span class="legend">E-mail adres:</span>
       <input type="email" bind:value={email} placeholder="E-mail adres" />
     </label>
 
     <label>
-      <span class="legend">Telefoonnummer</span>
+      <span class="legend">Telefoonnummer:</span>
       <input
         type="tel"
         bind:value={telefoonnummer}
@@ -194,8 +227,14 @@
       />
     </label>
 
-    <button type="submit" disabled={$submitting}>Contact toevoegen</button>
-  </form>
+   <div class="buttons">
+        <button type="button" on:click={closeModal}>Annuleren</button>
+        <button type="submit" disabled={$submitting}>
+          {#if $editingClient}Opslaan{#else}Toevoegen{/if}
+        </button>
+      </div>
+    </form>
+  </dialog>
 
   <section class="clients_section">
     <h2>Overzicht van contacten</h2>
@@ -214,7 +253,7 @@
       </thead>
       <tbody>
         {#each $clientsList as client}
-          <tr>
+          <tr on:click={() => openModal(client)}>
             <td>{client.voornaam}</td>
             <td>{client.achternaam}</td>
             <td>{client.bedrijfsnaam}</td>
@@ -238,5 +277,16 @@
   }
   .legend {
     margin-top: 0;
+  }
+
+  dialog .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
   }
 </style>

@@ -31,7 +31,6 @@
   };
   const dispatch = createEventDispatcher();
   let currentTimetracking = writable(defaults);
-  let updateLogs = writable(false); // Add writable store to trigger logs update
   let dossiers = [];
   let dossiersData = [];
   let dialogEl = "";
@@ -50,32 +49,10 @@
         name: dossier.name, // Ensure that name is set correctly
         label: `${dossier.id} - ${dossier.name}`, // Use both id and name for display in the dropdown
       }));
-
-      console.log("Dossiers:", dossiers);
-
-      window.addEventListener("updateLogs", (event) => {
-        updateLogs.set(true);
-      });
     } catch (error) {
       console.error("Error checking authentication status:", error);
     }
-
-    const handleLogUpdate = () => updateLogs.set(true);
-
-    window.addEventListener("logUpdated", handleLogUpdate);
-
-    return () => {
-      window.removeEventListener("logUpdated", handleLogUpdate);
-    };
   });
-
-  function handleRowAdded() {
-    console.log("rowAdded");
-    updateLogs.set(true); // Trigger logs update
-    setTimeout(() => {
-      updateLogs.set(false); // Reset after the UI has had time to react
-    }, 100); // Allow a small delay to ensure the UI updates correctly
-  }
 
   async function handleSubmit() {
     if (!$currentTimetracking.client_id) {
@@ -124,7 +101,6 @@
         timetracking: arrayUnion(row),
       });
 
-      handleRowAdded();
       window.dispatchEvent(new CustomEvent("logUpdated"));
 
       dialogEl.close();
@@ -168,7 +144,7 @@
     </div>
   </div>
 </section>
-<Result {updateLogs} />
+<Result />
 <dialog id="timetrackingDialog" bind:this={dialogEl}>
   {#if $currentTimetracking.id}
     <div class="top">
