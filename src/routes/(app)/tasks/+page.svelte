@@ -26,6 +26,8 @@
     PencilSimple,
     X,
     DotsSixVertical,
+    ExclamationMark,
+    ArrowDown,
   } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
@@ -696,13 +698,19 @@
                     </div>
                   </div>
                   <div class="bottom">
-                    {#if task.priority}
-                      <span class="priority" data-priority={task.priority}
-                      ></span>
-                    {/if}
                     {#if task.deadline}
                       <div class="task-deadline">
                         <Clock size="18" />{formatDate(task.deadline)}
+                      </div>
+                    {/if}
+                    {#if task.priority}
+                      <div class="priority" data-priority={task.priority}>
+                        {#if task.priority == "High"}
+                          <ExclamationMark size={16} weight="bold" />
+                        {/if}
+                        {#if task.priority == "Low"}
+                          <ArrowDown size={16} />
+                        {/if}
                       </div>
                     {/if}
                   </div>
@@ -1033,19 +1041,19 @@
         cursor: pointer;
         border-left: 3px solid transparent;
 
-        &[data-priority="High"] {
-          border-left: 3px solid $error;
-        }
-        &[data-priority="Medium"] {
-          // border-left: 3px solid $warning;
-        }
-        &[data-priority="Low"] {
-          border-left: 3px solid var(--gray-300);
-          // background-color: rgba(255, 255, 255, 0.4);
-          // h4 {
-          //   // opacity: 0.5;
-          // }
-        }
+        // &[data-priority="High"] {
+        //   border-left: 3px solid $error;
+        // }
+        // &[data-priority="Medium"] {
+        //   // border-left: 3px solid $warning;
+        // }
+        // &[data-priority="Low"] {
+        //   border-left: 3px solid var(--gray-300);
+        //   // background-color: rgba(255, 255, 255, 0.4);
+        //   // h4 {
+        //   //   // opacity: 0.5;
+        //   // }
+        // }
 
         .drag-handle {
           position: absolute;
@@ -1128,28 +1136,41 @@
         .bottom {
           display: flex;
           flex-direction: row;
+          justify-content: space-between;
           align-items: center;
           gap: 10px;
           margin-top: 20px;
+
+          &:has(> .priority:first-child:last-child) {
+            justify-content: flex-end;
+          }
           .priority {
-            display: none;
-            &[data-priority=""] {
-              display: none;
-            }
+            color: var(--gray-400);
 
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-
-            &[data-priority="High"] {
-              background-color: $error;
-            }
             &[data-priority="Medium"] {
-              background-color: $warning;
+              color: $warning;
             }
-            &[data-priority="Low"] {
-              background-color: var(--gray-300);
+            &[data-priority="High"] {
+              color: $error;
             }
+            // display: none;
+            // &[data-priority=""] {
+            //   display: none;
+            // }
+
+            // width: 6px;
+            // height: 6px;
+            // border-radius: 50%;
+
+            // &[data-priority="High"] {
+            //   background-color: $error;
+            // }
+            // &[data-priority="Medium"] {
+            //   background-color: $warning;
+            // }
+            // &[data-priority="Low"] {
+            //   background-color: var(--gray-300);
+            // }
           }
         }
 
