@@ -3,6 +3,7 @@
   import { collection, addDoc, Timestamp, getDocs } from "firebase/firestore"; // Import Firestore functions
   import { writable } from "svelte/store";
   import { onMount } from "svelte";
+  import { X } from "phosphor-svelte";
 
   let voornaam = "";
   let tussenvoegsels = "";
