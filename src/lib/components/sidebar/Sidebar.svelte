@@ -18,15 +18,14 @@
   let isMobile = true;
 
   const menuItems = [
-    // {
-    //   label: "Dashboard",
-    //   route: "/",
-    //   icon: Layout,
-    // },
+    {
+      label: "Dashboard",
+      route: "/",
+      icon: Layout,
+    },
     {
       label: "Urenregistratie",
-      route: "/",
-      // route: "/timetracking",
+      route: "/timetracking",
       icon: Timer,
     },
     {

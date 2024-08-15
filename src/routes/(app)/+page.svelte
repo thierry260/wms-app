@@ -1,11 +1,18 @@
 <script>
   import { onMount, createEventDispatcher } from "svelte";
   import { fetchWorkspaceData } from "$lib/utils/get";
-  import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+  import {
+    doc,
+    updateDoc,
+    arrayUnion,
+    collection,
+    getDocs,
+    getDoc,
+  } from "firebase/firestore";
   import CaseDropdown from "$lib/CaseDropdown.svelte";
   import Result from "$lib/Results.svelte";
   import Filter from "$lib/Filter.svelte";
-  import { writable } from "svelte/store";
+  import { writable, derived } from "svelte/store";
   import {
     CaretCircleLeft,
     CaretCircleRight,
@@ -13,329 +20,511 @@
     Funnel,
     X,
     Plus,
+    CaretRight,
   } from "phosphor-svelte";
-  import Select from "svelte-select";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
   import { db } from "$lib/firebase"; // Import the Firebase instance
+  import TimeTrackingChart from "$lib/components/charts/Timetracking.svelte";
+  import FileStatuses from "$lib/components/charts/FilesStatuses.svelte";
 
-  const defaults = {
-    client_id: "",
-    datum: "",
-    tijdsduur: "00:15",
-    assignee: "Toon",
-    description: "",
-    billable: true,
-    location: "",
-    isExternal: false,
-    kilometers: "",
-  };
-  const dispatch = createEventDispatcher();
-  let currentTimetracking = writable(defaults);
-  let updateLogs = writable(false); // Add writable store to trigger logs update
-  let dossiers = [];
-  let dossiersData = [];
-  let dialogEl = "";
+  const CACHE_EXPIRY_TIME = 15 * 60 * 1000; // 5 minutes
+
+  //// States ////
+  const loading = writable(true);
+  const selectedTab = writable("today");
+
+  //// Data ////
+
+  // Tasks
+  const tasks = writable([]);
+  $: console.log("Tasks", $tasks);
+
+  const groupedTasks = derived(tasks, ($tasks) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Set the current date to the end of the day
+
+    return {
+      overdue: $tasks.filter((task) => {
+        const deadline = task.deadline?.seconds
+          ? new Date(task.deadline.seconds * 1000)
+          : null;
+        return deadline && deadline < now && task.status_id !== "2v352059n273";
+      }),
+      dueToday: $tasks.filter((task) => {
+        const deadline = task.deadline?.seconds
+          ? new Date(task.deadline.seconds * 1000)
+          : null;
+        return (
+          deadline &&
+          deadline.toDateString() === now.toDateString() &&
+          task.status_id !== "2v352059n273"
+        );
+      }),
+      upcoming: $tasks.filter((task) => {
+        const deadline = task.deadline?.seconds
+          ? new Date(task.deadline.seconds * 1000)
+          : null;
+        return (
+          deadline &&
+          deadline > now &&
+          deadline.toDateString() !== now.toDateString()
+        );
+      }),
+      noDeadline: $tasks.filter((task) => !task.deadline),
+    };
+  });
+  $: console.log("groupedTasks", $groupedTasks);
+
+  // Files
+  const files = writable([]);
+  $: console.log("Files", $files);
+
+  // Derived store to group files by status
+  const fileStatuses = derived(files, ($files) => {
+    const statusCount = $files.reduce((acc, file) => {
+      const status = file.dossierstatus || "Unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(statusCount).map(([status, count]) => ({
+      name: status,
+      y: count,
+    }));
+  });
+
+  const logs = derived(files, ($files) => {
+    return $files.flatMap((dossier) =>
+      (dossier.timetracking || []).map((entry) => ({
+        ...entry,
+        name: dossier.name, // Add the dossier's name to each timetracking entry
+      }))
+    );
+  });
+  $: console.log("Logs", $logs);
 
   onMount(async () => {
     try {
-      // Set datum to today's date
-      const today = new Date().toISOString().split("T")[0];
-      $currentTimetracking.datum = today;
-
-      dossiersData = await fetchWorkspaceFilesData();
-
-      // Extract and concatenate all timetracking arrays into timetrackingEntries
-      dossiers = dossiersData.map((dossier) => ({
-        id: dossier.id,
-        name: dossier.name, // Ensure that name is set correctly
-        label: `${dossier.id} - ${dossier.name}`, // Use both id and name for display in the dropdown
-      }));
-
-      console.log("Dossiers:", dossiers);
-
-      window.addEventListener("updateLogs", (event) => {
-        updateLogs.set(true);
-      });
+      fetchFiles();
+      fetchTasks();
     } catch (error) {
-      console.error("Error checking authentication status:", error);
+      console.error("Error onMount:", error);
+    } finally {
+      loading.set(false);
     }
   });
 
-  function handleRowAdded() {
-    updateLogs.set(true); // Trigger logs update
-    const event = new CustomEvent("rowAdded");
-    window.dispatchEvent(event); // Dispatch event when row is added
+  function isCacheExpired(timestamp) {
+    return Date.now() - timestamp > CACHE_EXPIRY_TIME;
   }
 
-  async function handleSubmit() {
-    if (!$currentTimetracking.client_id) {
-      alert("Selecteer een dossier");
-      return;
-    }
+  async function fetchFiles() {
+    const cachedData = localStorage.getItem("workspaceFiles");
+    const cachedTimestamp = localStorage.getItem("workspaceFilesTimestamp");
 
-    console.log("Client ID:", $currentTimetracking.client_id);
-
-    // Split tijdsduur into uur and min
-    const [uur, min] = $currentTimetracking.tijdsduur.split(":").map(Number);
-    const totaal = (uur + min / 60).toFixed(2);
-
-    // Prepare the row object to be sent
-    const row = {
-      date: new Date($currentTimetracking.datum),
-      description: $currentTimetracking.description,
-      minutes: uur * 60 + min,
-      totaal: totaal,
-      billable: $currentTimetracking.billable,
-      assignee: $currentTimetracking.assignee,
-      isExternal: $currentTimetracking.isExternal,
-      location: $currentTimetracking.isExternal
-        ? $currentTimetracking.location
-        : "HIER",
-      kilometers: $currentTimetracking.isExternal
-        ? $currentTimetracking.kilometers
-        : "",
-    };
-
-    // console.log(row);
-    // return;
-
-    try {
-      // Get the dossier document reference
-      const dossierRef = doc(
-        db,
-        "workspaces",
-        localStorage.getItem("workspace"),
-        "files",
-        $currentTimetracking.client_id.id
-      );
-
-      // Update the timetracking array in the Firestore document
-      await updateDoc(dossierRef, {
-        timetracking: arrayUnion(row),
-      });
-
-      dispatch("rowAdded"); // Dispatch event when row is added
-      window.dispatchEvent(new CustomEvent("logUpdated"));
-
-      dialogEl.close();
-
-      // Reset form fields
-      currentTimetracking.set(defaults);
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert("Fout bij verzenden van formulier");
-      dispatch("logUpdated");
+    if (cachedData && cachedTimestamp && !isCacheExpired(cachedTimestamp)) {
+      files.set(JSON.parse(cachedData));
+      console.log("cached data");
+    } else {
+      try {
+        const data = await fetchWorkspaceFilesData();
+        files.set(data);
+        localStorage.setItem("workspaceFiles", JSON.stringify(data));
+        localStorage.setItem("workspaceFilesTimestamp", Date.now().toString());
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+      }
     }
   }
 
-  function openModal() {
-    // console.log(file);
-    // if (file && file.id) {
-    //   currentTimetracking.set({
-    //     ...file,
-    //     fileId: file.id,
-    //     opvolgdatum: file.opvolgdatum
-    //       ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
-    //       : "", // Convert and format the date
-    //   });
-    // } else {
-    //   currentTimetracking.set(defaults);
-    // }
+  async function fetchTasks() {
+    const cachedData = localStorage.getItem("workspaceTasks");
+    const cachedTimestamp = localStorage.getItem("workspaceTasksTimestamp");
 
-    currentTimetracking.set(defaults);
+    if (cachedData && cachedTimestamp && !isCacheExpired(cachedTimestamp)) {
+      tasks.set(JSON.parse(cachedData));
+      console.log("cached data");
+    } else {
+      try {
+        const tasksRef = collection(
+          db,
+          "workspaces",
+          localStorage.getItem("workspace"),
+          "tasks"
+        );
+        const taskSnapshots = await getDocs(tasksRef);
+        const tasksArray = [];
+        const fileRefs = new Map();
 
-    dialogEl.showModal();
+        taskSnapshots.docs.forEach((doc) => {
+          const taskData = { id: doc.id, ...doc.data() };
+          taskData.assignees =
+            taskData.assignees && taskData.assignees.length > 0
+              ? taskData.assignees
+              : ["placeholder"];
+          tasksArray.push(taskData);
+
+          const fileId = String(taskData.file_id);
+          if (fileId) {
+            fileRefs.set(fileId, doc.id);
+          }
+        });
+
+        const fileDocs = await Promise.all(
+          Array.from(fileRefs.keys()).map((fileId) =>
+            getDoc(
+              doc(
+                db,
+                "workspaces",
+                localStorage.getItem("workspace"),
+                "files",
+                fileId
+              )
+            )
+          )
+        );
+
+        const fileDataMap = new Map();
+        fileDocs.forEach((fileDoc) => {
+          if (fileDoc.exists()) {
+            fileDataMap.set(fileDoc.id, fileDoc.data());
+          }
+        });
+
+        tasksArray.forEach((task) => {
+          task.fileData = fileDataMap.get(task.file_id) || null;
+        });
+
+        tasks.set(tasksArray);
+        localStorage.setItem("workspaceTasks", JSON.stringify(tasksArray));
+        localStorage.setItem("workspaceTasksTimestamp", Date.now().toString());
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      }
+    }
   }
 </script>
 
-<section class="timetracking_section">
-  <div class="top">
-    <h2>Urenregistratie</h2>
-    <div class="buttons">
-      <button class="mobile_icon_only" on:click={() => openModal()}
-        ><Plus size={16} />Uren registreren</button
-      >
+<section class="dashboard">
+  <h1>Welkom terug!</h1>
+  <div class="card_grid">
+    <!-- Card for Tasks -->
+    <div class="card tasks">
+      <div class="top">
+        <h2>Taken</h2>
+        <!-- Tabs for Switching Between Today and Overdue -->
+        <div class="tabs">
+          <button
+            class:active={$selectedTab === "today"}
+            on:click={() => selectedTab.set("today")}
+          >
+            Vandaag <span>{$groupedTasks.dueToday.length}</span>
+          </button>
+          <button
+            class:active={$selectedTab === "overdue"}
+            on:click={() => selectedTab.set("overdue")}
+          >
+            Verlopen <span>{$groupedTasks.overdue.length}</span>
+          </button>
+        </div>
+      </div>
+      <div class="main">
+        <!-- Displaying Tasks Based on Selected Tab -->
+        {#if $groupedTasks}
+          <ul class="task-items">
+            {#if $selectedTab === "today"}
+              {#each $groupedTasks.dueToday as task}
+                <li class="task-item">
+                  {task.title}
+                </li>
+              {/each}
+              {#if $groupedTasks.dueToday.length === 0}
+                <p>Geen taken die vandaag verlopen.</p>
+              {/if}
+            {/if}
+
+            {#if $selectedTab === "overdue"}
+              {#each $groupedTasks.overdue as task}
+                <li class="task-item">
+                  {task.title}<span class="deadline"
+                    ><Clock size={16} />{new Date(
+                      task.deadline.seconds * 1000
+                    ).toLocaleDateString()}</span
+                  >
+                </li>
+              {/each}
+              {#if $groupedTasks.overdue.length === 0}
+                <p>Geen verlopen taken.</p>
+              {/if}
+            {/if}
+          </ul>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Other cards -->
+    <div class="card timetracking">
+      <div class="top">
+        <h2>Uren</h2>
+      </div>
+
+      <div class="main">
+        {#if $logs.length > 0}
+          <TimeTrackingChart logs={$logs} />
+        {/if}
+      </div>
+    </div>
+    <div class="card files">
+      <div class="top">
+        <h2>Dossier status</h2>
+      </div>
+
+      <div class="main">
+        {#if $fileStatuses.length > 0}
+          <FileStatuses statuses={$fileStatuses} />
+        {/if}
+      </div>
+    </div>
+    <div class="card">
+      <div class="top">
+        <h2>Snel naar</h2>
+      </div>
+
+      <div class="main">
+        <ul class="linktree-items">
+          <li class="linktree-item">
+            <a target="_blank" href="https://mail.google.com/mail/u/0/">
+              <img
+                src="/img/linktree/gmail.svg"
+                alt="GMail logo"
+                width="50px"
+                height="50px"
+              />
+              <span class="">GMail</span>
+              <CaretRight size={16} />
+            </a>
+          </li>
+          <li class="linktree-item">
+            <a target="_blank" href="https://calendar.google.com/calendar/u/0/">
+              <img
+                src="/img/linktree/calendar.svg"
+                alt="Calendar logo"
+                width="50px"
+                height="50px"
+              />
+              <span class="">Agenda</span>
+              <CaretRight size={16} />
+            </a>
+          </li>
+          <li class="linktree-item">
+            <a target="_blank" href="https://drive.google.com/drive/my-drive">
+              <img
+                src="/img/linktree/drive.svg"
+                alt="Drive logo"
+                width="50px"
+                height="50px"
+              />
+              <span class="">Drive</span>
+              <CaretRight size={16} />
+            </a>
+          </li>
+          <li class="linktree-item">
+            <a target="_blank" href="https://docs.google.com/document/u/0/">
+              <img
+                src="/img/linktree/docs.svg"
+                alt="Docs logo"
+                width="auto"
+                height="40px"
+                style="margin-inline: 10px;"
+              />
+              <span class="">Docs</span>
+              <CaretRight size={16} />
+            </a>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </section>
-<Result />
-<dialog id="timetrackingDialog" bind:this={dialogEl}>
-  {#if $currentTimetracking.id}
-    <div class="top">
-      <h6>Timetracking bewerken</h6>
-      <button class="basic" on:click={() => dialogEl.close()}>
-        <X size="16" />
-      </button>
-    </div>
-  {:else}
-    <div class="top">
-      <h6>Timetracking toevoegen</h6>
-      <button class="basic" on:click={() => dialogEl.close()}>
-        <X size="16" />
-      </button>
-    </div>
-  {/if}
-
-  <form on:submit|preventDefault={handleSubmit}>
-    <div class="content">
-      <div class="form">
-        <fieldset>
-          <label class="add_row_field full-width spacing_bottom">
-            <Select
-              items={dossiers}
-              bind:value={$currentTimetracking.client_id}
-              getOptionLabel={(option) => option.name}
-              getOptionValue={(option) => option.id}
-              getSelectionLabel={(option) =>
-                option?.name || `No name found for dossier ${option.id}`}
-              placeholder="Dossier zoeken"
-              itemId="id"
-            />
-          </label>
-
-          <div class="add_row_field_columns">
-            <label class="add_row_field">
-              <input
-                type="date"
-                bind:value={$currentTimetracking.datum}
-                on:focus={(e) => e.target.select}
-              />
-              <span>Datum *</span>
-            </label>
-
-            <label class="add_row_field">
-              <input
-                type="time"
-                bind:value={$currentTimetracking.tijdsduur}
-                on:focus={(e) => e.target.select}
-              />
-              <span>Tijdsduur *</span>
-            </label>
-
-            <label class="add_row_field spacing_bottom">
-              <input
-                type="text"
-                bind:value={$currentTimetracking.assignee}
-                on:focus={(e) => e.target.select}
-              />
-              <span>Uitvoerder *</span>
-            </label>
-
-            <label class="add_row_field">
-              <input
-                type="checkbox"
-                bind:checked={$currentTimetracking.isExternal}
-                on:change={() => {
-                  if (!$currentTimetracking.isExternal) {
-                    location = "";
-                    kilometers = "";
-                  }
-                }}
-              />
-              <span>Extern?</span>
-            </label>
-          </div>
-
-          <!-- Conditionally render the location and kilometers fields -->
-          {#if $currentTimetracking.isExternal}
-            <div class="add_row_field_columns spacing_bottom">
-              <label class="add_row_field">
-                <input
-                  type="text"
-                  bind:value={$currentTimetracking.location}
-                  on:focus={(e) => e.target.select}
-                />
-                <span>Locatie</span>
-              </label>
-
-              <label class="add_row_field">
-                <input
-                  type="number"
-                  min="0"
-                  bind:value={$currentTimetracking.kilometers}
-                  on:focus={(e) => e.target.select}
-                />
-                <span>Kilometers</span>
-              </label>
-            </div>
-          {/if}
-
-          <label class="add_row_field full-width">
-            <textarea
-              bind:value={$currentTimetracking.description}
-              on:focus={(e) => e.target.select}
-            ></textarea>
-            <span>Omschrijving *</span>
-          </label>
-        </fieldset>
-      </div>
-    </div>
-    <div class="actions">
-      <label class="add_row_field consent">
-        <input type="checkbox" bind:checked={$currentTimetracking.billable} />
-        <span>Facturabel</span>
-      </label>
-      <button type="submit">Registreren</button>
-    </div>
-  </form>
-</dialog>
 
 <style lang="scss">
-  section {
-    .top {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px 30px;
-      flex-wrap: wrap;
-      padding-bottom: 30px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 50px;
-
-      @media (max-width: $md) {
-        padding-bottom: 15px;
-        margin-bottom: 30px;
-      }
-
-      h2 {
-        margin-bottom: 0;
-      }
-
-      // position: sticky;
-      // top: 0px;
-      // z-index: 1;
-      // background-color: #f8f8f8;
+  .dashboard {
+    h1 {
+      margin-bottom: 40px;
     }
-  }
-  .legend {
-    margin-top: 0;
-  }
+    .card_grid {
+      display: grid;
+      gap: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(min(490px, 100%), 1fr));
+      .card {
+        padding: 30px;
+        border-radius: 15px;
+        border: 1px solid var(--border);
+        box-shadow: none;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        width: unset;
+        max-width: unset;
+        margin: unset;
 
-  dialog .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+        &:nth-of-type(1) {
+          margin-right: 50px;
+        }
+        &:nth-of-type(2) {
+          margin-left: -50px;
+        }
+        &:nth-of-type(3) {
+          margin-right: -50px;
+        }
+        &:nth-of-type(4) {
+          margin-left: 50px;
+        }
 
-  dialog .buttons {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    border-top: 1px solid var(--border);
-    padding-top: 20px;
-    margin-top: 20px;
+        .top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 15px;
+        }
 
-    &:has(> :first-child:last-child) {
-      justify-content: flex-end;
-    }
-    div {
-      display: flex;
-      gap: inherit;
+        h2 {
+          font-size: 1.8rem;
+          margin-bottom: 0;
+        }
 
-      .basic {
-        @media (max-width: $sm) {
-          display: none;
+        .tabs {
+          display: flex;
+          gap: 10px;
+          button {
+            padding: 5px 0;
+            border: none;
+            border-radius: 0;
+            background: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: color 0.2s;
+            color: var(--text);
+            border-bottom: 1px solid transparent;
+
+            span {
+              background-color: var(--text);
+              padding: 2px 4px;
+              border-radius: 5px;
+              color: #fff;
+              font-weight: 500;
+              font-size: 1rem;
+            }
+
+            &:hover {
+              color: var(--primary);
+            }
+
+            &.active {
+              color: var(--primary);
+              border-color: var(--primary);
+              font-weight: bold;
+              span {
+                background-color: var(--primary);
+              }
+            }
+
+            & + button {
+              margin-left: 10px;
+            }
+          }
+        }
+
+        .main {
+          ul {
+            list-style-type: none;
+            padding-left: 0;
+
+            &.task-items {
+              max-height: 30vh;
+              overflow-y: auto;
+
+              /* ===== Scrollbar CSS ===== */
+
+              /* Chrome, Edge, and Safari */
+              &::-webkit-scrollbar {
+                width: 12px;
+                height: 12px;
+              }
+
+              &::-webkit-scrollbar-track {
+                background: #ffffff;
+              }
+
+              &::-webkit-scrollbar-thumb {
+                background-color: #e0e0e0;
+                border-radius: 10px;
+                border: 3px solid #ffffff;
+              }
+            }
+
+            li {
+              border-top: 1px solid var(--border);
+              font-size: 1.4rem;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 10px;
+              transition: border-color 0.2s ease-out;
+
+              &:has(> a):hover {
+                border-color: transparent;
+
+                + li {
+                  border-color: transparent;
+                }
+              }
+
+              &:not(:has(> a)) {
+                padding: 15px 0;
+              }
+
+              > a {
+                display: flex;
+                padding: 10px;
+                border-radius: 10px;
+                width: 100%;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 10px;
+                color: inherit;
+                text-decoration: none;
+                transition: background-color 0.2s ease-out;
+                &:hover {
+                  background-color: var(--background);
+                }
+              }
+
+              span.deadline {
+                font-size: 1.2rem;
+                margin-top: 1em;
+                margin-bottom: 0.5em;
+                text-transform: uppercase;
+                font-weight: 500;
+                color: var(--text);
+                display: flex;
+                align-items: center;
+                gap: 4px;
+              }
+              &:first-child {
+                border-top: none;
+              }
+
+              &.linktree-item {
+                span {
+                  flex-grow: 1;
+                }
+              }
+            }
+          }
         }
       }
     }
