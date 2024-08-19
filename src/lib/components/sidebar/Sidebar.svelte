@@ -132,7 +132,7 @@
   <nav class="sidebar-mobile">
     <div class="main_nav">
       <div class="main_nav_items">
-        {#each menuItems.slice(0, 4) as item}
+        {#each menuItems.slice(0, 5) as item}
           <a
             class="nav_item {item.route === $page.url.pathname ? 'active' : ''}"
             href={item.route}
@@ -154,7 +154,7 @@
         <button class="logout-button" on:click={logout}
           ><SignOut size={18} />Uitloggen</button
         >
-        {#each menuItems.slice(4) as item}
+        {#each menuItems.slice(5) as item}
           <a
             class="more_item {item.route === $page.url.pathname
               ? 'active'
@@ -275,13 +275,13 @@
     transform: translateX(-50%);
     left: 50%;
     border-radius: 30px;
-    gap: 12px;
+    gap: 30px;
     align-items: center;
 
     .main_nav {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .main_nav_items {

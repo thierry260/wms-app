@@ -5,10 +5,10 @@
   export let logs = [];
   export let period = ""; // "week" or "maand"
   export let percentualChange;
+  export let currentTurnover = 0; // Store current period's turnover
 
   let chart;
   let previousTurnover = 0; // Store previous period's turnover
-  let currentTurnover = 0; // Store current period's turnover
 
   function getDateRange(period, offset = 0) {
     const now = new Date();
@@ -199,10 +199,10 @@
             formatter: function () {
               const index = this.points[0].point.index;
               return `
-                <b>${this.x}</b><br/>
-                Uren: ${chartData.hoursSeries[index]}<br/>
-                Omzet: €${chartData.turnoverSeries[index]}<br/>
-                Declarabiliteit: ${chartData.billabilitySeries[index].toFixed(2)}%
+                <i>${this.x}</i><br/>
+                Uren: <b>${chartData.hoursSeries[index]}</b><br/>
+                Omzet: <b>€${chartData.turnoverSeries[index]}</b><br/>
+                Declarabiliteit: <b>${chartData.billabilitySeries[index].toFixed(2)}%</b>
               `;
             },
           },
@@ -360,7 +360,7 @@
       // Calculate percentual change
       percentualChange = calculatePercentualChange(
         previousTurnover,
-        currentTurnover
+        currentTurnover,
       );
 
       console.log("Percentual Change:", percentualChange);

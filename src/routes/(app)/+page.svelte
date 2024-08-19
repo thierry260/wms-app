@@ -2,19 +2,25 @@
   import { onMount } from "svelte";
   import { doc, collection, getDocs, getDoc } from "firebase/firestore";
   import { writable, derived } from "svelte/store";
-  import { CaretRight, TrendUp, TrendDown } from "phosphor-svelte";
+  import {
+    CaretRight,
+    TrendUp,
+    TrendDown,
+    ArrowsClockwise,
+  } from "phosphor-svelte";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
   import { db } from "$lib/firebase"; // Import the Firebase instance
   import TimeTrackingChart from "$lib/components/charts/Timetracking.svelte";
   import FileStatuses from "$lib/components/charts/FilesStatuses.svelte";
 
-  const CACHE_EXPIRY_TIME = 15 * 60 * 1000; // 5 minutes
+  const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes
 
   //// States ////
   const loading = writable(true);
   const selectedTab = writable("today");
   const selectedPeriod = writable("week");
   let percentualChange = 0;
+  let currentTurnover = 0;
 
   //// Data ////
 
@@ -24,36 +30,56 @@
 
   const groupedTasks = derived(tasks, ($tasks) => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0); // Set the current date to the end of the day
+    now.setHours(0, 0, 0, 0); // Set the current date to the beginning of the day
+
+    const groupByAssignees = (tasks) => {
+      return tasks.reduce((groups, task) => {
+        task.assignees.forEach((assignee) => {
+          if (!groups[assignee]) {
+            groups[assignee] = [];
+          }
+          groups[assignee].push(task);
+        });
+        return groups;
+      }, {});
+    };
+
+    const overdue = $tasks.filter((task) => {
+      const deadline = task.deadline?.seconds
+        ? new Date(task.deadline.seconds * 1000)
+        : null;
+      return deadline && deadline < now && task.status_id !== "2v352059n273";
+    });
+
+    const dueToday = $tasks.filter((task) => {
+      const deadline = task.deadline?.seconds
+        ? new Date(task.deadline.seconds * 1000)
+        : null;
+      return (
+        deadline &&
+        deadline.toDateString() === now.toDateString() &&
+        task.status_id !== "2v352059n273"
+      );
+    });
+
+    const upcoming = $tasks.filter((task) => {
+      const deadline = task.deadline?.seconds
+        ? new Date(task.deadline.seconds * 1000)
+        : null;
+      return (
+        deadline &&
+        deadline > now &&
+        deadline.toDateString() !== now.toDateString()
+      );
+    });
+
+    const noDeadline = $tasks.filter((task) => !task.deadline);
 
     return {
-      overdue: $tasks.filter((task) => {
-        const deadline = task.deadline?.seconds
-          ? new Date(task.deadline.seconds * 1000)
-          : null;
-        return deadline && deadline < now && task.status_id !== "2v352059n273";
-      }),
-      dueToday: $tasks.filter((task) => {
-        const deadline = task.deadline?.seconds
-          ? new Date(task.deadline.seconds * 1000)
-          : null;
-        return (
-          deadline &&
-          deadline.toDateString() === now.toDateString() &&
-          task.status_id !== "2v352059n273"
-        );
-      }),
-      upcoming: $tasks.filter((task) => {
-        const deadline = task.deadline?.seconds
-          ? new Date(task.deadline.seconds * 1000)
-          : null;
-        return (
-          deadline &&
-          deadline > now &&
-          deadline.toDateString() !== now.toDateString()
-        );
-      }),
-      noDeadline: $tasks.filter((task) => !task.deadline),
+      overdue: groupByAssignees(overdue),
+      dueToday: groupByAssignees(dueToday),
+      upcoming: groupByAssignees(upcoming),
+      noDeadline: groupByAssignees(noDeadline),
     };
   });
   $: console.log("groupedTasks", $groupedTasks);
@@ -81,7 +107,7 @@
       (dossier.timetracking || []).map((entry) => ({
         ...entry,
         name: dossier.name, // Add the dossier's name to each timetracking entry
-      }))
+      })),
     );
   });
   $: console.log("Logs", $logs);
@@ -141,7 +167,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks"
+          "tasks",
         );
         const taskSnapshots = await getDocs(tasksRef);
         const tasksArray = [];
@@ -169,10 +195,10 @@
                 "workspaces",
                 localStorage.getItem("workspace"),
                 "files",
-                fileId
-              )
-            )
-          )
+                fileId,
+              ),
+            ),
+          ),
         );
 
         const fileDataMap = new Map();
@@ -194,10 +220,46 @@
       }
     }
   }
+
+  // Function to clear cache and refetch data
+  async function refreshData(event) {
+    event.target.classList.add("refreshing");
+
+    localStorage.removeItem("workspaceFiles");
+    localStorage.removeItem("workspaceFilesTimestamp");
+    localStorage.removeItem("workspaceTasks");
+    localStorage.removeItem("workspaceTasksTimestamp");
+
+    // Run fetchFiles and fetchTasks in parallel
+    await Promise.all([fetchFiles(), fetchTasks()]);
+
+    // Remove the "refreshing" class after both functions have completed
+    event.target.classList.remove("refreshing");
+  }
+
+  function formatToEuro(amount) {
+    return new Intl.NumberFormat("nl-NL", {
+      style: "currency",
+      currency: "EUR",
+    }).format(amount);
+  }
+
+  function getImageSrc(assignee) {
+    // Convert assignee to lowercase and append .jpg
+    const filename = `${assignee.toLowerCase()}.jpg`;
+    return `/img/people/${filename}`; // Update with the correct path to your images
+  }
 </script>
 
 <section class="dashboard">
-  <h1>Welkom terug!</h1>
+  <div class="top">
+    <h2>Welkom terug!</h2>
+    <button class="basic">
+      <span class="refresh_data" on:click={refreshData}>
+        <ArrowsClockwise size={20} />
+      </span>
+    </button>
+  </div>
   <div class="card_grid">
     <!-- Card for Tasks -->
     <div class="card tasks">
@@ -209,13 +271,17 @@
             class:active={$selectedTab === "today"}
             on:click={() => selectedTab.set("today")}
           >
-            Vandaag <span>{$groupedTasks.dueToday.length}</span>
+            Vandaag <span
+              >{Object.values($groupedTasks.dueToday).flat().length}</span
+            >
           </button>
           <button
             class:active={$selectedTab === "overdue"}
             on:click={() => selectedTab.set("overdue")}
           >
-            Verlopen <span>{$groupedTasks.overdue.length}</span>
+            Verlopen <span
+              >{Object.values($groupedTasks.overdue).flat().length}</span
+            >
           </button>
         </div>
       </div>
@@ -224,27 +290,48 @@
         {#if $groupedTasks}
           <ul class="task-items">
             {#if $selectedTab === "today"}
-              {#each $groupedTasks.dueToday as task}
-                <li class="task-item">
-                  {task.title}
+              {#each Object.entries($groupedTasks.dueToday) as [assignee, tasks]}
+                <li class="assignee-group">
+                  <div class="assignees">
+                    <img
+                      width="50px"
+                      height="50px"
+                      src={getImageSrc(assignee)}
+                      alt="{assignee} profielfoto"
+                    />
+                  </div>
+                  <div class="amount">
+                    <a href="/tasks">
+                      {tasks.length === 1
+                        ? `${tasks.length}` + " taak openstaand"
+                        : `${tasks.length}` + " taken openstaand"}</a
+                    >
+                  </div>
                 </li>
               {/each}
-              {#if $groupedTasks.dueToday.length === 0}
+              {#if Object.keys($groupedTasks.dueToday).length === 0}
                 <p>Geen taken die vandaag verlopen</p>
               {/if}
             {/if}
 
             {#if $selectedTab === "overdue"}
-              {#each $groupedTasks.overdue as task}
-                <li class="task-item">
-                  {task.title}<span class="deadline"
-                    ><Clock size={16} />{new Date(
-                      task.deadline.seconds * 1000
-                    ).toLocaleDateString()}</span
-                  >
+              {#each Object.entries($groupedTasks.overdue) as [assignee, tasks]}
+                <li class="assignee-group">
+                  <h3>{assignee}</h3>
                 </li>
               {/each}
-              {#if $groupedTasks.overdue.length === 0}
+              {#if Object.keys($groupedTasks.overdue).length === 0}
+                <p>Geen verlopen taken</p>
+              {/if}
+            {/if}
+
+            {#if $selectedTab === "overdue"}
+              {#each Object.entries($groupedTasks.overdue) as [assignees, tasks]}
+                <li class="assignee-group">
+                  <h3>{assignees}</h3>
+                </li>
+              {/each}
+              {#if Object.keys($groupedTasks.overdue).length === 0}
                 <p>Geen verlopen taken</p>
               {/if}
             {/if}
@@ -257,9 +344,14 @@
     <div class="card timetracking">
       <div class="top">
         <h2>
-          Omzet
+          Omzet deze {$selectedPeriod}
           {#if percentualChange}
             <div>
+              <span class="turnover" data-turnover={currentTurnover}>
+                {#if currentTurnover > 0}
+                  {formatToEuro(currentTurnover)}
+                {/if}
+              </span>
               <span
                 class="change"
                 data-change={percentualChange}
@@ -299,6 +391,7 @@
             logs={$logs}
             period={$selectedPeriod}
             bind:percentualChange
+            bind:currentTurnover
           />
         {/if}
       </div>
@@ -377,6 +470,43 @@
 </section>
 
 <style lang="scss">
+  .top {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 30px;
+    flex-wrap: wrap;
+    // padding-bottom: 30px;
+    // border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+
+    @media (max-width: $md) {
+      padding-bottom: 15px;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      margin-bottom: 0;
+    }
+
+    // position: sticky;
+    // top: 0px;
+    // z-index: 1;
+    // background-color: #f8f8f8;
+  }
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  :global(.refreshing) {
+    animation: spin 1s infinite ease-in-out;
+  }
   .dashboard {
     h1 {
       margin-bottom: 40px;
@@ -385,6 +515,9 @@
       display: grid;
       gap: 30px;
       grid-template-columns: repeat(auto-fit, minmax(min(490px, 100%), 1fr));
+      @media (min-width: $xxl) {
+        grid-template-columns: 1fr 1fr;
+      }
       .card {
         padding: 30px;
         border-radius: 15px;
@@ -426,6 +559,18 @@
           display: flex;
           gap: 10px;
           align-items: center;
+
+          div {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+          }
+
+          .turnover {
+            font-size: 1.5rem;
+            line-height: 1.6;
+            color: var(--gray-400);
+          }
 
           .change {
             border-radius: 5px;
@@ -497,14 +642,22 @@
           > div {
             width: 100%;
           }
+          &:has(.task-items) {
+            display: flex;
+          }
           ul {
             list-style-type: none;
             padding-left: 0;
             width: 100%;
+            flex-grow: 1;
 
             &.task-items {
               max-height: 260px;
               overflow-y: auto;
+
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              // gap: 15px;
 
               /* ===== Scrollbar CSS ===== */
 
@@ -535,6 +688,48 @@
                 font-size: 1.4rem;
                 border-radius: 15px;
                 background-color: var(--background);
+                grid-column: span 2;
+              }
+
+              .assignee-group {
+                padding: 30px;
+                border: none;
+                // border: 1px solid var(--border);
+                justify-content: center;
+                font-size: 1.6rem;
+                // font-weight: 500;
+                border-top: 1px solid var(--border);
+
+                a {
+                  text-decoration: none;
+                  color: var(--gray-500);
+                  font-size: 1.6rem;
+                }
+
+                &:nth-of-type(odd) {
+                  border-right: 1px solid var(--border);
+                }
+                &:nth-child(1),
+                &:nth-child(2) {
+                  border-top: none;
+                }
+                .assignees {
+                  display: flex;
+                  flex-direction: row-reverse;
+                  &:empty {
+                    display: none;
+                  }
+
+                  img {
+                    border-radius: 50%;
+                    border: 3px solid #fff;
+                    filter: brightness(0.95);
+
+                    &:not(:first-child) {
+                      margin-right: -12px;
+                    }
+                  }
+                }
               }
             }
 

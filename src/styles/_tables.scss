@@ -28,6 +28,7 @@ table {
       th:first-child {
         border-top-left-radius: var(--border-radius);
       }
+
       th:last-child {
         border-top-right-radius: var(--border-radius);
       }
@@ -106,7 +107,7 @@ table {
       .start_date {
         display: block;
 
-        + span {
+        +span {
           display: block;
           line-height: 0.5em;
           opacity: 0.35;
@@ -302,12 +303,14 @@ table {
   th {
     padding: 0 15px;
 
-    @media (max-width: $sm) {
-      padding: 0 10px;
-
+    @media (max-width: $xlm) {
       &.hide_mobile {
         display: none;
       }
+    }
+
+    @media (max-width: $sm) {
+      padding: 0 10px;
     }
 
     &.stretch {
@@ -331,6 +334,7 @@ table {
     td:first-child {
       border-bottom-left-radius: var(--border-radius);
     }
+
     td:last-child {
       border-bottom-right-radius: var(--border-radius);
     }
@@ -338,7 +342,7 @@ table {
 }
 
 [data-count=""] {
-  ~ .eg_notice {
+  ~.eg_notice {
     display: none;
   }
 }
@@ -346,7 +350,7 @@ table {
 [data-count="0"] {
   display: none;
 
-  ~ .eg_notice {
+  ~.eg_notice {
     display: flex;
   }
 }
@@ -365,13 +369,13 @@ table {
   &[data-count="0"] {
     display: none;
 
-    ~ .eg_notice {
+    ~.eg_notice {
       display: flex;
     }
   }
 
   &[data-count]:not([data-count="0"]) {
-    ~ .eg_notice {
+    ~.eg_notice {
       display: none;
     }
   }
@@ -537,7 +541,7 @@ table {
     .start_date {
       display: none;
 
-      + span {
+      +span {
         display: none;
       }
     }
