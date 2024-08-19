@@ -664,5 +664,9 @@
     background-size: 16px;
     padding: 15px 30px 15px 40px;
     margin-bottom: 30px;
+
+    @media (max-width: $sm) {
+      padding-block: 13px;
+    }
   }
 </style>

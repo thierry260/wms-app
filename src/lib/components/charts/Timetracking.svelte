@@ -10,6 +10,22 @@
   let chart;
   let previousTurnover = 0; // Store previous period's turnover
 
+  function getDayNameInDutch(dayIndex) {
+    const dayNames = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
+    return dayNames[dayIndex];
+  }
+
+  function convertToHHMM(decimalHours) {
+    // Extract hours
+    const hours = Math.floor(decimalHours);
+
+    // Extract minutes by multiplying the decimal part by 60
+    const minutes = Math.round((decimalHours - hours) * 60);
+
+    // Return in HH:MM format
+    return `${hours}:${minutes.toString().padStart(2, "0")}`;
+  }
+
   function getDateRange(period, offset = 0) {
     const now = new Date();
     let start, end;
@@ -56,8 +72,15 @@
     // Generate all dates for the selected period
     let currentDate = new Date(start);
     while (currentDate <= end) {
-      const day = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
-      categories.push(day);
+      let category;
+      if (period === "week") {
+        // Use day names for week view
+        category = getDayNameInDutch(currentDate.getDay());
+      } else {
+        // Use day/month for month view
+        category = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
+      }
+      categories.push(category);
       hoursSeries.push(0);
       turnoverSeries.push(0);
       billabilitySeries.push(0);
@@ -69,8 +92,15 @@
 
       // Only consider logs within the selected period
       if (date >= start && date <= end) {
-        const day = `${date.getDate()}/${date.getMonth() + 1}`;
-        const index = categories.indexOf(day);
+        let category;
+        if (period === "week") {
+          // Use day names for week view
+          category = getDayNameInDutch(date.getDay());
+        } else {
+          // Use day/month for month view
+          category = `${date.getDate()}/${date.getMonth() + 1}`;
+        }
+        const index = categories.indexOf(category);
         const hours = parseFloat((log.minutes / 60).toFixed(2)); // Convert minutes to hours
         const turnover = log.billable
           ? parseFloat((hours * 250).toFixed(2))
@@ -152,6 +182,24 @@
     try {
       const chartData = transformLogsToChartData(logs, period);
 
+      const turnoverSeriesWithColors = chartData.turnoverSeries.map(
+        (value, index) => {
+          const billability = chartData.billabilitySeries[index] / 100; // Normalize billability to 0-1 range
+          return {
+            y: value,
+            color: {
+              linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+              stops: [
+                [0, "#d4e3fc"],
+                [1 - billability, "#d4e3fc"], // Light blue for non-billable portion
+                [1 - billability, "#22ABE7"], // Darker blue for billable portion
+                [1, "#22ABE7"],
+              ],
+            },
+          };
+        },
+      );
+
       if (chart) {
         chart.update({
           xAxis: {
@@ -159,24 +207,14 @@
           },
           series: [
             {
-              name: "Uren",
-              data: chartData.hoursSeries,
-              type: "spline",
-              lineWidth: 2,
-              marker: {
-                enabled: false,
-              },
-            },
-            {
               name: "Omzet",
-              data: chartData.turnoverSeries,
-              type: "areaspline",
+              data: turnoverSeriesWithColors,
+              type: "column",
               lineWidth: 2,
-              color: "rgb(45, 30, 237)",
               marker: {
                 enabled: false,
               },
-              yAxis: 1,
+              // yAxis: 1,
               fillColor: {
                 linearGradient: {
                   x1: 0,
@@ -200,29 +238,13 @@
               const index = this.points[0].point.index;
               return `
                 <i>${this.x}</i><br/>
-                Uren: <b>${chartData.hoursSeries[index]}</b><br/>
-                Omzet: <b>€${chartData.turnoverSeries[index]}</b><br/>
-                Declarabiliteit: <b>${chartData.billabilitySeries[index].toFixed(2)}%</b>
+                Tijd: <b>${convertToHHMM(chartData.hoursSeries[index])}</b><br/>
+                Declarabiliteit: <b>${chartData.billabilitySeries[index].toFixed(2)}%</b><br/>
+                Omzet: <b>€${chartData.turnoverSeries[index]}</b>
               `;
             },
           },
           yAxis: [
-            {
-              title: {
-                text: "Uren",
-                style: {
-                  fontSize: "12px",
-                },
-              },
-              labels: {
-                formatter: function () {
-                  return Math.floor(this.value); // Remove decimals
-                },
-                style: {
-                  fontSize: "12px",
-                },
-              },
-            },
             {
               title: {
                 text: "Omzet (€)",
@@ -245,7 +267,7 @@
       } else {
         chart = Highcharts.chart("chart-container", {
           chart: {
-            type: "area",
+            type: "column",
             height: 260,
           },
           title: {
@@ -263,22 +285,6 @@
             },
           },
           yAxis: [
-            {
-              title: {
-                text: "Uren",
-                style: {
-                  fontSize: "12px",
-                },
-              },
-              labels: {
-                formatter: function () {
-                  return Math.floor(this.value); // Remove decimals
-                },
-                style: {
-                  fontSize: "12px",
-                },
-              },
-            },
             {
               title: {
                 text: "Omzet (€)",
@@ -310,33 +316,23 @@
             formatter: function () {
               const index = this.points[0].point.index;
               return `
-                <b>${this.x}</b><br/>
-                Uren: ${chartData.hoursSeries[index]}<br/>
-                Omzet: €${chartData.turnoverSeries[index]}<br/>
-                <b>Billability: ${chartData.billabilitySeries[index].toFixed(2)}%</b>
+                <i>${this.x}</i><br/>
+                Tijd: <b>${convertToHHMM(chartData.hoursSeries[index])}</b><br/>
+                Declarabiliteit: <b>${chartData.billabilitySeries[index].toFixed(2)}%</b><br/>
+                Omzet: <b>€${chartData.turnoverSeries[index]}</b>
               `;
             },
           },
           series: [
             {
-              name: "Uren",
-              data: chartData.hoursSeries,
-              type: "spline",
-              lineWidth: 2,
-              marker: {
-                enabled: false,
-              },
-            },
-            {
               name: "Omzet",
-              data: chartData.turnoverSeries,
-              type: "areaspline",
+              data: turnoverSeriesWithColors,
+              type: "column",
               lineWidth: 2,
-              color: "rgb(45, 30, 237)",
               marker: {
                 enabled: false,
               },
-              yAxis: 1,
+              // yAxis: 1,
               fillColor: {
                 linearGradient: {
                   x1: 0,

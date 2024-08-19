@@ -22,11 +22,12 @@
     isExternal: false,
     kilometers: "",
   };
+
   const dispatch = createEventDispatcher();
   let currentTimetracking = writable(defaults);
   let dossiers = [];
   let dossiersData = [];
-  let dialogEl = "";
+  let dialogEl;
 
   onMount(async () => {
     try {
@@ -108,9 +109,15 @@
   }
 
   function openModal() {
-    currentTimetracking.set(defaults);
+    // Ensure store is reset before showing the modal
+    currentTimetracking.set({ ...defaults });
 
-    dialogEl.showModal();
+    // Wait a tick to ensure state update before showing modal
+    setTimeout(() => {
+      if (dialogEl) {
+        dialogEl.showModal();
+      }
+    }, 0);
   }
 </script>
 
@@ -245,6 +252,22 @@
 </dialog>
 
 <style lang="scss">
+  @media (max-width: $md) {
+    .mobile_icon_only {
+      position: fixed;
+      bottom: 80px;
+      right: 40px;
+      z-index: 1;
+
+      right: unset;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      bottom: 55px;
+      z-index: 9999;
+      background: #258ad4;
+    }
+  }
   section {
     .top {
       display: flex;
@@ -255,11 +278,11 @@
       flex-wrap: wrap;
       padding-bottom: 30px;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 50px;
+      margin-bottom: 30px;
 
       @media (max-width: $md) {
         padding-bottom: 15px;
-        margin-bottom: 30px;
+        margin-bottom: 10px;
       }
 
       h2 {

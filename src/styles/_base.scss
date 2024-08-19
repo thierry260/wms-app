@@ -24,7 +24,7 @@ body {
   text-rendering: optimizeLegibility;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "liga";
-  background-color: #f8f8f8;
+  background-color: var(--body-background, #f8f8f8);
 
   &.no_scroll {
     overflow: hidden;

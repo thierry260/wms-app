@@ -95,6 +95,7 @@
     await fetchTaskStatuses();
     await fetchTasks();
     allTasks = get(tasks);
+    console.log(allTasks);
     sortAndFilterTasks(get(sortOrder));
     setupSortable();
   });
@@ -578,7 +579,7 @@
   }
 
   function filterAndSortTasks() {
-    const query = get(searchQuery);
+    const query = get(searchQuery).toLowerCase();
 
     const filteredTasks = allTasks.filter((task) => {
       // Normalize task fields and search query for case-insensitive comparison
@@ -587,9 +588,18 @@
       const taskAssignees = task.assignees
         .map((assignee) => assignee.toLowerCase())
         .join(" ");
-      const taskDossierNumber = task.file_id.id || "Geen dossier";
-      const taskDossierLabel = task.file_id.label || "Geen dossier";
+      const taskDossierNumber = task.file_id?.id || "geen dossier";
+      const taskDossierLabel =
+        task.file_id?.label?.toLowerCase() || "geen dossier";
       const taskFile = task.fileData?.name?.toLowerCase() || "";
+
+      console.log("Task Title:", taskTitle);
+      console.log("Task Description:", taskDescription);
+      console.log("Task Assignees:", taskAssignees);
+      console.log("Task Dossier Number:", taskDossierNumber);
+      console.log("Task Dossier Label:", taskDossierLabel);
+      console.log("Task File:", taskFile);
+      console.log("Query:", query);
 
       // Check if the task matches the search query
       return (
@@ -1404,8 +1414,8 @@
     padding-left: 35px;
     width: 100%;
 
-    @media (min-width: $xlm + 1) {
-      max-width: 41px;
+    @media (min-width: $xlm) {
+      max-width: 42px;
       padding-inline: 18px;
       transition: max-width 0.2s ease-out;
       cursor: pointer;

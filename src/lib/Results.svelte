@@ -129,7 +129,7 @@
     // Sort logs by date and time
     data.sort((a, b) => b.date.toDate() - a.date.toDate());
 
-    data = data.slice(0, 50);
+    // data = data.slice(0, 50);
 
     logs.set(data);
   }
@@ -688,7 +688,7 @@
   }
 
   .logs-container {
-    margin-top: 30px; /* Ruimte tussen de lijst en de tekst */
+    margin-top: 10px; /* Ruimte tussen de lijst en de tekst */
     ul {
       list-style-type: none;
       padding: 0;
@@ -870,6 +870,7 @@
     justify-content: space-between;
     gap: 10px;
     align-items: stretch;
+    padding-block: 20px;
     .basic {
       min-width: 48px;
     }
@@ -881,7 +882,13 @@
   .search_filter button {
     // min-width: 50px;
   }
-  @media (max-width: 575px) {
+  @media (max-width: $md) {
+    .search_filter {
+      position: sticky;
+      top: -30px;
+      background-color: var(--body-background, #f8f8f8);
+      z-index: 1;
+    }
     .search_filter button {
       min-width: 42px;
     }
@@ -918,5 +925,9 @@
     background-repeat: no-repeat;
     background-size: 16px;
     padding: 15px 30px 15px 40px;
+
+    @media (max-width: $sm) {
+      padding-block: 13px;
+    }
   }
 </style>
