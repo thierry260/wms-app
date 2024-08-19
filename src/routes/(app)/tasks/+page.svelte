@@ -28,6 +28,7 @@
     DotsSixVertical,
     ExclamationMark,
     ArrowDown,
+    Funnel,
   } from "phosphor-svelte";
 
   let taskStatuses = writable([]);
@@ -59,6 +60,18 @@
   let startX;
   let scrollLeft;
 
+  let searchQuery = writable(""); // New writable store for search query
+  $: searchQuery, filterAndSortTasks();
+  $: if (typeof $searchQuery !== "string") {
+    console.error("searchQuery is not a string!", $searchQuery);
+  }
+
+  let filtersVisible = writable(false);
+
+  function toggleFilters() {
+    filtersVisible.update((visible) => !visible);
+  }
+
   onMount(async () => {
     // Fetch assignees (Example: hardcoded, adjust based on your structure)
     assignees.set(["Michel", "Mike", "Toon", "Thierry"]);
@@ -68,14 +81,14 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files"
+      "files",
     );
     const fileSnapshots = await getDocs(filesRef);
     files.set(
       fileSnapshots.docs.map((doc) => ({
         id: doc.id,
         label: `${doc.id} - ${doc.data().name}`,
-      }))
+      })),
     );
 
     // Fetch task statuses
@@ -92,7 +105,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const taskSnapshots = await getDocs(tasksRef);
 
@@ -127,10 +140,10 @@
             "workspaces",
             localStorage.getItem("workspace"),
             "files",
-            fileId
-          )
-        )
-      )
+            fileId,
+          ),
+        ),
+      ),
     );
 
     // Map file data to file IDs
@@ -164,7 +177,7 @@
 
         // Check if task includes all selected assignees
         const matches = activeFilters.assignees.every((filterAssignee) =>
-          taskAssignees.includes(filterAssignee.toLowerCase())
+          taskAssignees.includes(filterAssignee.toLowerCase()),
         );
         return matches;
       });
@@ -195,7 +208,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -212,7 +225,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "tasks",
-      taskId
+      taskId,
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
@@ -221,12 +234,12 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
     const updatedStatuses = workspaceData.taskStatuses.map((status) =>
-      status.id === statusId ? { ...status, name: newName } : status
+      status.id === statusId ? { ...status, name: newName } : status,
     );
     await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
   }
@@ -236,7 +249,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const q = query(tasksRef, where("status_id", "==", statusId));
     const taskSnapshots = await getDocs(q);
@@ -251,12 +264,12 @@
       const workspaceRef = doc(
         db,
         "workspaces",
-        localStorage.getItem("workspace")
+        localStorage.getItem("workspace"),
       );
       const workspaceSnap = await getDoc(workspaceRef);
       const workspaceData = workspaceSnap.data();
       const updatedStatuses = workspaceData.taskStatuses.filter(
-        (status) => status.id !== statusId
+        (status) => status.id !== statusId,
       );
 
       if (taskSnapshots.size > 0) {
@@ -358,7 +371,7 @@
           const workspaceRef = doc(
             db,
             "workspaces",
-            localStorage.getItem("workspace")
+            localStorage.getItem("workspace"),
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
@@ -366,7 +379,7 @@
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
             taskStatuses: newOrder.map((id) =>
-              workspaceData.taskStatuses.find((status) => status.id === id)
+              workspaceData.taskStatuses.find((status) => status.id === id),
             ),
           });
         },
@@ -418,7 +431,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "tasks",
-        taskData.id
+        taskData.id,
       );
       await updateDoc(taskRef, {
         ...taskData,
@@ -434,7 +447,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks"
+          "tasks",
         );
         await addDoc(tasksRef, {
           ...taskData,
@@ -464,7 +477,7 @@
           "workspaces",
           localStorage.getItem("workspace"),
           "tasks",
-          taskData.id
+          taskData.id,
         );
 
         // Delete the document
@@ -511,7 +524,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const newStatus = { id: newStatusId, name: statusName };
 
@@ -557,85 +570,146 @@
     const walk = (x - startX) * 3; // Scroll speed multiplier
     event.currentTarget.scrollLeft = scrollLeft - walk;
   }
+
+  function handleSearchInput(event) {
+    const inputValue = event.target.value || ""; // Ensure it's a string
+    searchQuery.set(inputValue.toLowerCase().trim()); // Set the search query as a lowercase string
+    filterAndSortTasks(); // Trigger the filtering and sorting logic
+  }
+
+  function filterAndSortTasks() {
+    const query = get(searchQuery);
+
+    const filteredTasks = allTasks.filter((task) => {
+      // Normalize task fields and search query for case-insensitive comparison
+      const taskTitle = task.title.toLowerCase();
+      const taskDescription = task.description?.toLowerCase() || "";
+      const taskAssignees = task.assignees
+        .map((assignee) => assignee.toLowerCase())
+        .join(" ");
+      const taskDossierNumber = task.file_id.id || "Geen dossier";
+      const taskDossierLabel = task.file_id.label || "Geen dossier";
+      const taskFile = task.fileData?.name?.toLowerCase() || "";
+
+      // Check if the task matches the search query
+      return (
+        taskTitle.includes(query) ||
+        taskDescription.includes(query) ||
+        taskAssignees.includes(query) ||
+        taskFile.includes(query) ||
+        taskDossierNumber.includes(query) ||
+        taskDossierLabel.includes(query)
+      );
+    });
+
+    // Apply sorting to the filtered tasks
+    const sortedTasks = sortAndFilterTasks(
+      filteredTasks,
+      get(sortType),
+      get(sortOrder),
+    );
+    tasks.set(sortedTasks);
+  }
 </script>
 
 <div class="filter-sort-controls">
-  <div class="assignee-filters">
-    {#each $assignees as assignee}
-      <label>
-        <input
-          type="checkbox"
-          value={assignee}
-          name="[]"
-          on:change={async (e) => {
-            filters.update((f) => {
-              let updatedFilters;
-              if (e.target.checked) {
-                // Add assignee to the filters
-                updatedFilters = {
-                  ...f,
-                  assignees: [...f.assignees, assignee],
-                };
-              } else {
-                // Remove assignee from the filters
-                updatedFilters = {
-                  ...f,
-                  assignees: f.assignees.filter((a) => a !== assignee),
-                };
-              }
-              return updatedFilters;
-            });
+  <!-- Button to toggle filters on mobile -->
+  <button class="filter-toggle basic" on:click={toggleFilters}>
+    {#if $filtersVisible}
+      <X size={16} />
+    {:else}
+      <Funnel size={16} />
+    {/if}
+    Filters
+  </button>
 
-            // Wait for the state to update before sorting and filtering
-            await tick();
+  <!-- Container for the filters -->
+  <div class="filters-container" class:visible={$filtersVisible}>
+    <div class="assignee-filters">
+      {#each $assignees as assignee}
+        <label>
+          <input
+            type="checkbox"
+            value={assignee}
+            name="[]"
+            on:change={async (e) => {
+              filters.update((f) => {
+                let updatedFilters;
+                if (e.target.checked) {
+                  // Add assignee to the filters
+                  updatedFilters = {
+                    ...f,
+                    assignees: [...f.assignees, assignee],
+                  };
+                } else {
+                  // Remove assignee from the filters
+                  updatedFilters = {
+                    ...f,
+                    assignees: f.assignees.filter((a) => a !== assignee),
+                  };
+                }
+                return updatedFilters;
+              });
 
-            // Always start from the full list of tasks
-            const filteredAndSortedTasks =
-              get(filters).assignees.length === 0
-                ? allTasks // Show all tasks if no filters are selected
-                : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
+              // Wait for the state to update before sorting and filtering
+              await tick();
 
-            tasks.set(filteredAndSortedTasks);
-          }}
-        />
-        <figure>
-          <img
-            src="/img/people/{assignee.toLowerCase()}.jpg"
-            width="25px"
-            height="25px"
+              // Always start from the full list of tasks
+              const filteredAndSortedTasks =
+                get(filters).assignees.length === 0
+                  ? allTasks // Show all tasks if no filters are selected
+                  : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
+
+              tasks.set(filteredAndSortedTasks);
+            }}
           />
-        </figure>
-        {assignee}
-      </label>
-    {/each}
-  </div>
+          <figure>
+            <img
+              src="/img/people/{assignee.toLowerCase()}.jpg"
+              width="25px"
+              height="25px"
+            />
+          </figure>
+          {assignee}
+        </label>
+      {/each}
+    </div>
 
-  <div class="sorting">
-    <label for="sortTypeDropdown">Sorteer op:</label>
-    <select
-      id="sortTypeDropdown"
-      on:change={(e) => {
-        sortType.set(e.target.value);
-        sortAndFilterTasks($tasks, e.target.value, $sortOrder);
-      }}
-    >
-      <option value="deadline" selected>Deadline</option>
-      <option value="priority">Prioriteit</option>
-    </select>
-    <button
-      class="basic sort-order-toggle"
-      on:click={() => {
-        const newOrder = $sortOrder === "asc" ? "desc" : "asc";
-        sortOrder.set(newOrder);
-        sortAndFilterTasks($tasks, $sortType, newOrder);
-      }}
-    >
-      {#if $sortOrder === "asc"}
-        ↑
-      {:else}
-        ↓
-      {/if}
-    </button>
+    <div class="sorting">
+      <label for="sortTypeDropdown">Sorteer op:</label>
+      <select
+        id="sortTypeDropdown"
+        on:change={(e) => {
+          sortType.set(e.target.value);
+          sortAndFilterTasks($tasks, e.target.value, $sortOrder);
+        }}
+      >
+        <option value="deadline" selected>Deadline</option>
+        <option value="priority">Prioriteit</option>
+      </select>
+      <button
+        class="basic sort-order-toggle"
+        on:click={() => {
+          const newOrder = $sortOrder === "asc" ? "desc" : "asc";
+          sortAndFilterTasks($tasks, $sortType, newOrder);
+        }}
+      >
+        {#if $sortOrder === "asc"}
+          ↑
+        {:else}
+          ↓
+        {/if}
+      </button>
+    </div>
+
+    <div class="task-search">
+      <input
+        type="text"
+        class="search"
+        placeholder="Zoek taken..."
+        on:input={handleSearchInput}
+      />
+    </div>
   </div>
 </div>
 <div
@@ -667,7 +741,7 @@
           data-status={status.id}
         >
           {#if Array.isArray($tasks)}
-            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder ) as task (task.id)}
+            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder, ) as task (task.id)}
               <li
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
@@ -838,7 +912,19 @@
     flex-wrap: wrap;
     gap: 20px 20px;
 
+    .filters-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px 30px;
+      width: 100%;
+
+      @media (max-width: $xlm) {
+        display: none;
+      }
+    }
+
     .assignee-filters {
+      flex-grow: 1;
       label {
         padding: 5px 10px 5px 6px;
         border-radius: 55px;
@@ -913,6 +999,9 @@
       flex-direction: row;
       gap: 10px;
       align-items: stretch;
+      @media (max-width: $xlm) {
+        width: 100%;
+      }
       label {
         flex-shrink: 0;
         align-self: center;
@@ -923,6 +1012,60 @@
       }
     }
   }
+
+  .filter-toggle {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 20px;
+    background-color: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    width: 100%;
+  }
+
+  @media (max-width: $xlm) {
+    .filter-sort-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .filter-toggle {
+      display: flex;
+    }
+
+    .filters-container {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .filters-container.visible {
+      display: flex;
+    }
+
+    .assignee-filters {
+      overflow-x: auto;
+      white-space: nowrap;
+      -ms-overflow-style: none; /* Internet Explorer 10+ */
+      scrollbar-width: none; /* Firefox */
+      margin-inline: -30px;
+      padding-inline: 30px;
+
+      &::-webkit-scrollbar {
+        display: none; /* Safari and Chrome */
+      }
+    }
+  }
+
   .kanban-board {
     --container: 1520px;
     display: flex;
@@ -1249,6 +1392,35 @@
       .basic {
         @media (max-width: $sm) {
           display: none;
+        }
+      }
+    }
+  }
+  input.search.search {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a8a8a8' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z'%3E%3C/path%3E%3C/svg%3E");
+    background-position: left 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-left: 35px;
+    width: 100%;
+
+    @media (min-width: $xlm + 1) {
+      max-width: 41px;
+      padding-inline: 18px;
+      transition: max-width 0.2s ease-out;
+      cursor: pointer;
+      &::placeholder {
+        opacity: 0;
+        transition: opacity 0.2s ease-out;
+      }
+
+      &:focus,
+      &:not(:placeholder-shown) {
+        max-width: 300px;
+        padding-inline: 40px 20px;
+        cursor: unset;
+        &::placeholder {
+          opacity: 0.5;
         }
       }
     }

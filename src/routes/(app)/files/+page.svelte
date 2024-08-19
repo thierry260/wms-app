@@ -13,7 +13,7 @@
         Timestamp,
     } from "firebase/firestore";
     import { onMount } from "svelte";
-    import { writable, get } from "svelte/store";
+    import { writable, get, derived } from "svelte/store";
     import Select from "svelte-select";
     import { X, TrashSimple, Plus } from "phosphor-svelte";
     import { format } from "date-fns";
@@ -38,6 +38,24 @@
     let errorMessage = writable("");
     let successMessage = writable("");
     let files = writable([]);
+    let searchQuery = writable("");
+    let filteredFiles = derived(
+        [files, searchQuery],
+        ([$files, $searchQuery]) => {
+            const query = $searchQuery.toLowerCase().trim();
+            return $files.filter((file) => {
+                return (
+                    file.id.toLowerCase().includes(query) ||
+                    file.name.toLowerCase().includes(query) ||
+                    file.dossierstatus.toLowerCase().includes(query) ||
+                    clients
+                        .find((client) => client.id === file.client_id)
+                        ?.label.toLowerCase()
+                        .includes(query)
+                );
+            });
+        },
+    );
     let dialogEl = "";
 
     onMount(async () => {
@@ -470,41 +488,53 @@
                 >
             </div>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Dossier</th>
-                    <th>Contact</th>
-                    <th>Status</th>
-                    <th class="hide_mobile">Opvolgdatum</th>
-                </tr>
-            </thead>
-            <tbody>
-                {#each $files as file}
-                    <tr
-                        on:click={(event) => {
-                            // console.log("Clicked", file);
-                            openModal(file);
-                        }}
-                    >
-                        <td class="limit_width">{file.id}. {file.name}</td>
-                        <td class="limit_width">
-                            {clients.find(
-                                (client) => client.id === file.client_id,
-                            )?.label || "Onbekend"}
-                        </td>
-                        <td>{file.dossierstatus}</td>
-                        <td class="hide_mobile">
-                            {file.opvolgdatum
-                                ? new Date(
-                                      file.opvolgdatum.seconds * 1000,
-                                  ).toLocaleDateString()
-                                : "Geen"}
-                        </td>
+        <input
+            type="text"
+            class="search"
+            placeholder="Zoek dossiers..."
+            bind:value={$searchQuery}
+        />
+        {#if $filteredFiles.length}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Dossier</th>
+                        <th>Contact</th>
+                        <th>Status</th>
+                        <th class="hide_mobile">Opvolgdatum</th>
                     </tr>
-                {/each}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {#each $filteredFiles as file}
+                        <tr
+                            on:click={(event) => {
+                                // console.log("Clicked", file);
+                                openModal(file);
+                            }}
+                        >
+                            <td class="limit_width">{file.id}. {file.name}</td>
+                            <td class="limit_width">
+                                {file.client_id.voornaam
+                                    ? file.client_id.voornaam +
+                                      " " +
+                                      file.client_id.achternaam
+                                    : "Onbekend"}
+                            </td>
+                            <td>{file.dossierstatus}</td>
+                            <td class="hide_mobile">
+                                {file.opvolgdatum
+                                    ? new Date(
+                                          file.opvolgdatum.seconds * 1000,
+                                      ).toLocaleDateString()
+                                    : "Geen"}
+                            </td>
+                        </tr>
+                    {/each}
+                </tbody>
+            </table>
+        {:else}
+            <p>Geen resultaten</p>
+        {/if}
     </section>
 </main>
 
@@ -567,5 +597,13 @@
                 }
             }
         }
+    }
+    input.search.search {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a8a8a8' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z'%3E%3C/path%3E%3C/svg%3E");
+        background-position: left 15px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding: 15px 30px 15px 40px;
+        margin-bottom: 30px;
     }
 </style>

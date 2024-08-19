@@ -6,14 +6,7 @@
   import Result from "$lib/Results.svelte";
   import Filter from "$lib/Filter.svelte";
   import { writable } from "svelte/store";
-  import {
-    CaretCircleLeft,
-    CaretCircleRight,
-    TrashSimple,
-    Funnel,
-    X,
-    Plus,
-  } from "phosphor-svelte";
+  import { X, Plus } from "phosphor-svelte";
   import Select from "svelte-select";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
   import { db } from "$lib/firebase"; // Import the Firebase instance
@@ -115,19 +108,6 @@
   }
 
   function openModal() {
-    // console.log(file);
-    // if (file && file.id) {
-    //   currentTimetracking.set({
-    //     ...file,
-    //     fileId: file.id,
-    //     opvolgdatum: file.opvolgdatum
-    //       ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
-    //       : "", // Convert and format the date
-    //   });
-    // } else {
-    //   currentTimetracking.set(defaults);
-    // }
-
     currentTimetracking.set(defaults);
 
     dialogEl.showModal();
