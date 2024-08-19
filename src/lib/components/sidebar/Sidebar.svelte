@@ -1,4 +1,5 @@
 <script>
+  import { user } from "$lib/stores/user";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
@@ -13,6 +14,8 @@
     ListChecks,
     Layout,
   } from "phosphor-svelte";
+
+  $: currentUser = $user;
 
   let showMore = false;
   let isMobile = true;
@@ -72,6 +75,17 @@
   const toggleMore = () => {
     showMore = !showMore;
   };
+
+  // Function to get the image source
+  function getImageSrc(userName = "placeholder") {
+    console.log(userName);
+    if (!userName) {
+      userName = "placeholder";
+    }
+    // Convert userName to lowercase and append .jpg
+    const filename = `${userName.toLowerCase()}.jpg`;
+    return `/img/people/${filename}`; // Update with the correct path to your images
+  }
 </script>
 
 <!-- Sidebar for Desktop -->
@@ -88,9 +102,28 @@
         {item.label}
       </a>
     {/each}
-    <button class="logout-button" on:click={logout}
-      ><SignOut size={18} />Uitloggen</button
-    >
+    <button class="logout-button" on:click={logout}>
+      <div class="user">
+        <figure class="avatar">
+          <img
+            width="40px"
+            height="40px"
+            src={getImageSrc(
+              currentUser.displayName
+                ? currentUser.displayName.replace(/ .*/, "")
+                : ""
+            )}
+          />
+        </figure>
+        <div class="info">
+          {@html currentUser.displayName
+            ? `<strong>${currentUser.displayName}</strong>`
+            : ""}
+          {@html currentUser.email ? `<span>${currentUser.email}</span>` : ""}
+        </div>
+      </div>
+      <SignOut size={20} />
+    </button>
   </aside>
 {/if}
 
@@ -192,17 +225,38 @@
 
     .logout-button {
       margin-top: auto;
-      padding: 10px;
+      padding: 10px 15px;
+      background-image: none;
       background-color: transparent;
-      border: 1px solid #ffffff77;
       border-radius: 10px;
       font-size: 1.6rem;
       color: #fff;
       cursor: pointer;
-      transition: background-color 0.1s ease-out;
+      border: 1px solid transparent;
+      transition: border-color 0.2s ease-out;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        figure {
+          display: inline-flex;
+          img {
+            border-radius: 50%;
+          }
+        }
+        .info {
+          font-size: 1.4rem;
+        }
+      }
 
       &:hover {
-        background-color: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.2);
       }
     }
   }

@@ -119,10 +119,8 @@
 
       await updateProfile(user, { displayName: `${firstName} ${lastName}` });
 
+      localStorage.clear();
       localStorage.setItem("workspace", workspaceId);
-      localStorage.removeItem("recentlyViewed");
-      localStorage.removeItem("cachedWorkspaceData");
-      localStorage.removeItem("cachedWorkspaceDataExpiration");
 
       goto("/");
     } catch (error) {
