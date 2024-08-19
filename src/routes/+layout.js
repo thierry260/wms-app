@@ -7,21 +7,27 @@ import { user } from "$lib/stores/user"; // Import the store
 
 export async function load({ url }) {
   if (browser) {
-    return new Promise((resolve, reject) => {
-      onAuthStateChanged(auth, (currentUser) => {
+    // Create a promise to handle authentication state
+    return new Promise((resolve) => {
+      // Set up the auth state change listener
+      const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        // Clean up the listener
+        unsubscribe(); // Update the store with the current user
+
+        user.set(currentUser); // Check for redirection
+
         if (
           !currentUser &&
           !url.pathname.startsWith("/login") &&
           !url.pathname.startsWith("/get-wms")
         ) {
-          reject(redirect(302, "/login"));
-        } else {
-          user.set(currentUser); // Update the store
-          resolve({ user: currentUser });
-        }
+          window.location.href = "/login";
+        } // Resolve with the user
+
+        resolve({ user: currentUser });
       });
     });
-  }
+  } // Handle SSR if needed
 
   return { user: null };
 }

@@ -109,14 +109,14 @@
             width="40px"
             height="40px"
             src={getImageSrc(
-              currentUser.displayName
+              currentUser && currentUser.displayName
                 ? currentUser.displayName.replace(/ .*/, "")
                 : ""
             )}
           />
         </figure>
         <div class="info">
-          {@html currentUser.displayName
+          {@html currentUser && currentUser.displayName
             ? `<strong>${currentUser.displayName}</strong>`
             : ""}
           {@html currentUser.email ? `<span>${currentUser.email}</span>` : ""}
