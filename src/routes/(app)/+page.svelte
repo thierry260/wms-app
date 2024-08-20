@@ -317,18 +317,21 @@
             {#if $selectedTab === "overdue"}
               {#each Object.entries($groupedTasks.overdue) as [assignee, tasks]}
                 <li class="assignee-group">
-                  <h3>{assignee}</h3>
-                </li>
-              {/each}
-              {#if Object.keys($groupedTasks.overdue).length === 0}
-                <p>Geen verlopen taken</p>
-              {/if}
-            {/if}
-
-            {#if $selectedTab === "overdue"}
-              {#each Object.entries($groupedTasks.overdue) as [assignees, tasks]}
-                <li class="assignee-group">
-                  <h3>{assignees}</h3>
+                  <div class="assignees">
+                    <img
+                      width="50px"
+                      height="50px"
+                      src={getImageSrc(assignee)}
+                      alt="{assignee} profielfoto"
+                    />
+                  </div>
+                  <div class="amount">
+                    <a href="/tasks">
+                      {tasks.length === 1
+                        ? `${tasks.length}` + " verlopen taak"
+                        : `${tasks.length}` + " verlopen taken"}</a
+                    >
+                  </div>
                 </li>
               {/each}
               {#if Object.keys($groupedTasks.overdue).length === 0}
