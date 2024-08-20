@@ -9,13 +9,13 @@
     deleteDoc,
     getDocs,
     query,
-    where,
     Timestamp,
+    where,
   } from "firebase/firestore";
   import { onMount } from "svelte";
   import { writable, get, derived } from "svelte/store";
   import Select from "svelte-select";
-  import { X, TrashSimple, Plus } from "phosphor-svelte";
+  import { X, TrashSimple, Plus, Clock } from "phosphor-svelte";
   import { format } from "date-fns";
   import Tabs from "$lib/components/Tabs.svelte";
 
@@ -35,6 +35,122 @@
   let proposedFileId;
 
   let clients = [];
+  let contacts = [
+    { name: "", role: "" }, // Initial contact row
+  ];
+
+  let filterText = "";
+  let tasks = writable([]);
+  let activeTab = "";
+
+  let taskStatuses = writable([]);
+
+  function handleTabChange(event) {
+    console.log("handleTabChange", event.detail);
+    const { tabLabel } = event.detail;
+    activeTab = tabLabel;
+    if (tabLabel === "Taken") {
+      fetchTasks();
+    }
+  }
+
+  async function fetchTaskStatuses() {
+    const workspaceRef = doc(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace")
+    );
+    const workspaceSnap = await getDoc(workspaceRef);
+    const workspaceData = workspaceSnap.data();
+
+    // Assumes statuses are stored in a field named "taskStatuses" which is an array
+    const statuses = workspaceData.taskStatuses || [];
+    taskStatuses.set(statuses);
+    return statuses;
+  }
+
+  async function fetchTasks() {
+    if ($taskStatuses.length == 0) {
+      await fetchTaskStatuses();
+    }
+    try {
+      const tasksRef = collection(
+        db,
+        "workspaces",
+        localStorage.getItem("workspace"),
+        "tasks"
+      );
+      const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
+      const querySnapshot = await getDocs(q);
+      const fetchedTasks = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Combine mapping and grouping in one step
+      const groupedTasks = fetchedTasks.reduce((acc, task) => {
+        const statusName = $taskStatuses.find(
+          (status) => status.id === task.status_id
+        )?.name;
+
+        if (statusName) {
+          acc[statusName] = acc[statusName] || [];
+          acc[statusName].push(task);
+        }
+        return acc;
+      }, {});
+
+      tasks.set(groupedTasks);
+
+      // Store the grouped tasks in a writable store or process as needed
+      tasks.set(groupedTasks);
+      console.log(groupedTasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  }
+
+  function handleFilter(e) {
+    if (e.detail.length === 0 && filterText.length > 0) {
+      const prev = clients.filter((i) => !i.created);
+      clients = [
+        ...prev,
+        { value: filterText, label: filterText, created: true },
+      ];
+    }
+  }
+
+  function handleChange(e) {
+    clients = clients.map((i) => {
+      delete i.created;
+      return i;
+    });
+  }
+
+  // Add a new contact row
+  function addContact() {
+    contacts = [...contacts, { name: "", role: "" }];
+  }
+
+  // Remove a contact row by index
+  function removeContact(index) {
+    contacts = contacts.filter((_, i) => i !== index);
+  }
+
+  // Update the selected contact name
+  function handleSelect(index, selected) {
+    if (selected) {
+      contacts[index].name = selected.label;
+    } else {
+      // Handle cases where the user types a new contact
+      contacts[index].name = ""; // Set to an empty string or handle new contact logic
+    }
+  }
+
+  // Update the role of the contact
+  function handleRoleChange(index, event) {
+    contacts[index].role = event.target.value;
+  }
   let submitting = writable(false);
   let errorMessage = writable("");
   let successMessage = writable("");
@@ -58,13 +174,6 @@
     }
   );
   let dialogEl = "";
-  const tabs = [
-    { label: "Algemeen" },
-    { label: "Contact" },
-    { label: "Taken" },
-    { label: "Tijdregistratie" },
-    { label: "Facturatie" },
-  ];
 
   onMount(async () => {
     const clientsRef = collection(
@@ -79,7 +188,7 @@
       return {
         id: doc.id,
         label:
-          `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} (${data.bedrijfsnaam || ""})`.trim(),
+          `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} ${data.bedrijfsnaam ? `(${data.bedrijfsnaam})` : ""}`.trim(),
         ...data,
       };
     });
@@ -260,7 +369,7 @@
         ...file,
         fileId: file.id,
         opvolgdatum: file.opvolgdatum
-          ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
+          ? format(file.opvolgdatum.toDate(), "dd-MM-yyyy")
           : "", // Convert and format the date
       });
     } else {
@@ -277,6 +386,11 @@
         proposedFileId: proposedFileId,
         fileId: proposedFileId,
       });
+    }
+
+    tasks.set([]);
+    if (activeTab === "Taken") {
+      fetchTasks();
     }
 
     console.log(get(currentFile));
@@ -339,7 +453,16 @@
       </div>
     {/if}
     <form on:submit|preventDefault={handleSubmit}>
-      <Tabs {tabs}>
+      <Tabs
+        tabs={[
+          { label: "Algemeen" },
+          { label: "Contacten" },
+          { label: "Taken" },
+          { label: "Tijdregistratie" },
+          //   { label: "Facturatie" },
+        ]}
+        on:tabChange={handleTabChange}
+      >
         <div slot="tab-0">
           <!-- Algemeen -->
           <label>
@@ -363,6 +486,18 @@
             {/if}
           </label>
 
+          <label>
+            <span class="legend">Contact</span>
+            <Select
+              items={clients}
+              bind:value={$currentFile.client_id}
+              getOptionValue={(option) => option.id}
+              getOptionLabel={(option) => option.label}
+              placeholder="Zoek een contact"
+              itemId="id"
+              clearable={false}
+            />
+          </label>
           <label>
             <span class="legend">Dossiernaam</span>
             <input
@@ -438,22 +573,81 @@
         </div>
 
         <div slot="tab-1">
-          <!-- Contact -->
-          <label>
-            <span class="legend">Contact</span>
-            <Select
-              items={clients}
-              bind:value={$currentFile.client_id}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.label}
-              placeholder="Zoek een contact"
-              itemId="id"
-              clearable={false}
-            />
-          </label>
+          <p></p>
+          <!-- <div class="contact-list">
+            {#each contacts as contact, index}
+              <div class="contact-row">
+                <label>
+                  <Select
+                    items={clients}
+                    bind:value={contact.name}
+                    getOptionValue={(option) => option.id}
+                    getOptionLabel={(option) => option.label}
+                    placeholder="Selecteer of typ een contact"
+                    itemId="id"
+                    clearable={true}
+                    on:change={handleChange}
+                    on:filter={handleFilter}
+                    bind:filterText
+                  >
+                    <div slot="item" let:item>
+                      {item.created ? "Nieuw: " : ""}
+                      {item.label}
+                    </div>
+                  </Select>
+                </label>
+                <label class="input_wrapper">
+                  <input
+                    type="text"
+                    bind:value={contact.role}
+                    placeholder="&nbsp;"
+                    on:input={(e) => handleRoleChange(index, e)}
+                  />
+                  <span>Rol</span>
+                </label>
+                {#if contacts.length > 1}
+                  <button
+                    type="button"
+                    class="basic"
+                    on:click={() => removeContact(index)}
+                    ><TrashSimple size="16" /></button
+                  >
+                {/if}
+              </div>
+            {/each}
+            <button type="button" class="basic" on:click={addContact}
+              ><Plus size="16" />Contact toevoegen</button
+            >
+          </div> -->
         </div>
 
-        <div slot="tab-2"><!-- Taken --></div>
+        <div slot="tab-2">
+          {#if Object.keys($tasks).length > 0}
+            <!-- Render grouped tasks by status -->
+            {#each Object.entries($tasks) as [statusLabel, tasks]}
+              <div data-status={statusLabel}>
+                <span class="legend">{statusLabel}</span>
+                <!-- Display the status label -->
+                <ul class="file_tasks">
+                  {#each tasks as task}
+                    <li>
+                      <h6>{task.title}</h6>
+                      <span
+                        ><Clock size="18" />{format(
+                          task.deadline.toDate(),
+                          "yyyy-MM-dd"
+                        )}</span
+                      >
+                    </li>
+                    <!-- Display each task's description -->
+                  {/each}
+                </ul>
+              </div>
+            {/each}
+          {:else}
+            <p>Geen taken aan dit dossier gekoppeld.</p>
+          {/if}
+        </div>
 
         <div slot="tab-3"><!-- Tijdregistratie --></div>
 
@@ -615,4 +809,74 @@
     padding: 15px 30px 15px 40px;
     margin-bottom: 30px;
   }
+
+  .contact-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .contact-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    width: 100%;
+    --height: 47px;
+    --font-size: 1.4rem;
+    .input_wrapper {
+      input:not(:is([type="checkbox"], [type="radio"])) {
+        width: 100%;
+        padding: 20px 15px 8px;
+        + span {
+          left: 15px;
+        }
+      }
+
+      &:has(input:focus) > span,
+      &:focus-within > span,
+      input:not(:placeholder-shown) + span {
+        top: 1.4em;
+      }
+    }
+  }
+
+  .contact-row label {
+    flex-grow: 1;
+  }
+
+  .file_tasks {
+    list-style-type: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    li {
+      border: 1px solid var(--border);
+      padding: 15px;
+      border-radius: var(--border-radius);
+      font-size: 1.4rem;
+      background-color: var(--background);
+      gap: 5px;
+      display: flex;
+      flex-direction: column;
+      h6 {
+        font-size: inherit;
+      }
+      span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--gray-400);
+      }
+    }
+  }
+
+  //   .contact-row button {
+  //     background: red;
+  //     color: white;
+  //     border: none;
+  //     padding: 5px;
+  //     cursor: pointer;
+  //   }
 </style>

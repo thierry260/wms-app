@@ -1,9 +1,13 @@
 <script>
+  import { createEventDispatcher } from "svelte";
+
   export let tabs = [];
   export let activeTab = 0;
+  const dispatch = createEventDispatcher();
 
-  function selectTab(index) {
+  function selectTab(index, tabLabel) {
     activeTab = index;
+    dispatch("tabChange", { tabLabel });
   }
 </script>
 
@@ -11,7 +15,7 @@
   {#each tabs as tab, index}
     <div
       class="tab {activeTab === index ? 'active' : ''}"
-      on:click={() => selectTab(index)}
+      on:click={() => selectTab(index, tab.label)}
     >
       {tab.label}
     </div>
