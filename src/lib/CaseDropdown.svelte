@@ -77,7 +77,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        selectedDossier.id,
+        selectedDossier.id
       );
 
       // Update the timetracking array in the Firestore document
@@ -134,7 +134,7 @@
             />
           </label>
 
-          <div class="add_row_field_columns">
+          <div class="modal_columns">
             <label class="add_row_field">
               <input type="date" bind:value={datum} on:focus={handleFocus} />
               <span>Datum *</span>
@@ -175,7 +175,7 @@
 
           <!-- Conditionally render the location and kilometers fields -->
           {#if isExternal}
-            <div class="add_row_field_columns">
+            <div class="modal_columns">
               <label class="add_row_field">
                 <input
                   type="text"
