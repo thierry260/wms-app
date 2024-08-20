@@ -369,7 +369,7 @@
         ...file,
         fileId: file.id,
         opvolgdatum: file.opvolgdatum
-          ? format(file.opvolgdatum.toDate(), "dd-MM-yyyy")
+          ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
           : "", // Convert and format the date
       });
     } else {
@@ -635,7 +635,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "yyyy-MM-dd"
+                          "dd-MM-yyyy"
                         )}</span
                       >
                     </li>
