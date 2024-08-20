@@ -176,11 +176,14 @@
         // Normalize the task assignees to lowercase
         const taskAssignees = task.assignees.map((a) => a.toLowerCase());
 
-        // Check if task includes all selected assignees
-        const matches = activeFilters.assignees.every((filterAssignee) =>
-          taskAssignees.includes(filterAssignee.toLowerCase()),
+        // Check if task includes at least one of the selected assignees
+        const matchesAnyAssignee = activeFilters.assignees.some(
+          (filterAssignee) =>
+            taskAssignees.includes(filterAssignee.toLowerCase()),
         );
-        return matches;
+
+        // Return true if it matches any assignee
+        return matchesAnyAssignee;
       });
     }
 
