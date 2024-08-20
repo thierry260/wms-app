@@ -37,7 +37,7 @@
   const defaults = {
     client_id: "",
     datum: "",
-    tijdsduur: "00:15",
+    hhmm: "00:15",
     assignee: "Toon",
     description: "",
     billable: true,
@@ -98,7 +98,7 @@
           name: dossier.name, // Add the dossier's name to each timetracking entry
           id: dossier.id,
           index: index,
-        })),
+        }))
       );
       allLogs = data;
       updateLogsForSearch();
@@ -125,7 +125,7 @@
     console.log("Client ID:", timetrackingData.client_id);
 
     // Split tijdsduur into uur and min
-    const [uur, min] = timetrackingData.tijdsduur.split(":").map(Number);
+    const [uur, min] = timetrackingData.hhmm.split(":").map(Number);
     const totaal = (uur + min / 60).toFixed(2);
 
     // Prepare the row object to be sent
@@ -149,7 +149,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        timetrackingData.client_id.id,
+        timetrackingData.client_id.id
       );
 
       if (timetrackingData.id) {
@@ -158,7 +158,7 @@
         if (dossierSnap.exists()) {
           const timetracking = dossierSnap.data().timetracking || [];
           const existingIndex = timetracking.findIndex(
-            (entry) => entry.id === timetrackingData.id,
+            (entry) => entry.id === timetrackingData.id
           );
 
           if (existingIndex !== -1) {
@@ -198,7 +198,7 @@
     if (searchValue) {
       data = data.filter((log) => {
         const dossier = dossiersData.find(
-          (dossier) => dossier.id === log.id, // Adjusted to use log.id to find the dossier
+          (dossier) => dossier.id === log.id // Adjusted to use log.id to find the dossier
         );
         const dossierName = dossier?.name?.toLowerCase() || "";
         const dossierId = dossier?.id?.toLowerCase() || "";
@@ -300,7 +300,7 @@
     if (!dossier.timetracking || dossier.timetracking.length === 0) {
       console.error(
         "Timetracking array not found or empty for dossier ID:",
-        dossier.id,
+        dossier.id
       );
       return;
     }
@@ -311,18 +311,20 @@
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location,
+        entry.location === log.location
     );
 
     if (index === -1) {
       console.error(
         "Log entry not found in dossier's timetracking array for dossier ID:",
-        dossier.id,
+        dossier.id
       );
       return;
     }
 
     const { hours, minutes } = calculateHoursAndMinutes(log.minutes);
+
+    const hhmm = formatMinutesToHHMM(log.minutes);
 
     currentTimetracking.set({
       index, // Store the correct index
@@ -331,8 +333,7 @@
       name: dossier.name,
       date: format(log.date.toDate(), "yyyy-MM-dd"), // Keep the string format for the UI
       description: log.description,
-      min: minutes, // Use calculated minutes
-      uur: hours, // Use calculated hours
+      hhmm: hhmm,
       totaal: log.totaal,
       billable: log.billable,
       assignee: log.assignee,
@@ -375,7 +376,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        dossierId,
+        dossierId
       );
       const newDocSnap = await getDoc(newDossierRef);
 
@@ -413,7 +414,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId,
+      originalDossierId
     );
 
     const newDossierRef = doc(
@@ -421,7 +422,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId,
+      dossierId
     );
 
     try {
@@ -433,7 +434,7 @@
 
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
-            (entry, index) => index !== editedLog.index,
+            (entry, index) => index !== editedLog.index
           );
 
           await updateDoc(originalDossierRef, {
@@ -442,7 +443,7 @@
         }
       } else {
         console.warn(
-          `Original dossier (ID: ${originalDossierId}) does not exist.`,
+          `Original dossier (ID: ${originalDossierId}) does not exist.`
         );
       }
 
@@ -459,7 +460,7 @@
       }
 
       const existingIndex = newTimetracking.findIndex(
-        (entry, idx) => idx === editedLog.index,
+        (entry, idx) => idx === editedLog.index
       );
 
       if (existingIndex !== -1) {
@@ -467,14 +468,14 @@
         newTimetracking[existingIndex] = {
           ...editedLog,
           date: firestoreTimestamp,
-          minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
+          minutes: timeToMinutes(editedLog.hhmm),
         };
       } else {
         // Otherwise, add it as a new entry
         newTimetracking.push({
           ...editedLog,
           date: firestoreTimestamp,
-          minutes: parseInt(editedLog.uur) * 60 + parseInt(editedLog.min),
+          minutes: timeToMinutes(editedLog.hhmm),
         });
       }
 
@@ -505,7 +506,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId.id, // Access the id property of dossierId
+      logToDelete.dossierId.id // Access the id property of dossierId
     );
 
     try {
@@ -517,7 +518,7 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index,
+          (entry, index) => index !== logToDelete.index
         );
 
         // Update the Firestore document with the updated timetracking array
@@ -579,14 +580,19 @@
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
 
+  function timeToMinutes(time) {
+    // Split the time string by the colon
+    const [hours, minutes] = time.split(":").map(Number);
+
+    // Convert hours to minutes and add the minutes
+    return hours * 60 + minutes;
+  }
+
   function openModal() {
-    const [defaultUur, defaultMin] = defaults.tijdsduur.split(":").map(Number);
     // Ensure store is reset before showing the modal
     const newDefaults = {
       ...defaults,
       datum: new Date().toISOString().split("T")[0], // Set today's date as default
-      uur: defaultUur,
-      min: defaultMin,
     };
 
     console.log("Setting defaults for modal:", newDefaults); // Debugging line
@@ -718,12 +724,18 @@
         <label class="legend">Omschrijving</label>
         <textarea bind:value={$currentTimetracking.description}></textarea>
       </div>
-      <div>
-        <label class="legend">Uitvoerder</label>
-        <select bind:value={$currentTimetracking.assignee}>
-          <option value="Michel">Michel</option>
-          <option value="Toon">Toon</option>
-        </select>
+      <div class="modal_columns" data-col="2">
+        <div>
+          <label class="legend">Uitvoerder</label>
+          <select bind:value={$currentTimetracking.assignee}>
+            <option value="Michel">Michel</option>
+            <option value="Toon">Toon</option>
+          </select>
+        </div>
+        <div>
+          <label class="legend">Tijdsduur</label>
+          <input type="time" bind:value={$currentTimetracking.hhmm} />
+        </div>
       </div>
       <div>
         <label class="legend">Extern?</label>
@@ -740,29 +752,21 @@
       </div>
 
       {#if $currentTimetracking.isExternal}
-        <div>
-          <label class="legend">Locatie</label>
-          <input type="text" bind:value={$currentTimetracking.location} />
-        </div>
-        <div>
-          <label class="legend">Kilometers</label>
-          <input
-            type="number"
-            bind:value={$currentTimetracking.kilometers}
-            min="0"
-          />
+        <div class="columns" data-col="2">
+          <div>
+            <label class="legend">Locatie</label>
+            <input type="text" bind:value={$currentTimetracking.location} />
+          </div>
+          <div>
+            <label class="legend">Kilometers</label>
+            <input
+              type="number"
+              bind:value={$currentTimetracking.kilometers}
+              min="0"
+            />
+          </div>
         </div>
       {/if}
-      <div class="columns" data-col="2">
-        <div>
-          <label class="legend">Uren</label>
-          <input type="text" bind:value={$currentTimetracking.uur} />
-        </div>
-        <div>
-          <label class="legend">Minuten</label>
-          <input type="text" bind:value={$currentTimetracking.min} />
-        </div>
-      </div>
       <div>
         <label class="legend">Facturabel</label>
         <input type="checkbox" bind:checked={$currentTimetracking.billable} />

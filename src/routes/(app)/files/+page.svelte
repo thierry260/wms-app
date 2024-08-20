@@ -31,6 +31,7 @@
     administratieafspraak: "",
     gekoppelde_facturen: "",
     fileId: "",
+    timetracking: false,
   });
   let proposedFileId;
 
@@ -359,6 +360,9 @@
       administratiestatus: "Afwachten",
       administratieafspraak: "",
       gekoppelde_facturen: "",
+      proposedFileId: proposedFileId,
+      fileId: proposedFileId,
+      timetracking: false,
     });
   }
 
@@ -368,32 +372,19 @@
       currentFile.set({
         ...file,
         fileId: file.id,
+        timetracking: file.timetracking,
         opvolgdatum: file.opvolgdatum
           ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
           : "", // Convert and format the date
       });
     } else {
-      currentFile.set({
-        client_id: "",
-        dossierstatus: "Actief",
-        name: "",
-        opvolgdatum: "",
-        uurtarief: 250,
-        projectkosten: 0,
-        administratiestatus: "Afwachten",
-        administratieafspraak: "",
-        gekoppelde_facturen: "",
-        proposedFileId: proposedFileId,
-        fileId: proposedFileId,
-      });
+      resetForm();
     }
 
     tasks.set([]);
     if (activeTab === "Taken") {
       fetchTasks();
     }
-
-    console.log(get(currentFile));
 
     dialogEl.showModal();
   }
@@ -432,6 +423,18 @@
       console.error("Fout bij het verwijderen van dossier:", error);
       alert("Fout bij het verwijderen van dossier");
     }
+  }
+
+  function calculateRevenue(log) {
+    const min = parseFloat(log.minutes) || 0;
+    const totaalUren = min / 60;
+    const revenue = log.billable ? (totaalUren * 250).toFixed(2) : "0.00";
+    return revenue;
+  }
+  function formatMinutesToHHMM(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }
 </script>
 
@@ -649,7 +652,37 @@
           {/if}
         </div>
 
-        <div slot="tab-3"><!-- Tijdregistratie --></div>
+        <div slot="tab-3">
+          <!-- Tijdregistratie -->
+          {#if $currentFile.timetracking && $currentFile.timetracking.length > 0}
+            <ul class="file_tasks file_logs">
+              {#each $currentFile.timetracking as log}
+                <li>
+                  <div class="log-header">
+                    <h6>{log.description}</h6>
+                    <div class="total-revenue">
+                      <span>{formatMinutesToHHMM(log.minutes)}</span>
+                      <span class="total-revenue-single"
+                        >(€{calculateRevenue(log)})</span
+                      >
+                    </div>
+                  </div>
+                  {#if log.billable}
+                    <span class="billable-icon">€</span>
+                  {/if}
+                  <p class="date">
+                    {format(
+                      log.date instanceof Date ? log.date : log.date.toDate(),
+                      "dd-MM-yyyy"
+                    )}
+                  </p>
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p>Geen tijdregistratie gevonden.</p>
+          {/if}
+        </div>
 
         <div slot="tab-4"><!-- Facturatie --></div>
       </Tabs>
@@ -869,6 +902,121 @@
         gap: 5px;
         color: var(--gray-400);
       }
+    }
+  }
+
+  .file_logs {
+    li {
+      .log-header {
+        h2 {
+          font-size: 1.6rem;
+          margin-bottom: 0;
+        }
+        .company {
+          opacity: 0.6;
+          font-size: 1.3rem;
+          margin-top: 0.35em;
+          display: block;
+          max-width: 100%;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    li p {
+      margin: 5px 0;
+    }
+
+    li strong {
+      font-weight: bold;
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .date-divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 20px 0; /* Adjust spacing as needed */
+    }
+
+    .date-line {
+      flex-grow: 1;
+      height: 1px;
+      background-color: var(--border);
+      border: none;
+
+      &:first-child {
+        margin-inline: 0 15px;
+      }
+      &:last-child {
+        margin-inline: 15px 0;
+      }
+    }
+
+    .date {
+      font-weight: light;
+      color: var(--text);
+      font-size: 1.4rem;
+    }
+
+    .billable-icon {
+      color: var(--text);
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      font-size: 0.8em;
+    }
+
+    .disabled {
+      color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .date {
+      color: var(--text);
+      font-size: 0.8em;
+      margin-bottom: 0;
+    }
+
+    .description {
+      margin-top: 0;
+      padding: 0;
+
+      opacity: 0.8;
+      font-size: 1.3rem;
+      margin-top: 0.35em;
+      display: block;
+      max-width: 100%;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .formatted_current_week {
+      color: var(--text);
+    }
+
+    .total-revenue {
+      display: flex;
+      justify-content: flex-end;
+      text-align: right;
+      flex-wrap: wrap;
+      column-gap: 5px;
+      row-gap: 2px;
+      align-items: center;
+    }
+    .total-revenue-single {
+      color: var(--text);
+      font-style: italic;
+      font-size: 0.8em;
+      vertical-align: top;
     }
   }
 

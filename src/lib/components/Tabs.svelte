@@ -32,7 +32,30 @@
   {#if activeTab === 2}
     <slot name="tab-2" />
   {/if}
-  <!-- Add more conditions for additional tabs -->
+  {#if activeTab === 3}
+    <slot name="tab-3" />
+  {/if}
+  {#if activeTab === 4}
+    <slot name="tab-4" />
+  {/if}
+  {#if activeTab === 5}
+    <slot name="tab-5" />
+  {/if}
+  {#if activeTab === 6}
+    <slot name="tab-6" />
+  {/if}
+  {#if activeTab === 7}
+    <slot name="tab-7" />
+  {/if}
+  {#if activeTab === 8}
+    <slot name="tab-8" />
+  {/if}
+  {#if activeTab === 9}
+    <slot name="tab-9" />
+  {/if}
+  {#if activeTab === 10}
+    <slot name="tab-10" />
+  {/if}
 </div>
 
 <style>
