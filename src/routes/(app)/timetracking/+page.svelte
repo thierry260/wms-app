@@ -87,7 +87,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        $currentTimetracking.client_id.id,
+        $currentTimetracking.client_id.id
       );
 
       // Update the timetracking array in the Firestore document
@@ -166,7 +166,7 @@
             />
           </label>
 
-          <div class="add_row_field_columns">
+          <div class="modal_columns">
             <label class="add_row_field">
               <input
                 type="date"
@@ -209,7 +209,7 @@
 
           <!-- Conditionally render the location and kilometers fields -->
           {#if $currentTimetracking.isExternal}
-            <div class="add_row_field_columns spacing_bottom">
+            <div class="modal_columns spacing_bottom">
               <label class="add_row_field">
                 <input
                   type="text"
