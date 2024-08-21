@@ -1,4 +1,4 @@
-    <script>
+<script>
   import { onMount } from "svelte";
   import { doc, collection, getDocs, getDoc } from "firebase/firestore";
   import { writable, derived } from "svelte/store";
@@ -416,20 +416,11 @@
       </div>
 
       <div class="main">
-        {#if $fileStatuses.length > 0}
-          <FileStatuses statuses={$fileStatuses} />
-        {/if}
-      </div>
-    </div>
-
-    <div class="card files">
-      <div class="top">
-        <h2>Administratiestatus</h2>
-      </div>
-
-      <div class="main">
-        {#if $administratiestatuses.length > 0}
-          <FileStatuses administratiestatus={$administratiestatuses} />
+        {#if $fileStatuses.length > 0 || $administratiestatuses.length > 0}
+          <FileStatuses
+            statuses={$fileStatuses}
+            administratiestatus={$administratiestatuses}
+          />
         {/if}
       </div>
     </div>
