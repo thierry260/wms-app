@@ -203,7 +203,9 @@
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
-      filesSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      filesSnapshots.docs
+        .filter((doc) => doc.id !== "0000")
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
     );
 
     const lastFileId = filesSnapshots.docs.reduce(

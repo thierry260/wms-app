@@ -83,7 +83,7 @@
       const today = new Date().toISOString().split("T")[0];
       $currentTimetracking.datum = today;
 
-      dossiersData = await fetchWorkspaceFilesData();
+      dossiersData = await fetchWorkspaceFilesData(false);
 
       // Extract and concatenate all timetracking arrays into timetrackingEntries
       dossiers = dossiersData.map((dossier) => ({
@@ -350,8 +350,11 @@
 
   async function saveLog() {
     const editedLog = get(currentTimetracking);
-    const dossierId = editedLog.dossierId.id;
+    const dossierId = editedLog.dossierId ? editedLog.dossierId.id : "0000";
     const originalDossierId = editedLog.originalDossierId || dossierId;
+
+    // console.log("dossierId", dossierId);
+    // return;
 
     // Get the date from the form
     const [year, month, day] = editedLog.date.split("-").map(Number);

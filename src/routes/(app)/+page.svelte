@@ -118,7 +118,7 @@
       (dossier.timetracking || []).map((entry) => ({
         ...entry,
         name: dossier.name, // Add the dossier's name to each timetracking entry
-      })),
+      }))
     );
   });
   $: console.log("Logs", $logs);
@@ -178,7 +178,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks",
+          "tasks"
         );
         const taskSnapshots = await getDocs(tasksRef);
         const tasksArray = [];
@@ -206,10 +206,10 @@
                 "workspaces",
                 localStorage.getItem("workspace"),
                 "files",
-                fileId,
-              ),
-            ),
-          ),
+                fileId
+              )
+            )
+          )
         );
 
         const fileDataMap = new Map();

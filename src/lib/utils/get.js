@@ -110,7 +110,7 @@ export async function fetchTemplateData(templateId) {
   }
 }
 
-export async function fetchWorkspaceFilesData() {
+export async function fetchWorkspaceFilesData(ignoreDummy = true) {
   try {
     if (!browser) {
       console.error("Not in a browser environment");
@@ -133,7 +133,9 @@ export async function fetchWorkspaceFilesData() {
 
     const filesData = [];
     filesSnapshot.forEach((doc) => {
-      filesData.push({ id: doc.id, ...doc.data() });
+      if (!ignoreDummy || doc.id !== "0000") {
+        filesData.push({ id: doc.id, ...doc.data() });
+      }
     });
 
     return filesData;
