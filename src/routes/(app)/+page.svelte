@@ -1,4 +1,4 @@
-<script>
+    <script>
   import { onMount } from "svelte";
   import { doc, collection, getDocs, getDoc } from "firebase/firestore";
   import { writable, derived } from "svelte/store";
@@ -88,10 +88,21 @@
   const files = writable([]);
   $: console.log("Files", $files);
 
-  // Derived store to group files by status
   const fileStatuses = derived(files, ($files) => {
     const statusCount = $files.reduce((acc, file) => {
       const status = file.dossierstatus || "Unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.entries(statusCount).map(([status, count]) => ({
+      name: status,
+      y: count,
+    }));
+  });
+  const administratiestatuses = derived(files, ($files) => {
+    const statusCount = $files.reduce((acc, file) => {
+      const status = file.administratiestatus || "Unknown";
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
@@ -410,6 +421,18 @@
         {/if}
       </div>
     </div>
+
+    <div class="card files">
+      <div class="top">
+        <h2>Administratiestatus</h2>
+      </div>
+
+      <div class="main">
+        {#if $administratiestatuses.length > 0}
+          <FileStatuses administratiestatus={$administratiestatuses} />
+        {/if}
+      </div>
+    </div>
     <div class="card">
       <div class="top">
         <h2>Snel naar</h2>
@@ -421,11 +444,11 @@
             <a target="_blank" href="https://mail.google.com/mail/u/0/">
               <img
                 src="/img/linktree/gmail.svg"
-                alt="GMail logo"
+                alt="Gmail logo"
                 width="50px"
                 height="50px"
               />
-              <span class="">GMail</span>
+              <span class="">Gmail</span>
               <CaretRight size={16} />
             </a>
           </li>

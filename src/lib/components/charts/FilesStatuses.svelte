@@ -3,8 +3,10 @@
   import { onMount, afterUpdate } from "svelte";
 
   export let statuses = []; // Expecting an array of status objects
+  export let administratiestatus = []; // Expecting an array of administratiestatus objects
 
-  let chart;
+  let statusChart;
+  let adminChart;
 
   function transformStatusesToChartData(statuses) {
     if (!Array.isArray(statuses)) {
@@ -18,19 +20,31 @@
     }));
   }
 
-  function renderChart() {
+  function transformAdministratiestatusToChartData(administratiestatus) {
+    if (!Array.isArray(administratiestatus)) {
+      console.error("Invalid administratiestatus data:", administratiestatus);
+      return [];
+    }
+
+    return administratiestatus.map((status) => ({
+      name: status.name,
+      y: status.y,
+    }));
+  }
+
+  function renderStatusChart() {
     const container = document.getElementById("pie-container");
 
     if (!container) {
-      console.error("Chart container not found");
+      console.error("Status chart container not found");
       return;
     }
 
     try {
       const chartData = transformStatusesToChartData(statuses);
 
-      if (chart) {
-        chart.update({
+      if (statusChart) {
+        statusChart.update({
           series: [
             {
               name: "Status",
@@ -40,56 +54,37 @@
           ],
         });
       } else {
-        chart = Highcharts.chart("pie-container", {
+        statusChart = Highcharts.chart("pie-container", {
           chart: {
             type: "pie",
-            height: 260, // Set the height of the chart
+            height: 260,
           },
           title: {
-            text: "",
+            text: "Dossier Status",
             style: {
-              fontSize: "12px", // Set the title font size
+              fontSize: "12px",
             },
           },
           credits: {
-            enabled: false, // Disable Highcharts branding
+            enabled: false,
           },
           tooltip: {
             style: {
-              fontSize: "12px", // Set tooltip font size
+              fontSize: "12px",
             },
           },
           plotOptions: {
             pie: {
               dataLabels: {
                 style: {
-                  fontSize: "12px", // Set data labels font size
+                  fontSize: "12px",
                 },
               },
             },
           },
           legend: {
             itemStyle: {
-              fontSize: "12px", // Set legend font size
-            },
-          },
-          xAxis: {
-            labels: {
-              style: {
-                fontSize: "12px", // Set x-axis labels font size
-              },
-            },
-          },
-          yAxis: {
-            title: {
-              style: {
-                fontSize: "12px", // Set y-axis title font size
-              },
-            },
-            labels: {
-              style: {
-                fontSize: "12px", // Set y-axis labels font size
-              },
+              fontSize: "12px",
             },
           },
           series: [
@@ -102,17 +97,92 @@
         });
       }
     } catch (error) {
-      console.error("Chart rendering error:", error);
+      console.error("Error rendering status chart:", error);
+    }
+  }
+
+  function renderAdministratiestatusChart() {
+    const container = document.getElementById(
+      "administratiestatus-pie-container",
+    );
+
+    if (!container) {
+      console.error("Administratiestatus chart container not found");
+      return;
+    }
+
+    try {
+      const chartData =
+        transformAdministratiestatusToChartData(administratiestatus);
+
+      if (adminChart) {
+        adminChart.update({
+          series: [
+            {
+              name: "Administratiestatus",
+              colorByPoint: true,
+              data: chartData,
+            },
+          ],
+        });
+      } else {
+        adminChart = Highcharts.chart("administratiestatus-pie-container", {
+          chart: {
+            type: "pie",
+            height: 260,
+          },
+          title: {
+            text: "Administratiestatus",
+            style: {
+              fontSize: "12px",
+            },
+          },
+          credits: {
+            enabled: false,
+          },
+          tooltip: {
+            style: {
+              fontSize: "12px",
+            },
+          },
+          plotOptions: {
+            pie: {
+              dataLabels: {
+                style: {
+                  fontSize: "12px",
+                },
+              },
+            },
+          },
+          legend: {
+            itemStyle: {
+              fontSize: "12px",
+            },
+          },
+          series: [
+            {
+              name: "Administratiestatus",
+              colorByPoint: true,
+              data: chartData,
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error rendering administratiestatus chart:", error);
     }
   }
 
   onMount(() => {
-    renderChart();
+    renderStatusChart();
+    renderAdministratiestatusChart();
   });
 
   afterUpdate(() => {
-    renderChart();
+    renderStatusChart();
+    renderAdministratiestatusChart();
   });
 </script>
 
 <div id="pie-container"></div>
+<div id="administratiestatus-pie-container"></div>
