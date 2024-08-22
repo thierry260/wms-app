@@ -155,7 +155,7 @@
                 bind:value={assignee}
                 on:focus={handleFocus}
               />
-              <span>UitvoerderSSSS *</span>
+              <span>Uitvoerders *</span>
             </label>
 
             <label class="add_row_field">

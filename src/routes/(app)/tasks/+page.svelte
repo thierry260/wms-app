@@ -426,6 +426,15 @@
   async function saveTask() {
     const taskData = get(currentTask);
 
+    // Convert taskData.assignees to a plain array if needed
+    if (taskData.assignees) {
+      taskData.assignees = taskData.assignees.map((item) =>
+        typeof item === "object" && item !== null && "value" in item
+          ? item.value
+          : item
+      );
+    }
+
     if (taskData.deadline) {
       taskData.deadline = Timestamp.fromDate(new Date(taskData.deadline));
     }
@@ -625,6 +634,8 @@
     );
     tasks.set(sortedTasks);
   }
+
+  $: console.log("$currentTask.assignees: ", $currentTask.assignees);
 </script>
 
 <div class="filter-sort-controls">
@@ -858,11 +869,23 @@
 
     <label
       ><span class="legend">Uitvoerders</span>
-      <select bind:value={$currentTask.assignees} multiple>
+      <!-- <select bind:value={$currentTask.assignees} multiple>
         {#each $assignees as assignee}
           <option value={assignee}>{assignee}</option>
         {/each}
-      </select>
+      </select> -->
+      <Select
+        items={$assignees}
+        bind:value={$currentTask.assignees}
+        getOptionLabel={(file) => `${file.id} - ${file.name}`}
+        getOptionValue={(file) => file.id}
+        getSelectionLabel={(option) =>
+          option?.name || `No name found for dossier ${option.id}`}
+        placeholder="Selecteer de uitvoerder(s)"
+        multiple={true}
+        ,
+        clearable={true}
+      />
     </label>
 
     <label
