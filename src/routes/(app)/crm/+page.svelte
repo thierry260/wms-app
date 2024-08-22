@@ -5,9 +5,9 @@
     doc,
     addDoc,
     setDoc,
-    updateDoc,
     deleteDoc,
     getDocs,
+    getDoc,
     Timestamp,
   } from "firebase/firestore";
   import { writable, get, derived } from "svelte/store";
@@ -15,6 +15,7 @@
   import { X, Plus, TrashSimple, Phone, EnvelopeSimple } from "phosphor-svelte";
   import { format } from "date-fns";
   import { dbTracker } from "$lib/utils/dbTracker"; // Import dbTracker
+  import { saveToCache, getFromCache, removeFromCache } from "$lib/utils/cache"; // Import cache functions
 
   const pageName = "Contacts";
 
@@ -46,14 +47,13 @@
       const query = $searchQuery.toLowerCase().trim();
 
       return $clientsList.filter((client) => {
-        // Combine voornaam, tussenvoegsels, and achternaam for full name search
         const fullName =
           `${client.voornaam}${client.tussenvoegsels ? ` ${client.tussenvoegsels} ` : " "}${client.achternaam}`
             .toLowerCase()
             .trim();
 
         return (
-          fullName.includes(query) || // Check full name
+          fullName.includes(query) ||
           client.voornaam.toLowerCase().includes(query) ||
           client.achternaam.toLowerCase().includes(query) ||
           client.bedrijfsnaam.toLowerCase().includes(query) ||
@@ -61,7 +61,7 @@
           client.telefoonnummer.toLowerCase().includes(query)
         );
       });
-    },
+    }
   );
 
   let dialogEl = "";
@@ -71,23 +71,73 @@
     await fetchClients();
   });
 
-  function openModal(client = null, event = null) {
-    // Check if the event is provided and if the click was on .bottom or a child of .bottom
+  async function fetchClients() {
+    const cacheKey = "clientsList";
+
+    let clients = getFromCache(cacheKey, 15);
+
+    if (clients) {
+      console.log("Using cached clients");
+      clientsList.set(clients);
+      return;
+    }
+
+    console.log("Fetching clients from Firebase");
+    const clientsRef = collection(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "clients"
+    );
+    const clientSnapshots = await getDocs(clientsRef);
+    clients = clientSnapshots.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    saveToCache(cacheKey, clients); // Save fetched clients to cache
+    clientsList.set(clients);
+    dbTracker.trackRead(pageName, clientSnapshots.docs.length);
+
+    console.log(clientsList);
+  }
+
+  async function openModal(client = null, event = null) {
     if (event) {
       const clickedElement = event.target;
       if (clickedElement.closest(".bottom")) {
-        // Do nothing if the click happened on .bottom or its children
         return;
       }
     }
 
     if (client && client.id) {
-      currentClient.set({
-        ...client,
-        geboortedatum: client.geboortedatum
-          ? format(client.geboortedatum.toDate(), "yyyy-MM-dd")
-          : "", // Convert and format the date
-      });
+      const clientRef = doc(
+        db,
+        "workspaces",
+        localStorage.getItem("workspace"),
+        "clients",
+        client.id
+      );
+      const clientSnap = await getDoc(clientRef);
+
+      if (clientSnap.exists()) {
+        const updatedClient = { id: clientSnap.id, ...clientSnap.data() };
+        currentClient.set({
+          ...updatedClient,
+          geboortedatum: updatedClient.geboortedatum
+            ? format(updatedClient.geboortedatum.toDate(), "yyyy-MM-dd")
+            : "",
+        });
+
+        clientsList.update((clients) => {
+          const index = clients.findIndex((c) => c.id === client.id);
+          if (index !== -1) {
+            clients[index] = updatedClient;
+            saveToCache("clientsList", clients); // Update cache
+          }
+          return clients;
+        });
+      }
     } else {
       resetForm();
     }
@@ -98,22 +148,6 @@
     dialogEl.close();
   }
 
-  async function fetchClients() {
-    const clientsRef = collection(
-      db,
-      "workspaces",
-      localStorage.getItem("workspace"),
-      "clients",
-    );
-    const clientSnapshots = await getDocs(clientsRef);
-    clientsList.set(
-      clientSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-    );
-    dbTracker.trackRead(pageName, clientSnapshots.docs.length);
-
-    console.log(clientsList);
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
     const button = event.submitter;
@@ -121,7 +155,6 @@
 
     const clientData = get(currentClient);
 
-    // Validate required fields
     if (!clientData.voornaam) {
       errorMessage.set("Vul alle verplichte velden in.");
       return;
@@ -132,17 +165,15 @@
     successMessage.set("");
 
     try {
-      // Convert geboortedatum to a Firestore Timestamp if provided
       const dobTimestamp = clientData.geboortedatum
         ? Timestamp.fromDate(new Date(clientData.geboortedatum))
         : null;
 
-      // Reference to the clients collection
       const clientsRef = collection(
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "clients",
+        "clients"
       );
 
       if (action === "edit") {
@@ -168,11 +199,11 @@
 
       resetForm();
       dialogEl.close();
-      await fetchClients();
+      await fetchClients(); // Refresh the client list from Firebase
     } catch (error) {
       console.error("Error handling client data: ", error);
       errorMessage.set(
-        action === "edit" ? "Bijwerken mislukt." : "Toevoegen mislukt.",
+        action === "edit" ? "Bijwerken mislukt." : "Toevoegen mislukt."
       );
     } finally {
       submitting.set(false);
@@ -208,14 +239,14 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "clients",
-      contactToDelete.id,
+      contactToDelete.id
     );
 
     try {
       await deleteDoc(clientRef);
 
       clientsList.update((currentClients) =>
-        currentClients.filter((client) => client.id !== contactToDelete.id),
+        currentClients.filter((client) => client.id !== contactToDelete.id)
       );
 
       dbTracker.trackDelete(pageName);

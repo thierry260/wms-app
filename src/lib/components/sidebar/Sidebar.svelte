@@ -78,7 +78,6 @@
 
   // Function to get the image source
   function getImageSrc(userName = "placeholder") {
-    console.log(userName);
     if (!userName) {
       userName = "placeholder";
     }
