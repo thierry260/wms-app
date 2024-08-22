@@ -376,7 +376,13 @@
         fileId: file.id,
         timetracking: file.timetracking,
         opvolgdatum: file.opvolgdatum
-          ? format(file.opvolgdatum.toDate(), "yyyy-MM-dd")
+          ? format(
+              // Check if file.opvolgdatum is a Firebase Timestamp
+              file.opvolgdatum instanceof Timestamp
+                ? file.opvolgdatum.toDate()
+                : file.opvolgdatum,
+              "yyyy-MM-dd"
+            )
           : "", // Convert and format the date
       });
     } else {
@@ -760,11 +766,17 @@
               </td>
               <td>{file.dossierstatus}</td>
               <td class="hide_mobile">
-                {file.opvolgdatum
-                  ? new Date(
+                {#if file.opvolgdatum}
+                  {#if file.opvolgdatum instanceof Timestamp}
+                    {new Date(
                       file.opvolgdatum.seconds * 1000
-                    ).toLocaleDateString()
-                  : "Geen"}
+                    ).toLocaleDateString()}
+                  {:else}
+                    {new Date(file.opvolgdatum).toLocaleDateString()}
+                  {/if}
+                {:else}
+                  Geen
+                {/if}
               </td>
             </tr>
           {/each}
