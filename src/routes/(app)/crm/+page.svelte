@@ -14,6 +14,9 @@
   import { onMount } from "svelte";
   import { X, Plus, TrashSimple, Phone, EnvelopeSimple } from "phosphor-svelte";
   import { format } from "date-fns";
+  import { dbTracker } from "$lib/utils/dbTracker"; // Import dbTracker
+
+  const pageName = "Contacts";
 
   // Writable store for contact form data
   let currentClient = writable({
@@ -50,11 +53,12 @@
           client.telefoonnummer.toLowerCase().includes(query)
         );
       });
-    }
+    },
   );
   let dialogEl = "";
 
   onMount(async () => {
+    dbTracker.initPage(pageName);
     await fetchClients();
   });
 
@@ -90,12 +94,14 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients"
+      "clients",
     );
     const clientSnapshots = await getDocs(clientsRef);
     clientsList.set(
-      clientSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      clientSnapshots.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
     );
+    dbTracker.trackRead(pageName, clientSnapshots.docs.length);
+
     console.log(clientsList);
   }
 
@@ -127,7 +133,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "clients"
+        "clients",
       );
 
       if (action === "edit") {
@@ -139,12 +145,15 @@
           ...clientData,
           geboortedatum: dobTimestamp,
         });
+        dbTracker.trackWrite(pageName);
+
         successMessage.set("Contact succesvol bijgewerkt!");
       } else if (action === "create") {
         await addDoc(clientsRef, {
           ...clientData,
           geboortedatum: dobTimestamp,
         });
+        dbTracker.trackWrite(pageName);
         successMessage.set("Contact succesvol toegevoegd!");
       }
 
@@ -154,7 +163,7 @@
     } catch (error) {
       console.error("Error handling client data: ", error);
       errorMessage.set(
-        action === "edit" ? "Bijwerken mislukt." : "Toevoegen mislukt."
+        action === "edit" ? "Bijwerken mislukt." : "Toevoegen mislukt.",
       );
     } finally {
       submitting.set(false);
@@ -190,15 +199,17 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "clients",
-      contactToDelete.id
+      contactToDelete.id,
     );
 
     try {
       await deleteDoc(clientRef);
 
       clientsList.update((currentClients) =>
-        currentClients.filter((client) => client.id !== contactToDelete.id)
+        currentClients.filter((client) => client.id !== contactToDelete.id),
       );
+
+      dbTracker.trackDelete(pageName);
 
       errorMessage.set("");
       successMessage.set("");

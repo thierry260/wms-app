@@ -18,6 +18,8 @@
   import { X, TrashSimple, Plus, Clock } from "phosphor-svelte";
   import { format } from "date-fns";
   import Tabs from "$lib/components/Tabs.svelte";
+  import { dbTracker } from "$lib/utils/dbTracker";
+  const pageName = "Files";
 
   // Initialize writable store for currentFile
   let currentFile = writable({
@@ -46,6 +48,55 @@
 
   let taskStatuses = writable([]);
 
+  onMount(async () => {
+    dbTracker.initPage(pageName);
+    const clientsRef = collection(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "clients",
+    );
+    const clientSnapshots = await getDocs(clientsRef);
+    clients = clientSnapshots.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        label:
+          `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} ${data.bedrijfsnaam ? `(${data.bedrijfsnaam})` : ""}`.trim(),
+        ...data,
+      };
+    });
+
+    dbTracker.trackRead(pageName, clientSnapshots.docs.length);
+
+    const filesRef = collection(
+      db,
+      "workspaces",
+      localStorage.getItem("workspace"),
+      "files",
+    );
+    const filesSnapshots = await getDocs(filesRef);
+
+    files.set(
+      filesSnapshots.docs
+        .filter((doc) => doc.id !== "0000")
+        .map((doc) => ({ id: doc.id, ...doc.data() })),
+    );
+
+    const lastFileId = filesSnapshots.docs.reduce(
+      (max, doc) => Math.max(max, parseInt(doc.id)),
+      0,
+    );
+
+    proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
+
+    currentFile.set({
+      fileId: (lastFileId + 1).toString().padStart(4, "0"),
+    });
+
+    dbTracker.trackRead(pageName, filesSnapshots.docs.length);
+  });
+
   function handleTabChange(event) {
     console.log("handleTabChange", event.detail);
     const { tabLabel } = event.detail;
@@ -59,7 +110,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -79,7 +130,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks"
+        "tasks",
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -91,7 +142,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id
+          (status) => status.id === task.status_id,
         )?.name;
 
         if (statusName) {
@@ -172,53 +223,9 @@
             .includes(query)
         );
       });
-    }
+    },
   );
   let dialogEl = "";
-
-  onMount(async () => {
-    const clientsRef = collection(
-      db,
-      "workspaces",
-      localStorage.getItem("workspace"),
-      "clients"
-    );
-    const clientSnapshots = await getDocs(clientsRef);
-    clients = clientSnapshots.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        label:
-          `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} ${data.bedrijfsnaam ? `(${data.bedrijfsnaam})` : ""}`.trim(),
-        ...data,
-      };
-    });
-
-    const filesRef = collection(
-      db,
-      "workspaces",
-      localStorage.getItem("workspace"),
-      "files"
-    );
-    const filesSnapshots = await getDocs(filesRef);
-
-    files.set(
-      filesSnapshots.docs
-        .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-    );
-
-    const lastFileId = filesSnapshots.docs.reduce(
-      (max, doc) => Math.max(max, parseInt(doc.id)),
-      0
-    );
-
-    proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
-
-    currentFile.set({
-      fileId: (lastFileId + 1).toString().padStart(4, "0"),
-    });
-  });
 
   async function handleSubmit(event) {
     // Prevent form submission
@@ -258,7 +265,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files"
+        "files",
       );
 
       let timetracking = [];
@@ -267,7 +274,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString)
+          where("__name__", "==", fileIdString),
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -322,6 +329,7 @@
 
       // Use setDoc to save the merged data
       await setDoc(fileDocRef, updatedFileData);
+      dbTracker.trackWrite(pageName);
 
       // Update $files store locally
       if (action === "create") {
@@ -332,8 +340,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
-          )
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
+          ),
         );
       }
 
@@ -405,7 +413,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id // Access the id property of dossierId
+      fileToDelete.id, // Access the id property of dossierId
     );
 
     try {
@@ -414,9 +422,9 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id)
+        currentFiles.filter((file) => file.id !== fileToDelete.id),
       );
-
+      dbTracker.trackDelete(pageName);
       errorMessage.set("");
       successMessage.set("");
 
@@ -640,7 +648,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy"
+                          "dd-MM-yyyy",
                         )}</span
                       >
                     </li>
@@ -675,7 +683,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy"
+                      "dd-MM-yyyy",
                     )}
                   </p>
                 </li>
@@ -762,7 +770,7 @@
               <td class="hide_mobile">
                 {file.opvolgdatum
                   ? new Date(
-                      file.opvolgdatum.seconds * 1000
+                      file.opvolgdatum.seconds * 1000,
                     ).toLocaleDateString()
                   : "Geen"}
               </td>

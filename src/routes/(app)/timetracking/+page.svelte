@@ -33,6 +33,8 @@
     X,
     Plus,
   } from "phosphor-svelte";
+  import { dbTracker } from "$lib/utils/dbTracker";
+  const pageName = "Timetracking";
 
   const defaults = {
     client_id: "",
@@ -78,12 +80,14 @@
   }
 
   onMount(async () => {
+    dbTracker.initPage(pageName);
     try {
       // Set datum to today's date
       const today = new Date().toISOString().split("T")[0];
       $currentTimetracking.datum = today;
 
       dossiersData = await fetchWorkspaceFilesData(false);
+      dbTracker.trackRead(pageName, dossiersData.length); // Track the read operation
 
       // Extract and concatenate all timetracking arrays into timetrackingEntries
       dossiers = dossiersData.map((dossier) => ({
@@ -98,7 +102,7 @@
           name: dossier.name, // Add the dossier's name to each timetracking entry
           id: dossier.id,
           index: index,
-        }))
+        })),
       );
       allLogs = data;
       updateLogsForSearch();
@@ -149,7 +153,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        timetrackingData.client_id.id
+        timetrackingData.client_id.id,
       );
 
       if (timetrackingData.id) {
@@ -158,7 +162,7 @@
         if (dossierSnap.exists()) {
           const timetracking = dossierSnap.data().timetracking || [];
           const existingIndex = timetracking.findIndex(
-            (entry) => entry.id === timetrackingData.id
+            (entry) => entry.id === timetrackingData.id,
           );
 
           if (existingIndex !== -1) {
@@ -169,12 +173,14 @@
           }
 
           await updateDoc(dossierRef, { timetracking });
+          dbTracker.trackWrite(pageName); // Track the write operation
         }
       } else {
         // Add new entry
         await updateDoc(dossierRef, {
           timetracking: arrayUnion(row),
         });
+        dbTracker.trackWrite(pageName); // Track the write operation
       }
 
       window.dispatchEvent(new CustomEvent("logUpdated"));
@@ -198,7 +204,7 @@
     if (searchValue) {
       data = data.filter((log) => {
         const dossier = dossiersData.find(
-          (dossier) => dossier.id === log.id // Adjusted to use log.id to find the dossier
+          (dossier) => dossier.id === log.id, // Adjusted to use log.id to find the dossier
         );
         const dossierName = dossier?.name?.toLowerCase() || "";
         const dossierId = dossier?.id?.toLowerCase() || "";
@@ -300,7 +306,7 @@
     if (!dossier.timetracking || dossier.timetracking.length === 0) {
       console.error(
         "Timetracking array not found or empty for dossier ID:",
-        dossier.id
+        dossier.id,
       );
       return;
     }
@@ -311,13 +317,13 @@
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location
+        entry.location === log.location,
     );
 
     if (index === -1) {
       console.error(
         "Log entry not found in dossier's timetracking array for dossier ID:",
-        dossier.id
+        dossier.id,
       );
       return;
     }
@@ -379,7 +385,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        dossierId
+        dossierId,
       );
       const newDocSnap = await getDoc(newDossierRef);
 
@@ -417,7 +423,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId
+      originalDossierId,
     );
 
     const newDossierRef = doc(
@@ -425,7 +431,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId
+      dossierId,
     );
 
     try {
@@ -437,7 +443,7 @@
 
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
-            (entry, index) => index !== editedLog.index
+            (entry, index) => index !== editedLog.index,
           );
 
           await updateDoc(originalDossierRef, {
@@ -446,7 +452,7 @@
         }
       } else {
         console.warn(
-          `Original dossier (ID: ${originalDossierId}) does not exist.`
+          `Original dossier (ID: ${originalDossierId}) does not exist.`,
         );
       }
 
@@ -460,10 +466,11 @@
         await setDoc(newDossierRef, {
           timetracking: newTimetracking,
         });
+        dbTracker.trackWrite(pageName);
       }
 
       const existingIndex = newTimetracking.findIndex(
-        (entry, idx) => idx === editedLog.index
+        (entry, idx) => idx === editedLog.index,
       );
 
       if (existingIndex !== -1) {
@@ -485,6 +492,7 @@
       await updateDoc(newDossierRef, {
         timetracking: newTimetracking,
       });
+      dbTracker.trackWrite(pageName);
 
       alert("Urenregistratie succesvol bijgewerkt");
       window.dispatchEvent(new CustomEvent("logUpdated"));
@@ -509,7 +517,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId.id // Access the id property of dossierId
+      logToDelete.dossierId.id, // Access the id property of dossierId
     );
 
     try {
@@ -521,13 +529,14 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index
+          (entry, index) => index !== logToDelete.index,
         );
 
         // Update the Firestore document with the updated timetracking array
         await updateDoc(dossierRef, {
           timetracking: timetracking,
         });
+        dbTracker.trackDelete(pageName);
 
         alert("Urenregistratie succesvol verwijderd");
 

@@ -9,12 +9,14 @@
     ArrowsClockwise,
   } from "phosphor-svelte";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
+  import { dbTracker } from "$lib/utils/dbTracker";
   import { db } from "$lib/firebase"; // Import the Firebase instance
   import TimeTrackingChart from "$lib/components/charts/Timetracking.svelte";
   import FileStatuses from "$lib/components/charts/FilesStatuses.svelte";
 
-  const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes
+  const pageName = "Dashboard"; // Name of the page for tracking
 
+  const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 minutes
   //// States ////
   const loading = writable(true);
   const selectedTab = writable("today");
@@ -24,7 +26,6 @@
   let currentTurnover = 0;
 
   //// Data ////
-
   // Tasks
   const tasks = writable([]);
   $: console.log("Tasks", $tasks);
@@ -119,13 +120,15 @@
       (dossier.timetracking || []).map((entry) => ({
         ...entry,
         name: dossier.name, // Add the dossier's name to each timetracking entry
-      }))
+      })),
     );
   });
   $: console.log("Logs", $logs);
 
   onMount(async () => {
     try {
+      dbTracker.initPage(pageName); // Initialize tracking for this page
+
       fetchFiles();
       fetchTasks();
     } catch (error) {
@@ -160,6 +163,8 @@
         files.set(data);
         localStorage.setItem("workspaceFiles", JSON.stringify(data));
         localStorage.setItem("workspaceFilesTimestamp", Date.now().toString());
+
+        dbTracker.trackRead(pageName, data.length);
       } catch (error) {
         console.error("Error fetching logs:", error);
       }
@@ -179,7 +184,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks"
+          "tasks",
         );
         const taskSnapshots = await getDocs(tasksRef);
         const tasksArray = [];
@@ -207,10 +212,10 @@
                 "workspaces",
                 localStorage.getItem("workspace"),
                 "files",
-                fileId
-              )
-            )
-          )
+                fileId,
+              ),
+            ),
+          ),
         );
 
         const fileDataMap = new Map();
@@ -227,6 +232,7 @@
         tasks.set(tasksArray);
         localStorage.setItem("workspaceTasks", JSON.stringify(tasksArray));
         localStorage.setItem("workspaceTasksTimestamp", Date.now().toString());
+        dbTracker.trackRead(pageName, tasksArray.length); // Count number of documents read
       } catch (error) {
         console.error("Error fetching tasks:", error);
       }
