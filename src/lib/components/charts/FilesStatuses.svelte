@@ -4,6 +4,7 @@
 
   export let statuses = []; // Expecting an array of status objects
   export let administratiestatus = []; // Expecting an array of administratiestatus objects
+  export let chart = "administratie"; // "week" or "maand"
 
   let statusChart;
   let adminChart;
@@ -54,13 +55,13 @@
           ],
         });
       } else {
-        statusChart = Highcharts.chart("pie-container", {
+        statusChart = Highcharts.chart(container, {
           chart: {
             type: "pie",
             height: 260,
           },
           title: {
-            text: "Dossier Status",
+            text: "",
             style: {
               fontSize: "12px",
             },
@@ -103,7 +104,7 @@
 
   function renderAdministratiestatusChart() {
     const container = document.getElementById(
-      "administratiestatus-pie-container",
+      "administratiestatus-pie-container"
     );
 
     if (!container) {
@@ -126,13 +127,13 @@
           ],
         });
       } else {
-        adminChart = Highcharts.chart("administratiestatus-pie-container", {
+        adminChart = Highcharts.chart(container, {
           chart: {
             type: "pie",
             height: 260,
           },
           title: {
-            text: "Administratiestatus",
+            text: "",
             style: {
               fontSize: "12px",
             },
@@ -174,15 +175,31 @@
   }
 
   onMount(() => {
-    renderStatusChart();
-    renderAdministratiestatusChart();
+    if (chart === "administratie") {
+      renderAdministratiestatusChart();
+    } else if (chart === "status") {
+      renderStatusChart();
+    }
   });
 
   afterUpdate(() => {
-    renderStatusChart();
-    renderAdministratiestatusChart();
+    if (chart === "administratie") {
+      renderAdministratiestatusChart();
+      // Hide the status chart
+      document.getElementById("pie-container").style.display = "none";
+      document.getElementById(
+        "administratiestatus-pie-container"
+      ).style.display = "block";
+    } else if (chart === "status") {
+      renderStatusChart();
+      // Hide the administratiestatus chart
+      document.getElementById(
+        "administratiestatus-pie-container"
+      ).style.display = "none";
+      document.getElementById("pie-container").style.display = "block";
+    }
   });
 </script>
 
-<div id="pie-container"></div>
-<div id="administratiestatus-pie-container"></div>
+<div id="pie-container" style="display: none;"></div>
+<div id="administratiestatus-pie-container" style="display: none;"></div>

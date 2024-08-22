@@ -19,6 +19,7 @@
   const loading = writable(true);
   const selectedTab = writable("today");
   const selectedPeriod = writable("week");
+  const selectedChart = writable("administratie");
   let percentualChange = 0;
   let currentTurnover = 0;
 
@@ -412,7 +413,21 @@
     </div>
     <div class="card files">
       <div class="top">
-        <h2>Dossier status</h2>
+        <h2>Dossiers</h2>
+        <div class="tabs">
+          <button
+            class:active={$selectedChart === "administratie"}
+            on:click={() => selectedChart.set("administratie")}
+          >
+            Administratiestatus
+          </button>
+          <button
+            class:active={$selectedChart === "status"}
+            on:click={() => selectedChart.set("status")}
+          >
+            Dossierstatus
+          </button>
+        </div>
       </div>
 
       <div class="main">
@@ -420,6 +435,7 @@
           <FileStatuses
             statuses={$fileStatuses}
             administratiestatus={$administratiestatuses}
+            chart={$selectedChart}
           />
         {/if}
       </div>
