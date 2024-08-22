@@ -118,7 +118,7 @@
         <div class="info">
           {@html currentUser && currentUser.displayName
             ? `<strong>${currentUser.displayName}</strong>`
-            : `<span>${currentUser.email}</span>`}
+            : `<span>${currentUser && currentUser.email ? currentUser.email : ""}</span>`}
         </div>
       </div>
       <SignOut size={20} />
@@ -172,7 +172,7 @@
 <style lang="scss">
   .sidebar {
     width: 100%;
-    max-width: 350px;
+    max-width: 320px;
     background: linear-gradient(230deg, var(--primary), var(--secondary));
     height: 100%;
     padding: 20px;
