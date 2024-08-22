@@ -837,22 +837,21 @@
         </button>
       </div>
     {/each}
-
-    <div
-      class="kanban-column new-column-placeholder"
-      on:click={() => {
-        document.querySelector(".new-column-placeholder input").focus();
-      }}
-    >
-      <input
-        bind:value={$newStatusName}
-        placeholder="+ Nieuwe status toevoegen"
-        on:keydown={(e) => e.key === "Enter" && addNewStatus()}
-        on:blur={addNewStatus}
-        on:click={(e) => e.stopPropagation()}
-      />
-    </div>
   {/if}
+  <div
+    class="kanban-column new-column-placeholder"
+    on:click={() => {
+      document.querySelector(".new-column-placeholder input").focus();
+    }}
+  >
+    <input
+      bind:value={$newStatusName}
+      placeholder="+ Nieuwe status toevoegen"
+      on:keydown={(e) => e.key === "Enter" && addNewStatus()}
+      on:blur={addNewStatus}
+      on:click={(e) => e.stopPropagation()}
+    />
+  </div>
 </div>
 
 <dialog bind:this={modal} class="task-modal">
@@ -862,7 +861,10 @@
       <button class="basic" on:click={closeModal}><X size="16" /></button>
     </div>
   {:else}
-    <h6>Taak toevoegen</h6>
+    <div class="top">
+      <h6>Taak toevoegen</h6>
+      <button class="basic" on:click={closeModal}><X size="16" /></button>
+    </div>
   {/if}
   <form on:submit|preventDefault={saveTask}>
     <label
@@ -1116,7 +1118,7 @@
   .kanban-board {
     --container: 1520px;
     display: flex;
-    justify-content: space-between;
+    // justify-content: space-between;
     outline: none;
 
     flex-grow: 1;

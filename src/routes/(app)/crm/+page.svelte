@@ -44,8 +44,16 @@
     ([$clientsList, $searchQuery]) => {
       console.log("Inside derived store:", $searchQuery);
       const query = $searchQuery.toLowerCase().trim();
+
       return $clientsList.filter((client) => {
+        // Combine voornaam, tussenvoegsels, and achternaam for full name search
+        const fullName =
+          `${client.voornaam}${client.tussenvoegsels ? ` ${client.tussenvoegsels} ` : " "}${client.achternaam}`
+            .toLowerCase()
+            .trim();
+
         return (
+          fullName.includes(query) || // Check full name
           client.voornaam.toLowerCase().includes(query) ||
           client.achternaam.toLowerCase().includes(query) ||
           client.bedrijfsnaam.toLowerCase().includes(query) ||
@@ -55,6 +63,7 @@
       });
     },
   );
+
   let dialogEl = "";
 
   onMount(async () => {

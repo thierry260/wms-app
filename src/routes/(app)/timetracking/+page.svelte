@@ -340,7 +340,6 @@
       date: format(log.date.toDate(), "yyyy-MM-dd"), // Keep the string format for the UI
       description: log.description,
       hhmm: hhmm,
-      totaal: log.totaal,
       billable: log.billable,
       assignee: log.assignee,
       location: log.location,

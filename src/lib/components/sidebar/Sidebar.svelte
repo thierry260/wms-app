@@ -118,8 +118,7 @@
         <div class="info">
           {@html currentUser && currentUser.displayName
             ? `<strong>${currentUser.displayName}</strong>`
-            : ""}
-          {@html currentUser.email ? `<span>${currentUser.email}</span>` : ""}
+            : `<span>${currentUser.email}</span>`}
         </div>
       </div>
       <SignOut size={20} />

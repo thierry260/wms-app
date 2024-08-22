@@ -109,7 +109,6 @@
       );
 
       const userCommonData = {
-        company_name: workspaceName,
         first_name: firstName,
         last_name: lastName,
         workspaces: [workspaceId],
