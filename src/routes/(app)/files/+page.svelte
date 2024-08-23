@@ -47,13 +47,10 @@
       : [];
 
     // Calculate total minutes
-    const totalMinutes = timetracking.reduce(
-      (acc, entry) => acc + entry.minutes,
-      0
-    );
+    const minutes = timetracking.reduce((acc, entry) => acc + entry.minutes, 0);
 
     // Convert total minutes to hours
-    const hours = totalMinutes / 60;
+    const hours = minutes / 60;
 
     // Calculate total cost (billable hours * hourly rate)
     const subtotal = hours * rate;
@@ -74,6 +71,7 @@
 
     return {
       hours,
+      minutes,
       rate,
       subtotal,
       km,
@@ -81,6 +79,7 @@
       mileageAllowance,
       total: subtotal + mileageAllowance,
       tax,
+      taxRate,
       total: total + mileageAllowance,
     };
   });
@@ -443,7 +442,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd",
+              "yyyy-MM-dd"
             )
           : "", // Convert and format the date
       });
@@ -504,7 +503,13 @@
   function formatMinutesToHHMM(totalMinutes) {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    return `${String(hours).padStart(1, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+  function formatToEuro(amount) {
+    return new Intl.NumberFormat("nl-NL", {
+      style: "currency",
+      currency: "EUR",
+    }).format(amount);
   }
 </script>
 
@@ -532,7 +537,7 @@
           { label: "Contacten" },
           { label: "Taken" },
           { label: "Tijdregistratie" },
-          { label: "Facturatie" },
+          { label: "Specificatie" },
         ]}
         on:tabChange={handleTabChange}
       >
@@ -753,20 +758,44 @@
 
         <div slot="tab-4">
           <!-- Facturatie -->
-          {#if $specs && $specs.hours > 0}
+          {#if $specs && $specs.minutes > 0}
             <table>
-              <tr>
-                <th>Uren conform specificatie</th>
-                <th>{$specs.hours} uur</th>
-              </tr>
-              <tr>
-                <th>Uurtarief</th>
-                <th>{$specs.rate} uur</th>
-              </tr>
-              <tr>
-                <th>Uurtarief</th>
-                <th>{$specs.rate} uur</th>
-              </tr>
+              <tbody>
+                <tr>
+                  <th>Uren conform specificatie</th>
+                  <td>{formatMinutesToHHMM($specs.minutes)}</td>
+                  <td>uur</td>
+                </tr>
+                <tr>
+                  <th>Uurtarief</th>
+                  <td>{formatToEuro($specs.rate)}</td>
+                  <td>x</td>
+                </tr>
+                <tr>
+                  <th>Subtotaal</th>
+                  <td>{formatToEuro($specs.subtotal)}</td>
+                  <td>Exclusief BTW</td>
+                </tr>
+                {#if $specs.km > 0}
+                  <tr>
+                    <th>Kilometervergoeding (a € {$specs.kmRate})</th>
+                    <th>{formatToEuro($specs.subtotal)} exclusief</th>
+                    <td>Exclusief BTW</td>
+                  </tr>
+                {/if}
+                <tr>
+                  <th>BTW ({$specs.taxRate})</th>
+                  <th>{formatToEuro($specs.tax)}</th>
+                  <td>+</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Totaal</th>
+                  <th>{formatToEuro($specs.total)}</th>
+                  <td>Inclusief BTW</td>
+                </tr>
+              </tfoot>
             </table>
           {/if}
           <button
@@ -854,7 +883,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000,
+                      file.opvolgdatum.seconds * 1000
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
