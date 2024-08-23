@@ -12,12 +12,20 @@
   } from "firebase/firestore";
   import { writable, get, derived } from "svelte/store";
   import { onMount } from "svelte";
-  import { X, Plus, TrashSimple, Phone, EnvelopeSimple } from "phosphor-svelte";
+  import {
+    X,
+    Plus,
+    TrashSimple,
+    Phone,
+    EnvelopeSimple,
+    ArrowClockwise,
+  } from "phosphor-svelte";
   import { format } from "date-fns";
   import { dbTracker } from "$lib/utils/dbTracker"; // Import dbTracker
   import { saveToCache, getFromCache, removeFromCache } from "$lib/utils/cache"; // Import cache functions
 
   const pageName = "Contacts";
+  let refreshTooltip = "Data vernieuwen";
 
   // Writable store for contact form data
   let currentClient = writable({
@@ -71,15 +79,21 @@
     await fetchClients();
   });
 
-  async function fetchClients() {
+  async function fetchClients(useCache = true) {
     const cacheKey = "clientsList";
+    let clients = [];
+    console.log("fetchClients");
 
-    let clients = getFromCache(cacheKey, 15);
+    if (useCache) {
+      clients = getFromCache(cacheKey, 15);
 
-    if (clients) {
-      console.log("Using cached clients");
-      clientsList.set(clients);
-      return;
+      if (clients) {
+        console.log("Using cached clients");
+        clientsList.set(clients);
+        return;
+      }
+    } else {
+      console.log("Refresh data");
     }
 
     console.log("Fetching clients from Firebase");
@@ -100,6 +114,18 @@
     dbTracker.trackRead(pageName, clientSnapshots.docs.length);
 
     console.log(clientsList);
+  }
+
+  function handleRefreshClick() {
+    refreshTooltip = "Aan het vernieuwen"; // Change the tooltip text
+
+    // Call your refresh function
+    fetchClients(false).then(() => {
+      refreshTooltip = "Vernieuwd!"; // Update tooltip text after refresh
+      setTimeout(function () {
+        refreshTooltip = "Data vernieuwen";
+      }, 2000);
+    });
   }
 
   async function openModal(client = null, event = null) {
@@ -301,7 +327,17 @@
 <main>
   <section class="client_section">
     <div class="top">
-      <h2>Contacten</h2>
+      <h2>
+        Contacten
+        <span
+          class="refresh_data"
+          data-tooltip={refreshTooltip}
+          data-flow="top"
+          on:click={handleRefreshClick}
+        >
+          <ArrowClockwise size={18} color="var(--gray-400)" />
+        </span>
+      </h2>
       <div class="buttons">
         <button class="mobile_icon_only" on:click={() => openModal()}
           ><Plus size={16} />Contact toevoegen</button
