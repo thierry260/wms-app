@@ -155,6 +155,7 @@
 
     const clientData = get(currentClient);
 
+    // Validate required fields
     if (!clientData.voornaam) {
       errorMessage.set("Vul alle verplichte velden in.");
       return;
@@ -165,10 +166,12 @@
     successMessage.set("");
 
     try {
+      // Convert geboortedatum to a Firestore Timestamp if provided
       const dobTimestamp = clientData.geboortedatum
         ? Timestamp.fromDate(new Date(clientData.geboortedatum))
         : null;
 
+      // Reference to the clients collection
       const clientsRef = collection(
         db,
         "workspaces",
@@ -176,9 +179,10 @@
         "clients"
       );
 
+      let updatedClientsList = get(clientsList);
+
       if (action === "edit") {
         const clientDocRef = doc(clientsRef, clientData.id);
-
         delete clientData.id;
 
         await setDoc(clientDocRef, {
@@ -187,19 +191,42 @@
         });
         dbTracker.trackWrite(pageName);
 
+        // Update the local clientsList with the edited client
+        updatedClientsList = updatedClientsList.map((client) =>
+          client.id === clientDocRef.id
+            ? {
+                id: clientDocRef.id,
+                ...clientData,
+                geboortedatum: dobTimestamp,
+              }
+            : client
+        );
+
         successMessage.set("Contact succesvol bijgewerkt!");
       } else if (action === "create") {
-        await addDoc(clientsRef, {
+        const newDocRef = await addDoc(clientsRef, {
           ...clientData,
           geboortedatum: dobTimestamp,
         });
         dbTracker.trackWrite(pageName);
+
+        // Add the new client to the local clientsList
+        updatedClientsList = [
+          ...updatedClientsList,
+          { id: newDocRef.id, ...clientData, geboortedatum: dobTimestamp },
+        ];
+
         successMessage.set("Contact succesvol toegevoegd!");
       }
 
+      // Update the clientsList store
+      clientsList.set(updatedClientsList);
+
+      // Update the cache with the new clientsList
+      saveToCache("clientsList", updatedClientsList);
+
       resetForm();
       dialogEl.close();
-      await fetchClients(); // Refresh the client list from Firebase
     } catch (error) {
       console.error("Error handling client data: ", error);
       errorMessage.set(
@@ -207,6 +234,8 @@
       );
     } finally {
       submitting.set(false);
+      errorMessage.set("");
+      successMessage.set("");
     }
   }
 
@@ -245,9 +274,16 @@
     try {
       await deleteDoc(clientRef);
 
-      clientsList.update((currentClients) =>
-        currentClients.filter((client) => client.id !== contactToDelete.id)
+      // Update the clientsList by filtering out the deleted contact
+      let updatedClientsList = get(clientsList).filter(
+        (client) => client.id !== contactToDelete.id
       );
+
+      // Update the clientsList store
+      clientsList.set(updatedClientsList);
+
+      // Update the cache with the new clientsList
+      saveToCache("clientsList", updatedClientsList);
 
       dbTracker.trackDelete(pageName);
 
@@ -438,6 +474,14 @@
           placeholder="Notities (optioneel)"
         ></textarea>
       </label>
+
+      {#if $errorMessage}
+        <p style="color: red;">{$errorMessage}</p>
+      {/if}
+
+      {#if $successMessage}
+        <p style="color: green;">{$successMessage}</p>
+      {/if}
 
       <div class="buttons">
         {#if $currentClient.id}
