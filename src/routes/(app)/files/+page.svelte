@@ -57,7 +57,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0,
+      0
     );
 
     // Convert total minutes to hours
@@ -70,7 +70,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0,
+      0
     );
 
     // Calculate mileage allowance
@@ -116,7 +116,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients",
+      "clients"
     );
     const clientSnapshots = await getDocs(clientsRef);
     clients = clientSnapshots.docs.map((doc) => {
@@ -135,19 +135,19 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
       filesSnapshots.docs
         .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() })),
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
     );
 
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0,
+      0
     );
 
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
@@ -172,7 +172,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -192,7 +192,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks",
+        "tasks"
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -204,7 +204,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id,
+          (status) => status.id === task.status_id
         )?.name;
 
         if (statusName) {
@@ -287,7 +287,7 @@
             .includes(query)
         );
       });
-    },
+    }
   );
   let dialogEl = "";
 
@@ -329,7 +329,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files",
+        "files"
       );
 
       let timetracking = [];
@@ -338,7 +338,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString),
+          where("__name__", "==", fileIdString)
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -404,8 +404,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
-          ),
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
+          )
         );
       }
 
@@ -453,7 +453,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd",
+              "yyyy-MM-dd"
             )
           : "", // Convert and format the date
       });
@@ -483,7 +483,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id, // Access the id property of dossierId
+      fileToDelete.id // Access the id property of dossierId
     );
 
     try {
@@ -492,7 +492,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id),
+        currentFiles.filter((file) => file.id !== fileToDelete.id)
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -764,7 +764,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy",
+                          "dd-MM-yyyy"
                         )}</span
                       >
                     </li>
@@ -799,7 +799,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy",
+                      "dd-MM-yyyy"
                     )}
                   </p>
                 </li>
@@ -1064,7 +1064,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000,
+                      file.opvolgdatum.seconds * 1000
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
