@@ -811,8 +811,10 @@
                 </tr>
                 {#if $specs.km > 0}
                   <tr>
-                    <td>Kilometervergoeding (a € {$specs.kmRate})</td>
-                    <td>{formatToEuro($specs.subtotal)} exclusief</td>
+                    <td
+                      >Kilometervergoeding (a {formatToEuro($specs.kmRate)})</td
+                    >
+                    <td>{formatToEuro($specs.mileageAllowance)}</td>
                     <td>Exclusief BTW</td>
                   </tr>
                 {/if}
