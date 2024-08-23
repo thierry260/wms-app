@@ -529,13 +529,29 @@
     // Generate the PDF
     const options = {
       margin: 1,
-      filename: "project_specifications.pdf",
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
-    html2pdf().from(pdfContent).set(options).save();
+    html2pdf()
+      .from(pdfContent)
+      .set(options)
+      .outputPdf("blob")
+      .then((blob) => {
+        // Create a URL for the blob
+        const pdfUrl = URL.createObjectURL(blob);
+
+        // Open the PDF in a new tab for preview
+        const previewWindow = window.open(pdfUrl, "_blank");
+
+        // Optionally, you can add a button to allow the user to save the PDF from the preview window
+        if (previewWindow) {
+          previewWindow.focus();
+        } else {
+          alert("Please allow popups for this website to preview the PDF.");
+        }
+      });
   }
 
   function formatToEuro(amount) {
