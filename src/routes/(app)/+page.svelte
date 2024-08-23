@@ -6,7 +6,7 @@
     CaretRight,
     TrendUp,
     TrendDown,
-    ArrowsClockwise,
+    ArrowClockwise,
   } from "phosphor-svelte";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
   import { dbTracker } from "$lib/utils/dbTracker";
@@ -120,7 +120,7 @@
       (dossier.timetracking || []).map((entry) => ({
         ...entry,
         name: dossier.name, // Add the dossier's name to each timetracking entry
-      })),
+      }))
     );
   });
   $: console.log("Logs", $logs);
@@ -184,7 +184,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks",
+          "tasks"
         );
         const taskSnapshots = await getDocs(tasksRef);
         const tasksArray = [];
@@ -212,10 +212,10 @@
                 "workspaces",
                 localStorage.getItem("workspace"),
                 "files",
-                fileId,
-              ),
-            ),
-          ),
+                fileId
+              )
+            )
+          )
         );
 
         const fileDataMap = new Map();
@@ -274,7 +274,7 @@
     <h2>Welkom terug!</h2>
     <button class="basic">
       <span class="refresh_data" on:click={refreshData}>
-        <ArrowsClockwise size={20} />
+        <ArrowClockwise size={20} />
       </span>
     </button>
   </div>

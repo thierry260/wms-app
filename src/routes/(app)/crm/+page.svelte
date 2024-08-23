@@ -12,12 +12,20 @@
   } from "firebase/firestore";
   import { writable, get, derived } from "svelte/store";
   import { onMount } from "svelte";
-  import { X, Plus, TrashSimple, Phone, EnvelopeSimple } from "phosphor-svelte";
+  import {
+    X,
+    Plus,
+    TrashSimple,
+    Phone,
+    EnvelopeSimple,
+    ArrowClockwise,
+  } from "phosphor-svelte";
   import { format } from "date-fns";
   import { dbTracker } from "$lib/utils/dbTracker"; // Import dbTracker
   import { saveToCache, getFromCache, removeFromCache } from "$lib/utils/cache"; // Import cache functions
 
   const pageName = "Contacts";
+  let refreshTooltip = "Data vernieuwen";
 
   // Writable store for contact form data
   let currentClient = writable({
@@ -71,15 +79,21 @@
     await fetchClients();
   });
 
-  async function fetchClients() {
+  async function fetchClients(useCache = true) {
     const cacheKey = "clientsList";
+    let clients = [];
+    console.log("fetchClients");
 
-    let clients = getFromCache(cacheKey, 15);
+    if (useCache) {
+      clients = getFromCache(cacheKey, 15);
 
-    if (clients) {
-      console.log("Using cached clients");
-      clientsList.set(clients);
-      return;
+      if (clients) {
+        console.log("Using cached clients");
+        clientsList.set(clients);
+        return;
+      }
+    } else {
+      console.log("Refresh data");
     }
 
     console.log("Fetching clients from Firebase");
@@ -100,6 +114,18 @@
     dbTracker.trackRead(pageName, clientSnapshots.docs.length);
 
     console.log(clientsList);
+  }
+
+  function handleRefreshClick() {
+    refreshTooltip = "Aan het vernieuwen"; // Change the tooltip text
+
+    // Call your refresh function
+    fetchClients(false).then(() => {
+      refreshTooltip = "Vernieuwd!"; // Update tooltip text after refresh
+      setTimeout(function () {
+        refreshTooltip = "Data vernieuwen";
+      }, 2000);
+    });
   }
 
   async function openModal(client = null, event = null) {
@@ -155,6 +181,7 @@
 
     const clientData = get(currentClient);
 
+    // Validate required fields
     if (!clientData.voornaam) {
       errorMessage.set("Vul alle verplichte velden in.");
       return;
@@ -165,10 +192,12 @@
     successMessage.set("");
 
     try {
+      // Convert geboortedatum to a Firestore Timestamp if provided
       const dobTimestamp = clientData.geboortedatum
         ? Timestamp.fromDate(new Date(clientData.geboortedatum))
         : null;
 
+      // Reference to the clients collection
       const clientsRef = collection(
         db,
         "workspaces",
@@ -176,9 +205,10 @@
         "clients"
       );
 
+      let updatedClientsList = get(clientsList);
+
       if (action === "edit") {
         const clientDocRef = doc(clientsRef, clientData.id);
-
         delete clientData.id;
 
         await setDoc(clientDocRef, {
@@ -187,19 +217,42 @@
         });
         dbTracker.trackWrite(pageName);
 
+        // Update the local clientsList with the edited client
+        updatedClientsList = updatedClientsList.map((client) =>
+          client.id === clientDocRef.id
+            ? {
+                id: clientDocRef.id,
+                ...clientData,
+                geboortedatum: dobTimestamp,
+              }
+            : client
+        );
+
         successMessage.set("Contact succesvol bijgewerkt!");
       } else if (action === "create") {
-        await addDoc(clientsRef, {
+        const newDocRef = await addDoc(clientsRef, {
           ...clientData,
           geboortedatum: dobTimestamp,
         });
         dbTracker.trackWrite(pageName);
+
+        // Add the new client to the local clientsList
+        updatedClientsList = [
+          ...updatedClientsList,
+          { id: newDocRef.id, ...clientData, geboortedatum: dobTimestamp },
+        ];
+
         successMessage.set("Contact succesvol toegevoegd!");
       }
 
+      // Update the clientsList store
+      clientsList.set(updatedClientsList);
+
+      // Update the cache with the new clientsList
+      saveToCache("clientsList", updatedClientsList);
+
       resetForm();
       dialogEl.close();
-      await fetchClients(); // Refresh the client list from Firebase
     } catch (error) {
       console.error("Error handling client data: ", error);
       errorMessage.set(
@@ -207,6 +260,8 @@
       );
     } finally {
       submitting.set(false);
+      errorMessage.set("");
+      successMessage.set("");
     }
   }
 
@@ -245,9 +300,16 @@
     try {
       await deleteDoc(clientRef);
 
-      clientsList.update((currentClients) =>
-        currentClients.filter((client) => client.id !== contactToDelete.id)
+      // Update the clientsList by filtering out the deleted contact
+      let updatedClientsList = get(clientsList).filter(
+        (client) => client.id !== contactToDelete.id
       );
+
+      // Update the clientsList store
+      clientsList.set(updatedClientsList);
+
+      // Update the cache with the new clientsList
+      saveToCache("clientsList", updatedClientsList);
 
       dbTracker.trackDelete(pageName);
 
@@ -265,7 +327,17 @@
 <main>
   <section class="client_section">
     <div class="top">
-      <h2>Contacten</h2>
+      <h2>
+        Contacten
+        <span
+          class="refresh_data"
+          data-tooltip={refreshTooltip}
+          data-flow="top"
+          on:click={handleRefreshClick}
+        >
+          <ArrowClockwise size={18} color="var(--gray-400)" />
+        </span>
+      </h2>
       <div class="buttons">
         <button class="mobile_icon_only" on:click={() => openModal()}
           ><Plus size={16} />Contact toevoegen</button
@@ -438,6 +510,14 @@
           placeholder="Notities (optioneel)"
         ></textarea>
       </label>
+
+      {#if $errorMessage}
+        <p style="color: red;">{$errorMessage}</p>
+      {/if}
+
+      {#if $successMessage}
+        <p style="color: green;">{$successMessage}</p>
+      {/if}
 
       <div class="buttons">
         {#if $currentClient.id}
