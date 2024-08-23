@@ -20,6 +20,7 @@
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   const pageName = "Files";
+  import html2pdf from "html2pdf.js";
 
   // Initialize writable store for currentFile
   let currentFile = writable({
@@ -47,7 +48,10 @@
       : [];
 
     // Calculate total minutes
-    const minutes = timetracking.reduce((acc, entry) => acc + entry.minutes, 0);
+    const totalMinutes = timetracking.reduce(
+      (acc, entry) => acc + entry.minutes,
+      0,
+    );
 
     // Convert total minutes to hours
     const hours = minutes / 60;
@@ -59,7 +63,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0
+      0,
     );
 
     // Calculate mileage allowance
@@ -105,7 +109,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients"
+      "clients",
     );
     const clientSnapshots = await getDocs(clientsRef);
     clients = clientSnapshots.docs.map((doc) => {
@@ -124,19 +128,19 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files"
+      "files",
     );
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
       filesSnapshots.docs
         .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .map((doc) => ({ id: doc.id, ...doc.data() })),
     );
 
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0
+      0,
     );
 
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
@@ -161,7 +165,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -181,7 +185,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks"
+        "tasks",
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -193,7 +197,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id
+          (status) => status.id === task.status_id,
         )?.name;
 
         if (statusName) {
@@ -276,7 +280,7 @@
             .includes(query)
         );
       });
-    }
+    },
   );
   let dialogEl = "";
 
@@ -318,7 +322,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files"
+        "files",
       );
 
       let timetracking = [];
@@ -327,7 +331,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString)
+          where("__name__", "==", fileIdString),
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -393,8 +397,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
-          )
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
+          ),
         );
       }
 
@@ -472,7 +476,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id // Access the id property of dossierId
+      fileToDelete.id, // Access the id property of dossierId
     );
 
     try {
@@ -481,7 +485,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id)
+        currentFiles.filter((file) => file.id !== fileToDelete.id),
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -504,6 +508,39 @@
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return `${String(hours).padStart(1, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  function generatePDF(specs) {
+    // Create a container for the PDF content
+    const pdfContent = document.createElement("div");
+    pdfContent.innerHTML = `
+    <h1>Project Specifications</h1>
+    <p><strong>Hours:</strong> ${specs.hours} uur</p>
+    <p><strong>Hourly Rate:</strong> €${specs.rate}</p>
+    <p><strong>Subtotal:</strong> €${specs.subtotal.toFixed(2)}</p>
+    <p><strong>Kilometers:</strong> ${specs.km} km</p>
+    <p><strong>Mileage Allowance:</strong> €${specs.mileageAllowance.toFixed(2)}</p>
+    <p><strong>Total (Excl. Tax):</strong> €${specs.total.toFixed(2)}</p>
+    <p><strong>Tax:</strong> €${specs.tax.toFixed(2)}</p>
+    <p><strong>Total (Incl. Tax):</strong> €${(specs.total + specs.tax).toFixed(2)}</p>
+  `;
+
+    // Styling the PDF (optional)
+    pdfContent.style.padding = "20px";
+    pdfContent.style.fontFamily = "Arial, sans-serif";
+    pdfContent.style.color = "#333";
+    pdfContent.querySelector("h1").style.color = "#0056b3";
+
+    // Generate the PDF
+    const options = {
+      margin: 1,
+      filename: "project_specifications.pdf",
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+    };
+
+    html2pdf().from(pdfContent).set(options).save();
   }
   function formatToEuro(amount) {
     return new Intl.NumberFormat("nl-NL", {
@@ -710,7 +747,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy"
+                          "dd-MM-yyyy",
                         )}</span
                       >
                     </li>
@@ -745,7 +782,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy"
+                      "dd-MM-yyyy",
                     )}
                   </p>
                 </li>
@@ -801,7 +838,7 @@
           <button
             type="button"
             on:click={() => {
-              console.log($specs);
+              generatePDF($specs);
             }}>Data</button
           >
         </div>

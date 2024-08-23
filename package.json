@@ -36,6 +36,7 @@
 		"date-fns": "^3.6.0",
 		"firebase": "^9.23.0",
 		"highcharts": "^11.4.7",
+		"html2pdf.js": "^0.10.2",
 		"sortablejs": "^1.15.2",
 		"svelte-select": "^5.8.3"
 	}
