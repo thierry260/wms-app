@@ -528,10 +528,15 @@
 
     // Generate the PDF
     const options = {
-      margin: 1,
+      margin: 0.5, // Adjust as needed
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+      jsPDF: {
+        unit: "in",
+        format: "letter",
+        orientation: "portrait",
+        compress: true,
+      },
     };
 
     html2pdf()
