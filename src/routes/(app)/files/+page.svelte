@@ -67,7 +67,7 @@
 
     // Calculate tax and total including tax
     const tax = subtotal * taxRate;
-    const total = subtotal + tax;
+    const total = subtotal + mileageAllowance;
 
     return {
       hours,
@@ -77,10 +77,10 @@
       km,
       kmRate,
       mileageAllowance,
-      total: subtotal + mileageAllowance,
+      total,
       tax,
       taxRate,
-      total: total + mileageAllowance,
+      totalTax: total + tax,
     };
   });
 
@@ -759,41 +759,46 @@
         <div slot="tab-4">
           <!-- Facturatie -->
           {#if $specs && $specs.minutes > 0}
-            <table>
+            <table class="specs">
               <tbody>
                 <tr>
-                  <th>Uren conform specificatie</th>
+                  <td>Uren conform specificatie</td>
                   <td>{formatMinutesToHHMM($specs.minutes)}</td>
                   <td>uur</td>
                 </tr>
                 <tr>
-                  <th>Uurtarief</th>
+                  <td>Uurtarief</td>
                   <td>{formatToEuro($specs.rate)}</td>
                   <td>x</td>
                 </tr>
                 <tr>
-                  <th>Subtotaal</th>
-                  <td>{formatToEuro($specs.subtotal)}</td>
-                  <td>Exclusief BTW</td>
+                  <td>Subtotaal</td>
+                  <td class="border">{formatToEuro($specs.subtotal)}</td>
+                  <td class="border">Exclusief BTW</td>
                 </tr>
                 {#if $specs.km > 0}
                   <tr>
-                    <th>Kilometervergoeding (a € {$specs.kmRate})</th>
-                    <th>{formatToEuro($specs.subtotal)} exclusief</th>
+                    <td>Kilometervergoeding (a € {$specs.kmRate})</td>
+                    <td>{formatToEuro($specs.subtotal)} exclusief</td>
                     <td>Exclusief BTW</td>
                   </tr>
                 {/if}
                 <tr>
-                  <th>BTW ({$specs.taxRate})</th>
-                  <th>{formatToEuro($specs.tax)}</th>
+                  <td>Totaal</td>
+                  <td class="border">{formatToEuro($specs.total)}</td>
+                  <td class="border">Exclusief BTW</td>
+                </tr>
+                <tr>
+                  <td>BTW ({$specs.taxRate * 100}%)</td>
+                  <td>{formatToEuro($specs.tax)}</td>
                   <td>+</td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr>
-                  <th>Totaal</th>
-                  <th>{formatToEuro($specs.total)}</th>
-                  <td>Inclusief BTW</td>
+                  <td>Totaal</td>
+                  <td class="border">{formatToEuro($specs.totalTax)}</td>
+                  <td class="border">Inclusief BTW</td>
                 </tr>
               </tfoot>
             </table>
@@ -1155,4 +1160,30 @@
   //     padding: 5px;
   //     cursor: pointer;
   //   }
+
+  table.specs {
+    background-color: var(--background);
+    padding: 10px;
+    tr {
+      height: 30px;
+      background-color: transparent;
+      cursor: unset;
+
+      td:first-child {
+        text-align: right;
+      }
+      td {
+        color: var(--gray-800);
+        padding-inline: 10px;
+      }
+      .border {
+        border-top: 1px solid var(--border);
+      }
+    }
+    tfoot {
+      td {
+        font-weight: 600;
+      }
+    }
+  }
 </style>
