@@ -124,7 +124,7 @@
       refreshTooltip = "Vernieuwd!"; // Update tooltip text after refresh
       setTimeout(function () {
         refreshTooltip = "Data vernieuwen";
-      }, 2000);
+      }, 4000);
     });
   }
 
@@ -335,7 +335,7 @@
           data-flow="top"
           on:click={handleRefreshClick}
         >
-          <ArrowClockwise size={18} color="var(--gray-400)" />
+          <ArrowClockwise size={16} color="var(--gray-400)" />
         </span>
       </h2>
       <div class="buttons">

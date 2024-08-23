@@ -35,6 +35,58 @@
     fileId: "",
     timetracking: false,
   });
+
+  const specs = derived(currentFile, ($currentFile) => {
+    const rate = $currentFile.uurtarief;
+    const taxRate = 0.21;
+    const kmRate = 0.4;
+
+    // Ensure timetracking is an array before reducing
+    const timetracking = Array.isArray($currentFile.timetracking)
+      ? $currentFile.timetracking
+      : [];
+
+    // Calculate total minutes
+    const totalMinutes = timetracking.reduce(
+      (acc, entry) => acc + entry.minutes,
+      0
+    );
+
+    // Convert total minutes to hours
+    const hours = totalMinutes / 60;
+
+    // Calculate total cost (billable hours * hourly rate)
+    const subtotal = hours * rate;
+
+    // Calculate total kilometers
+    const km = timetracking.reduce(
+      (acc, entry) =>
+        acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
+      0
+    );
+
+    // Calculate mileage allowance
+    const mileageAllowance = km * kmRate;
+
+    // Calculate tax and total including tax
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+
+    return {
+      hours,
+      rate,
+      subtotal,
+      km,
+      kmRate,
+      mileageAllowance,
+      total: subtotal + mileageAllowance,
+      tax,
+      total: total + mileageAllowance,
+    };
+  });
+
+  $: console.log("specs", $specs);
+
   let proposedFileId;
 
   let clients = [];
@@ -54,7 +106,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients",
+      "clients"
     );
     const clientSnapshots = await getDocs(clientsRef);
     clients = clientSnapshots.docs.map((doc) => {
@@ -73,19 +125,19 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
       filesSnapshots.docs
         .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() })),
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
     );
 
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0,
+      0
     );
 
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
@@ -110,7 +162,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -130,7 +182,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks",
+        "tasks"
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -142,7 +194,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id,
+          (status) => status.id === task.status_id
         )?.name;
 
         if (statusName) {
@@ -225,7 +277,7 @@
             .includes(query)
         );
       });
-    },
+    }
   );
   let dialogEl = "";
 
@@ -267,7 +319,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files",
+        "files"
       );
 
       let timetracking = [];
@@ -276,7 +328,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString),
+          where("__name__", "==", fileIdString)
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -342,8 +394,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
-          ),
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
+          )
         );
       }
 
@@ -421,7 +473,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id, // Access the id property of dossierId
+      fileToDelete.id // Access the id property of dossierId
     );
 
     try {
@@ -430,7 +482,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id),
+        currentFiles.filter((file) => file.id !== fileToDelete.id)
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -480,7 +532,7 @@
           { label: "Contacten" },
           { label: "Taken" },
           { label: "Tijdregistratie" },
-          //   { label: "Facturatie" },
+          { label: "Facturatie" },
         ]}
         on:tabChange={handleTabChange}
       >
@@ -653,7 +705,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy",
+                          "dd-MM-yyyy"
                         )}</span
                       >
                     </li>
@@ -688,7 +740,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy",
+                      "dd-MM-yyyy"
                     )}
                   </p>
                 </li>
@@ -699,7 +751,31 @@
           {/if}
         </div>
 
-        <div slot="tab-4"><!-- Facturatie --></div>
+        <div slot="tab-4">
+          <!-- Facturatie -->
+          {#if $specs && $specs.hours > 0}
+            <table>
+              <tr>
+                <th>Uren conform specificatie</th>
+                <th>{$specs.hours} uur</th>
+              </tr>
+              <tr>
+                <th>Uurtarief</th>
+                <th>{$specs.rate} uur</th>
+              </tr>
+              <tr>
+                <th>Uurtarief</th>
+                <th>{$specs.rate} uur</th>
+              </tr>
+            </table>
+          {/if}
+          <button
+            type="button"
+            on:click={() => {
+              console.log($specs);
+            }}>Data</button
+          >
+        </div>
       </Tabs>
 
       {#if $errorMessage}
