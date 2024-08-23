@@ -79,6 +79,12 @@
     updateLogsForSearch(); // Re-fetch and update the logs when updateLogs changes
   }
 
+  $: {
+    // Reactive block that triggers whenever logs is updated
+    const filteredLogs = get(logs); // This ensures that logs are re-evaluated reactively
+    console.log("Reactive logs update triggered");
+  }
+
   onMount(async () => {
     dbTracker.initPage(pageName);
     try {
@@ -106,11 +112,6 @@
       );
       allLogs = data;
       updateLogsForSearch();
-
-      // Add event listener for updateLogs event
-      window.addEventListener("updateLogs", (event) => {
-        updateLogsForSearch(dossiersData); // Re-fetch and update the logs
-      });
     } catch (error) {
       console.error("Error checking authentication status:", error);
     } finally {
@@ -118,85 +119,11 @@
     }
   });
 
-  async function handleSubmit() {
-    const timetrackingData = get(currentTimetracking);
-
-    if (!timetrackingData.client_id) {
-      alert("Selecteer een dossier");
-      return;
-    }
-
-    console.log("Client ID:", timetrackingData.client_id);
-
-    // Split tijdsduur into uur and min
-    const [uur, min] = timetrackingData.hhmm.split(":").map(Number);
-    const totaal = (uur + min / 60).toFixed(2);
-
-    // Prepare the row object to be sent
-    const row = {
-      date: new Date(timetrackingData.datum),
-      description: timetrackingData.description,
-      minutes: uur * 60 + min,
-      totaal: totaal,
-      billable: timetrackingData.billable,
-      assignee: timetrackingData.assignee,
-      isExternal: timetrackingData.isExternal,
-      location: timetrackingData.isExternal ? timetrackingData.location : "",
-      kilometers: timetrackingData.isExternal
-        ? timetrackingData.kilometers
-        : "",
-    };
-
-    try {
-      const dossierRef = doc(
-        db,
-        "workspaces",
-        localStorage.getItem("workspace"),
-        "files",
-        timetrackingData.client_id.id,
-      );
-
-      if (timetrackingData.id) {
-        // If an ID exists, update the existing entry
-        const dossierSnap = await getDoc(dossierRef);
-        if (dossierSnap.exists()) {
-          const timetracking = dossierSnap.data().timetracking || [];
-          const existingIndex = timetracking.findIndex(
-            (entry) => entry.id === timetrackingData.id,
-          );
-
-          if (existingIndex !== -1) {
-            timetracking[existingIndex] = row;
-          } else {
-            alert("Entry not found.");
-            return;
-          }
-
-          await updateDoc(dossierRef, { timetracking });
-          dbTracker.trackWrite(pageName); // Track the write operation
-        }
-      } else {
-        // Add new entry
-        await updateDoc(dossierRef, {
-          timetracking: arrayUnion(row),
-        });
-        dbTracker.trackWrite(pageName); // Track the write operation
-      }
-
-      window.dispatchEvent(new CustomEvent("logUpdated"));
-
-      dialogEl.close();
-
-      // Reset form fields
-      currentTimetracking.set(defaults);
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert("Fout bij verzenden van formulier");
-      dispatch("logUpdated");
-    }
-  }
+  // Reactive declaration to automatically update the logs in the UI when `logs` changes
+  $: filteredLogs = $logs;
 
   function updateLogsForSearch(data = allLogs) {
+    console.log("update logs");
     const searchValue = get(searchQuery).trim().toLowerCase();
     const fromDate = get(searchQueryFrom);
     const toDate = get(searchQueryTo);
@@ -222,26 +149,45 @@
     // Filter based on date range
     if (fromDate || toDate) {
       data = data.filter((log) => {
-        const logDate = new Date(format(log.date.toDate(), "yyyy-MM-dd"));
+        const logDate = log.date
+          ? new Date(format(log.date.toDate(), "yyyy-MM-dd"))
+          : null;
         let isValidLog = true;
         if (fromDate) {
           const from = new Date(fromDate);
           from.setHours(0, 0, 0, 0);
-          isValidLog = isValidLog && logDate >= from;
+          isValidLog = isValidLog && logDate && logDate >= from;
         }
         if (toDate) {
           const to = new Date(toDate);
           to.setHours(23, 59, 59, 999);
-          isValidLog = isValidLog && logDate <= to;
+          isValidLog = isValidLog && logDate && logDate <= to;
         }
         return isValidLog;
       });
     }
 
-    // Sort logs by date and time
-    data.sort((a, b) => b.date.toDate() - a.date.toDate());
+    // Sort logs by presence of timestamp, then by date and time
+    data.sort((a, b) => {
+      const aHasTime = a.date && a.date.toDate().getTime();
+      const bHasTime = b.date && b.date.toDate().getTime();
 
-    // data = data.slice(0, 50);
+      // Prioritize logs with timestamps
+      if (aHasTime && !bHasTime) return -1;
+      if (!aHasTime && bHasTime) return 1;
+
+      // If both logs have timestamps, sort by date and time
+      if (aHasTime && bHasTime) {
+        if (a.date.toDate().getTime() === b.date.toDate().getTime()) {
+          // If dates are the same, sort by time
+          return b.date.toDate().getTime() - a.date.toDate().getTime();
+        }
+        // Otherwise, sort by date
+        return b.date.toDate() - a.date.toDate();
+      }
+
+      return 0; // Keep original order for logs without timestamps
+    });
 
     logs.set(data);
   }
@@ -358,11 +304,12 @@
     const dossierId = editedLog.dossierId ? editedLog.dossierId.id : "0000";
     const originalDossierId = editedLog.originalDossierId || dossierId;
 
-    // console.log("dossierId", dossierId);
-    // return;
+    if (!editedLog.datum) {
+      console.error("Date is undefined. " + editedLog.datum);
+      return;
+    }
 
-    // Get the date from the form
-    const [year, month, day] = editedLog.date.split("-").map(Number);
+    const [year, month, day] = editedLog.datum.split("-").map(Number);
 
     const today = new Date();
     const isToday =
@@ -372,13 +319,10 @@
 
     let dateObj;
     if (isToday) {
-      // 1. If the date is today, use the current time
       dateObj = new Date();
     } else {
-      // 2. If the date is not today, set the time to the end of the day
       dateObj = new Date(year, month - 1, day, 23, 59, 59);
 
-      // 3. Check if there's already a log with the time at the end of the day
       const newDossierRef = doc(
         db,
         "workspaces",
@@ -402,7 +346,6 @@
           .sort((a, b) => b.date.toDate() - a.date.toDate())[0];
 
         if (lastLog) {
-          // If the last log is at 23:59:59, increment by 1 second
           const lastLogTime = lastLog.date.toDate();
           if (
             lastLogTime.getHours() === 23 &&
@@ -449,10 +392,6 @@
             timetracking: originalTimetracking,
           });
         }
-      } else {
-        console.warn(
-          `Original dossier (ID: ${originalDossierId}) does not exist.`,
-        );
       }
 
       const newDocSnap = await getDoc(newDossierRef);
@@ -472,12 +411,17 @@
         (entry, idx) => idx === editedLog.index,
       );
 
+      // Fetch the correct dossier from dossiersData to get its name or label
+      const dossier = dossiersData.find((dossier) => dossier.id === dossierId);
+
       if (existingIndex !== -1) {
         // If log exists, update it
         newTimetracking[existingIndex] = {
           ...editedLog,
           date: firestoreTimestamp,
           minutes: timeToMinutes(editedLog.hhmm),
+          id: dossierId, // Ensure id is set correctly
+          name: dossier.name || "", // Assign the name or label correctly
         };
       } else {
         // Otherwise, add it as a new entry
@@ -485,6 +429,8 @@
           ...editedLog,
           date: firestoreTimestamp,
           minutes: timeToMinutes(editedLog.hhmm),
+          id: dossierId, // Ensure id is set correctly
+          name: dossier.name || "", // Assign the name or label correctly
         });
       }
 
@@ -493,8 +439,17 @@
       });
       dbTracker.trackWrite(pageName);
 
-      alert("Urenregistratie succesvol bijgewerkt");
-      window.dispatchEvent(new CustomEvent("logUpdated"));
+      // Update the allLogs array and the logs store
+      allLogs.push({
+        ...editedLog,
+        date: firestoreTimestamp,
+        minutes: timeToMinutes(editedLog.hhmm),
+        id: dossierId, // Ensure id is set correctly here too
+        name: dossier.name || "", // Ensure name is set here too
+      });
+
+      logs.set([...allLogs]);
+      updateLogsForSearch(); // Refresh logs after saving
       closeDialog();
     } catch (error) {
       console.error("Fout bij het bijwerken van urenregistratie:", error);
@@ -537,10 +492,21 @@
         });
         dbTracker.trackDelete(pageName);
 
-        alert("Urenregistratie succesvol verwijderd");
+        // Remove the log from the allLogs array
+        allLogs = allLogs.filter(
+          (log) =>
+            !(
+              log.id === logToDelete.dossierId.id &&
+              log.index === logToDelete.index
+            ),
+        );
 
-        // Dispatch the 'logUpdated' event to update the results list
-        window.dispatchEvent(new CustomEvent("logUpdated"));
+        // Update the logs store to reflect the deletion
+        logs.set([...allLogs]);
+
+        updateLogsForSearch(); // Apply any active filters or sorting
+
+        alert("Urenregistratie succesvol verwijderd");
 
         closeDialog();
       } else {
@@ -729,7 +695,7 @@
       </div>
       <div>
         <label class="legend">Datum</label>
-        <input type="date" bind:value={$currentTimetracking.date} />
+        <input type="date" bind:value={$currentTimetracking.datum} />
       </div>
       <div>
         <label class="legend">Omschrijving</label>

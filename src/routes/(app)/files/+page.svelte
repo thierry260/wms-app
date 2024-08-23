@@ -217,6 +217,8 @@
           file.id.toLowerCase().includes(query) ||
           file.name.toLowerCase().includes(query) ||
           file.dossierstatus.toLowerCase().includes(query) ||
+          (file.administratiestatus &&
+            file.administratiestatus.toLowerCase().includes(query)) ||
           clients
             .find((client) => client.id === file.client_id)
             ?.label.toLowerCase()
@@ -389,7 +391,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd"
+              "yyyy-MM-dd",
             )
           : "", // Convert and format the date
       });
@@ -531,11 +533,7 @@
               <span class="legend">Dossierstatus</span>
               <select bind:value={$currentFile.dossierstatus}>
                 <option value="Actief">Actief</option>
-                <option value="Afgewikkeld">Afgewikkeld</option>
-                <option value="Betwist">Betwist</option>
                 <option value="Controleren">Controleren</option>
-                <option value="Dubieus">Dubieus</option>
-                <option value="In Afronding">In Afronding</option>
                 <option value="Inactief">Inactief</option>
               </select>
             </label>
@@ -568,8 +566,9 @@
               <option value="Betaald">Betaald</option>
               <option value="Factureren">Factureren</option>
               <option value="Controleren">Controleren</option>
-              <option value="Openstaand">Openstaand</option>
-              <option value="Afwachten">Afwachten</option>
+              <option value="Gefactureerd">Gefactureerd</option>
+              <option value="Onder handen">Onder handen</option>
+              <option value="Betwist">Betwist</option>
               <option value="Pro bono">Pro bono</option>
             </select>
           </label>
@@ -755,6 +754,7 @@
             <th>Dossier</th>
             <th>Contact</th>
             <th>Status</th>
+            <th>Administratiestatus</th>
             <th class="hide_mobile">Opvolgdatum</th>
           </tr>
         </thead>
@@ -773,11 +773,12 @@
                   : "Onbekend"}
               </td>
               <td>{file.dossierstatus}</td>
+              <td>{file.administratiestatus}</td>
               <td class="hide_mobile">
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000
+                      file.opvolgdatum.seconds * 1000,
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
