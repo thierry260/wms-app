@@ -62,6 +62,9 @@
   .tabs {
     display: flex;
     border-bottom: 2px solid var(--gray-200);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
   }
 
   .tab {

@@ -85,6 +85,15 @@ table {
     }
   }
 
+  thead {
+    th.limit_width {
+      overflow: hidden;
+      white-space: nowrap;
+      max-width: 20vw;
+      text-overflow: ellipsis;
+    }
+  }
+
   tbody tr {
     cursor: pointer;
 
@@ -107,7 +116,7 @@ table {
       .start_date {
         display: block;
 
-        +span {
+        + span {
           display: block;
           line-height: 0.5em;
           opacity: 0.35;
@@ -342,7 +351,7 @@ table {
 }
 
 [data-count=""] {
-  ~.eg_notice {
+  ~ .eg_notice {
     display: none;
   }
 }
@@ -350,7 +359,7 @@ table {
 [data-count="0"] {
   display: none;
 
-  ~.eg_notice {
+  ~ .eg_notice {
     display: flex;
   }
 }
@@ -369,13 +378,13 @@ table {
   &[data-count="0"] {
     display: none;
 
-    ~.eg_notice {
+    ~ .eg_notice {
       display: flex;
     }
   }
 
   &[data-count]:not([data-count="0"]) {
-    ~.eg_notice {
+    ~ .eg_notice {
       display: none;
     }
   }
@@ -541,7 +550,7 @@ table {
     .start_date {
       display: none;
 
-      +span {
+      + span {
         display: none;
       }
     }

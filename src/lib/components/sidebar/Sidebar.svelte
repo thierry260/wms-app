@@ -66,6 +66,7 @@
     const auth = getAuth();
     try {
       await signOut(auth);
+      localStorage.clear();
       goto("/login");
     } catch (error) {
       console.error("Logout failed", error);

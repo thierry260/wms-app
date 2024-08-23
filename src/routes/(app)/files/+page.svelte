@@ -895,7 +895,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate,
+                          $specs.kmRate
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -975,16 +975,16 @@
                 </tfoot>
               </table> -->
             </div>
+            <button
+              type="button"
+              class="basic"
+              on:click={() => {
+                generatePDF($specs);
+              }}><ArrowSquareOut size={20} />PDF aanmaken</button
+            >
           {:else}
-            <p>Nog geen specificatie beschikbaar</p>
+            <p>Geen specificatie beschikbaar</p>
           {/if}
-          <button
-            type="button"
-            class="basic"
-            on:click={() => {
-              generatePDF($specs);
-            }}><ArrowSquareOut size={20} />PDF aanmaken</button
-          >
         </div>
       </Tabs>
 
@@ -1040,7 +1040,7 @@
             <th>Dossier</th>
             <th>Contact</th>
             <th>Status</th>
-            <th>Administratiestatus</th>
+            <th class="limit_width">Administratiestatus</th>
             <th class="hide_mobile">Opvolgdatum</th>
           </tr>
         </thead>

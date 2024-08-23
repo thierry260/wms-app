@@ -346,8 +346,8 @@
                   <div class="amount">
                     <a href="/tasks">
                       {tasks.length === 1
-                        ? `${tasks.length}` + " verlopen taak"
-                        : `${tasks.length}` + " verlopen taken"}</a
+                        ? `${tasks.length}` + " taak verlopen"
+                        : `${tasks.length}` + " taken verlopen"}</a
                     >
                   </div>
                 </li>
@@ -743,6 +743,8 @@
                   text-decoration: none;
                   color: var(--gray-500);
                   font-size: 1.6rem;
+                  text-align: center;
+                  display: inline-flex;
                 }
 
                 &:nth-of-type(odd) {
@@ -767,6 +769,13 @@
                     &:not(:first-child) {
                       margin-right: -12px;
                     }
+                  }
+                }
+
+                @media (max-width: $sm) {
+                  padding: 15px;
+                  a {
+                    font-size: 1.4rem;
                   }
                 }
               }
