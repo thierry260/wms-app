@@ -38,7 +38,7 @@
 
   const defaults = {
     client_id: "",
-    datum: "",
+    date: "",
     hhmm: "00:15",
     assignee: "Toon",
     description: "",
@@ -90,7 +90,7 @@
     try {
       // Set datum to today's date
       const today = new Date().toISOString().split("T")[0];
-      $currentTimetracking.datum = today;
+      $currentTimetracking.date = today;
 
       dossiersData = await fetchWorkspaceFilesData(false);
       dbTracker.trackRead(pageName, dossiersData.length); // Track the read operation
@@ -236,7 +236,7 @@
     };
   }
 
-  function handleLongPress(log) {
+  function handleLongPress(log, allLogsIndex) {
     console.log("Log received:", log); // Debug log
 
     // Use dossierId directly from the log
@@ -280,6 +280,7 @@
 
     currentTimetracking.set({
       index, // Store the correct index
+      allLogsIndex,
       dossierId: dossier.id, // Use dossier's ID
       originalDossierId: dossier.id, // Track the original dossier ID
       name: dossier.name,
@@ -304,12 +305,12 @@
     const dossierId = editedLog.dossierId ? editedLog.dossierId.id : "0000";
     const originalDossierId = editedLog.originalDossierId || dossierId;
 
-    if (!editedLog.datum) {
-      console.error("Date is undefined. " + editedLog.datum);
+    if (!editedLog.date) {
+      console.error("Date is undefined. " + editedLog.date);
       return;
     }
 
-    const [year, month, day] = editedLog.datum.split("-").map(Number);
+    const [year, month, day] = editedLog.date.split("-").map(Number);
 
     const today = new Date();
     const isToday =
@@ -439,14 +440,19 @@
       });
       dbTracker.trackWrite(pageName);
 
-      // Update the allLogs array and the logs store
-      allLogs.push({
-        ...editedLog,
-        date: firestoreTimestamp,
-        minutes: timeToMinutes(editedLog.hhmm),
-        id: dossierId, // Ensure id is set correctly here too
-        name: dossier.name || "", // Ensure name is set here too
-      });
+      if (
+        $currentTimetracking.allLogsIndex &&
+        $currentTimetracking.allLogsIndex !== -1
+      ) {
+        // If log exists, update it
+        allLogs[$currentTimetracking.allLogsIndex] = {
+          ...editedLog,
+          date: firestoreTimestamp,
+          minutes: timeToMinutes(editedLog.hhmm),
+          id: dossierId, // Ensure id is set correctly
+          name: dossier.name || "", // Assign the name or label correctly
+        };
+      }
 
       logs.set([...allLogs]);
       updateLogsForSearch(); // Refresh logs after saving
@@ -569,7 +575,7 @@
     // Ensure store is reset before showing the modal
     const newDefaults = {
       ...defaults,
-      datum: new Date().toISOString().split("T")[0], // Set today's date as default
+      date: new Date().toISOString().split("T")[0], // Set today's date as default
     };
 
     console.log("Setting defaults for modal:", newDefaults); // Debugging line
@@ -648,7 +654,7 @@
                 <hr class="date-line" />
               </div>
             {/if}
-            <li on:click={() => handleLongPress(log)}>
+            <li on:click={() => handleLongPress(log, index)}>
               <div class="log-header">
                 <h2>{log.id}. {log.name}</h2>
                 <div class="total-revenue">
@@ -695,7 +701,7 @@
       </div>
       <div>
         <label class="legend">Datum</label>
-        <input type="date" bind:value={$currentTimetracking.datum} />
+        <input type="date" bind:value={$currentTimetracking.date} />
       </div>
       <div>
         <label class="legend">Omschrijving</label>

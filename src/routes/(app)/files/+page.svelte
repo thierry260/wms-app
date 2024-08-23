@@ -15,7 +15,7 @@
   import { onMount } from "svelte";
   import { writable, get, derived } from "svelte/store";
   import Select from "svelte-select";
-  import { X, TrashSimple, Plus, Clock } from "phosphor-svelte";
+  import { X, TrashSimple, Plus, Clock, ArrowSquareOut } from "phosphor-svelte";
   import { format } from "date-fns";
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
@@ -524,7 +524,7 @@
     }
 
     // Create a container for the PDF content
-    const pdfContent = document.querySelector("table.specs");
+    const pdfContent = document.querySelector(".spec");
 
     // Generate the PDF
     const options = {
@@ -811,59 +811,179 @@
         </div>
 
         <div slot="tab-4">
-          <!-- Facturatie -->
           {#if $specs && $specs.minutes > 0}
-            <table class="specs">
-              <tbody>
-                <tr>
-                  <td>Uren conform specificatie</td>
-                  <td>{formatMinutesToHHMM($specs.minutes)}</td>
-                  <td>uur</td>
-                </tr>
-                <tr>
-                  <td>Uurtarief</td>
-                  <td>{formatToEuro($specs.rate)}</td>
-                  <td>x</td>
-                </tr>
-                <tr>
-                  <td>Subtotaal</td>
-                  <td class="border">{formatToEuro($specs.subtotal)}</td>
-                  <td class="border">Exclusief BTW</td>
-                </tr>
-                {#if $specs.km > 0}
+            <div class="spec">
+              <div class="spec_top">
+                <div>
+                  <h6>Specificatie factuur</h6>
+                  <p>{$currentFile.id}. {$currentFile.name}</p>
+                  <p>{new Date().toLocaleDateString()}</p>
+                </div>
+                <img
+                  class="logo"
+                  width="100px"
+                  height="auto"
+                  src="/img/wms-logo.png"
+                  alt="WMS logo"
+                />
+              </div>
+              <table class="timetracking">
+                <thead>
                   <tr>
-                    <td
-                      >Kilometervergoeding (a {formatToEuro($specs.kmRate)})</td
-                    >
-                    <td>{formatToEuro($specs.mileageAllowance)}</td>
-                    <td>Exclusief BTW</td>
+                    <th>Datum</th>
+                    <th>Omschrijving</th>
+                    <th>Totaal</th>
+                    <th>Plaats</th>
+                    <th>km</th>
                   </tr>
-                {/if}
-                <tr>
-                  <td>Totaal</td>
-                  <td class="border">{formatToEuro($specs.total)}</td>
-                  <td class="border">Exclusief BTW</td>
-                </tr>
-                <tr>
-                  <td>BTW ({$specs.taxRate * 100}%)</td>
-                  <td>{formatToEuro($specs.tax)}</td>
-                  <td>+</td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td>Totaal</td>
-                  <td class="border">{formatToEuro($specs.totalTax)}</td>
-                  <td class="border">Inclusief BTW</td>
-                </tr>
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {#each $currentFile.timetracking as item}
+                    <tr>
+                      <td
+                        >{item.datum
+                          ? item.datum.split("-").reverse().join("-")
+                          : ""}</td
+                      >
+                      <td>{item.description || ""}</td>
+                      <td
+                        >{item.minutes
+                          ? formatMinutesToHHMM(item.minutes)
+                          : "0,00"}</td
+                      >
+                      <td>{item.location || ""}</td>
+                      <td>{item.kilometers || ""}</td>
+                    </tr>
+                  {/each}
+                  <tr class="totals">
+                    <td></td>
+                    <td>Subtotaal</td>
+                    <td>{formatMinutesToHHMM($specs.minutes)}</td>
+                    <td></td>
+                    <td
+                      >{$currentFile.timetracking.reduce((sum, item) => {
+                        const kmValue = parseFloat(item.kilometers) || 0; // Convert to number, use 0 if empty or NaN
+                        return sum + kmValue;
+                      }, 0)}</td
+                    >
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td></td>
+                    <td class="align_right">Uren conform specificatie</td>
+                    <td>{formatMinutesToHHMM($specs.minutes)}</td>
+                    <td>uur</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td class="align_right">Uurtarief</td>
+                    <td>{formatToEuro($specs.rate)}</td>
+                    <td>x</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td class="align_right">Subtotaal</td>
+                    <td class="border">{formatToEuro($specs.subtotal)}</td>
+                    <td class="border">Exclusief BTW</td>
+                    <td></td>
+                  </tr>
+                  {#if $specs.km > 0}
+                    <tr>
+                      <td></td>
+                      <td class="align_right"
+                        >Kilometervergoeding (a {formatToEuro(
+                          $specs.kmRate,
+                        )})</td
+                      >
+                      <td>{formatToEuro($specs.mileageAllowance)}</td>
+                      <td>Exclusief BTW</td>
+                      <td></td>
+                    </tr>
+                  {/if}
+                  <tr>
+                    <td></td>
+                    <td class="align_right">Totaal</td>
+                    <td class="border">{formatToEuro($specs.total)}</td>
+                    <td class="border">Exclusief BTW</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td class="align_right">BTW ({$specs.taxRate * 100}%)</td>
+                    <td>{formatToEuro($specs.tax)}</td>
+                    <td>+</td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td class="align_right">Totaal</td>
+                    <td class="border">{formatToEuro($specs.totalTax)}</td>
+                    <td class="border">Inclusief BTW</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+              <!-- Facturatie
+              <table class="specs">
+                <tbody>
+                  <tr>
+                    <td>Uren conform specificatie</td>
+                    <td>{formatMinutesToHHMM($specs.minutes)}</td>
+                    <td>uur</td>
+                  </tr>
+                  <tr>
+                    <td>Uurtarief</td>
+                    <td>{formatToEuro($specs.rate)}</td>
+                    <td>x</td>
+                  </tr>
+                  <tr>
+                    <td>Subtotaal</td>
+                    <td class="border">{formatToEuro($specs.subtotal)}</td>
+                    <td class="border">Exclusief BTW</td>
+                  </tr>
+                  {#if $specs.km > 0}
+                    <tr>
+                      <td
+                        >Kilometervergoeding (a {formatToEuro(
+                          $specs.kmRate,
+                        )})</td
+                      >
+                      <td>{formatToEuro($specs.mileageAllowance)}</td>
+                      <td>Exclusief BTW</td>
+                    </tr>
+                  {/if}
+                  <tr>
+                    <td>Totaal</td>
+                    <td class="border">{formatToEuro($specs.total)}</td>
+                    <td class="border">Exclusief BTW</td>
+                  </tr>
+                  <tr>
+                    <td>BTW ({$specs.taxRate * 100}%)</td>
+                    <td>{formatToEuro($specs.tax)}</td>
+                    <td>+</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Totaal</td>
+                    <td class="border">{formatToEuro($specs.totalTax)}</td>
+                    <td class="border">Inclusief BTW</td>
+                  </tr>
+                </tfoot>
+              </table> -->
+            </div>
+          {:else}
+            <p>Nog geen specificatie beschikbaar</p>
           {/if}
           <button
             type="button"
+            class="basic"
             on:click={() => {
               generatePDF($specs);
-            }}>Data</button
+            }}><ArrowSquareOut size={20} />PDF aanmaken</button
           >
         </div>
       </Tabs>
@@ -1217,28 +1337,145 @@
   //     cursor: pointer;
   //   }
 
-  table.specs {
-    background-color: var(--background);
-    padding: 10px;
-    tr {
-      height: 30px;
-      background-color: transparent;
-      cursor: unset;
-
-      td:first-child {
-        text-align: right;
-      }
-      td {
-        color: var(--gray-800);
-        padding-inline: 10px;
-      }
-      .border {
-        border-top: 1px solid var(--border);
+  .spec {
+    display: flex;
+    flex-direction: column;
+    .spec_top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      div {
+        h6 {
+          font-size: 1.6rem;
+          font-weight: 500;
+          margin-bottom: 0.5em;
+        }
+        p {
+          line-height: 1.2;
+          font-size: 1.4rem;
+        }
       }
     }
-    tfoot {
-      td {
-        font-weight: 600;
+    table.timetracking {
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      margin-block: 30px;
+      tr {
+        height: 30px;
+        cursor: unset;
+        background-color: transparent;
+        &:nth-of-type(even) {
+          background-color: #f3f5f9;
+        }
+      }
+      thead {
+        * {
+          font-weight: 600;
+          text-transform: none;
+        }
+      }
+      thead {
+        th {
+          background-color: var(--gray-350, #eaedf0);
+          border-radius: 0;
+          color: var(--gray-600);
+          font-size: 1.4rem;
+        }
+      }
+      .totals.totals {
+        background-color: transparent;
+        td {
+          border-top: 1px solid var(--border);
+          color: var(--gray-600);
+          font-size: 1.4rem;
+          font-weight: 600;
+          padding-bottom: 30px;
+          padding-top: 10px;
+        }
+      }
+      tfoot {
+        .align_right {
+          text-align: right;
+        }
+        tr {
+          background-color: transparent !important;
+          height: 25px;
+          td {
+            color: var(--gray-800);
+            padding-inline: 10px;
+            // font-size: 1.3rem;
+          }
+          .border {
+            border-top: 1px solid var(--border);
+          }
+          td {
+            padding-block: 5px;
+            border-radius: 0 !important;
+          }
+          &:first-child td {
+            border-top: 1px solid var(--border);
+            padding-block: 30px 5px;
+          }
+          &:last-child td {
+            border-bottom: 1px solid var(--border);
+            padding-block: 5px 30px;
+          }
+          td:first-child {
+            border-left: 1px solid var(--border);
+          }
+          td:last-child {
+            border-right: 1px solid var(--border);
+          }
+        }
+      }
+    }
+    table.specs {
+      background-color: var(--background-table, #f3f5f9);
+      padding: 10px;
+      tr {
+        height: 30px;
+        background-color: transparent;
+        cursor: unset;
+
+        td:first-child {
+          text-align: right;
+        }
+        td {
+          color: var(--gray-800);
+          padding-inline: 10px;
+        }
+        .border {
+          border-top: 1px solid var(--border);
+        }
+      }
+      tfoot {
+        td {
+          font-weight: 600;
+        }
+      }
+    }
+  }
+  dialog {
+    .spec_top.spec_top,
+    table.timetracking thead,
+    table.timetracking tbody {
+      display: none;
+    }
+    .spec table.timetracking {
+      margin-block: 0;
+      background-color: var(--background);
+
+      tfoot {
+        tr {
+          &:first-child td {
+            padding-block: 20px 5px;
+          }
+          &:last-child td {
+            padding-block: 5px 20px;
+          }
+        }
       }
     }
   }
