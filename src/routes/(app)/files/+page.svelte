@@ -20,8 +20,15 @@
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   const pageName = "Files";
-  import html2pdf from "html2pdf.js";
 
+  let html2pdf;
+
+  if (typeof window !== "undefined") {
+    // Import html2pdf.js only in a browser environment
+    import("html2pdf.js").then((module) => {
+      html2pdf = module.default;
+    });
+  }
   // Initialize writable store for currentFile
   let currentFile = writable({
     client_id: "",
@@ -54,7 +61,7 @@
     );
 
     // Convert total minutes to hours
-    const hours = minutes / 60;
+    const hours = totalMinutes / 60;
 
     // Calculate total cost (billable hours * hourly rate)
     const subtotal = hours * rate;
@@ -75,7 +82,7 @@
 
     return {
       hours,
-      minutes,
+      minutes: totalMinutes, // Ensure minutes is defined
       rate,
       subtotal,
       km,
@@ -446,7 +453,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd"
+              "yyyy-MM-dd",
             )
           : "", // Convert and format the date
       });
@@ -511,25 +518,13 @@
   }
 
   function generatePDF(specs) {
-    // Create a container for the PDF content
-    const pdfContent = document.createElement("div");
-    pdfContent.innerHTML = `
-    <h1>Project Specifications</h1>
-    <p><strong>Hours:</strong> ${specs.hours} uur</p>
-    <p><strong>Hourly Rate:</strong> €${specs.rate}</p>
-    <p><strong>Subtotal:</strong> €${specs.subtotal.toFixed(2)}</p>
-    <p><strong>Kilometers:</strong> ${specs.km} km</p>
-    <p><strong>Mileage Allowance:</strong> €${specs.mileageAllowance.toFixed(2)}</p>
-    <p><strong>Total (Excl. Tax):</strong> €${specs.total.toFixed(2)}</p>
-    <p><strong>Tax:</strong> €${specs.tax.toFixed(2)}</p>
-    <p><strong>Total (Incl. Tax):</strong> €${(specs.total + specs.tax).toFixed(2)}</p>
-  `;
+    if (!html2pdf) {
+      console.error("html2pdf is not loaded yet");
+      return; // Exit if html2pdf is not loaded
+    }
 
-    // Styling the PDF (optional)
-    pdfContent.style.padding = "20px";
-    pdfContent.style.fontFamily = "Arial, sans-serif";
-    pdfContent.style.color = "#333";
-    pdfContent.querySelector("h1").style.color = "#0056b3";
+    // Create a container for the PDF content
+    const pdfContent = document.querySelector("table.specs");
 
     // Generate the PDF
     const options = {
@@ -542,6 +537,7 @@
 
     html2pdf().from(pdfContent).set(options).save();
   }
+
   function formatToEuro(amount) {
     return new Intl.NumberFormat("nl-NL", {
       style: "currency",
@@ -925,7 +921,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000
+                      file.opvolgdatum.seconds * 1000,
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
