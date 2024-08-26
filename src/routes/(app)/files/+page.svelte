@@ -19,6 +19,7 @@
   import { format } from "date-fns";
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
+  import Log from "$lib/components/Log.svelte";
   const pageName = "Files";
 
   let html2pdf;
@@ -42,7 +43,12 @@
     gekoppelde_facturen: "",
     fileId: "",
     timetracking: false,
+    log: [],
   });
+
+  $: if ($currentFile.log && $currentFile.log.length > 0) {
+    console.log("log: ", $currentFile.log);
+  }
 
   const specs = derived(currentFile, ($currentFile) => {
     const rate = $currentFile.uurtarief;
@@ -94,8 +100,6 @@
       totalTax: total + tax,
     };
   });
-
-  $: console.log("specs", $specs);
 
   let proposedFileId;
 
@@ -411,8 +415,6 @@
 
       errorMessage.set("");
       successMessage.set("");
-
-      successMessage.set("Dossier succesvol opgeslagen!");
       resetForm();
       dialogEl.close();
     } catch (error) {
@@ -437,6 +439,7 @@
       proposedFileId: proposedFileId,
       fileId: proposedFileId,
       timetracking: false,
+      log: [],
     });
   }
 
@@ -592,6 +595,7 @@
           { label: "Taken" },
           { label: "Tijdregistratie" },
           { label: "Specificatie" },
+          { label: "Logboek" },
         ]}
         on:tabChange={handleTabChange}
       >
@@ -985,6 +989,9 @@
           {:else}
             <p>Geen specificatie beschikbaar</p>
           {/if}
+        </div>
+        <div slot="tab-5">
+          <Log bind:logItems={$currentFile.log} />
         </div>
       </Tabs>
 
