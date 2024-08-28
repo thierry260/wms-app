@@ -63,7 +63,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0
+      0,
     );
 
     // Convert total minutes to hours
@@ -76,7 +76,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0
+      0,
     );
 
     // Calculate mileage allowance
@@ -118,7 +118,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients"
+      "clients",
     );
     const clientSnapshots = await getDocs(clientsRef);
     clients = clientSnapshots.docs.map((doc) => {
@@ -137,19 +137,19 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files"
+      "files",
     );
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
       filesSnapshots.docs
         .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .map((doc) => ({ id: doc.id, ...doc.data() })),
     );
 
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0
+      0,
     );
 
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
@@ -174,7 +174,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -194,7 +194,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks"
+        "tasks",
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -206,7 +206,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id
+          (status) => status.id === task.status_id,
         )?.name;
 
         if (statusName) {
@@ -227,30 +227,47 @@
   }
 
   function handleFilter(e) {
-    if (e.detail.length === 0 && filterText.length > 0) {
-      const prev = clients.filter((i) => !i.created);
-      clients = [
-        ...prev,
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          value: filterText,
-          label: filterText,
-          created: true,
-        },
-      ];
+    const inputValue = e.detail.filter;
+
+    if (typeof inputValue === "string") {
+      filterText = inputValue.toLowerCase().trim();
+
+      // Check if the input matches any existing client
+      const existingClient = clients.some(
+        (client) => client.label.toLowerCase() === filterText,
+      );
+
+      // If the filter text is not empty and no match is found, add the new item
+      if (filterText.length > 0 && !existingClient) {
+        // Add a new client to the list
+        clients = [
+          ...clients.filter((client) => !client.created),
+          {
+            id: Math.random().toString(36).substr(2, 9), // Generate a random ID
+            label: filterText.charAt(0).toUpperCase() + filterText.slice(1), // Capitalize the first letter
+            created: true,
+          },
+        ];
+      }
+    } else {
+      filterText = ""; // Set to empty string if inputValue is not a string
     }
   }
 
   function handleChange(e) {
-    clients = clients.map((i) => {
-      delete i.created;
-      return i;
+    const selectedValue = e.detail ? e.detail.label : null;
+
+    clients = clients.map((client) => {
+      if (client.created && client.label !== selectedValue) {
+        return { ...client, created: false }; // Reset 'created' flag if the item isn't selected
+      }
+      return client;
     });
   }
 
   // Add a new contact row
   function addContact() {
-    contacts = [...contacts, { name: "", role: "" }];
+    contacts = [...contacts, { name: "", role: "", filterText: "" }];
   }
 
   // Remove a contact row by index
@@ -285,7 +302,7 @@
             .includes(query)
         );
       });
-    }
+    },
   );
   let dialogEl = "";
 
@@ -327,7 +344,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files"
+        "files",
       );
 
       let timetracking = [];
@@ -336,7 +353,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString)
+          where("__name__", "==", fileIdString),
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -402,8 +419,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
-          )
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
+          ),
         );
       }
 
@@ -450,7 +467,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd"
+              "yyyy-MM-dd",
             )
           : "", // Convert and format the date
       });
@@ -480,7 +497,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id // Access the id property of dossierId
+      fileToDelete.id, // Access the id property of dossierId
     );
 
     try {
@@ -489,7 +506,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id)
+        currentFiles.filter((file) => file.id !== fileToDelete.id),
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -715,7 +732,7 @@
                     clearable={true}
                     on:change={handleChange}
                     on:filter={handleFilter}
-                    bind:filterText
+                    bind:filterText={contact.filterText}
                   >
                     <div slot="item" let:item>
                       {item.created ? "Nieuw: " : ""}
@@ -762,7 +779,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy"
+                          "dd-MM-yyyy",
                         )}</span
                       >
                     </li>
@@ -797,7 +814,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy"
+                      "dd-MM-yyyy",
                     )}
                   </p>
                 </li>
@@ -893,7 +910,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate
+                          $specs.kmRate,
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -1065,7 +1082,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000
+                      file.opvolgdatum.seconds * 1000,
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
