@@ -1,19 +1,19 @@
 <script>
   import { onMount } from "svelte";
-  import { doc, getDoc, updateDoc } from "firebase/firestore";
-  import { db, auth } from "$lib/firebase";
-  import { browser } from "$app/environment";
+  import { doc, updateDoc } from "firebase/firestore";
+  import { db, auth, storage } from "$lib/firebase";
   import { writable } from "svelte/store";
+  import { get } from "svelte/store";
+  import { user } from "$lib/stores/user"; // Import user store
   import {
     reauthenticateWithCredential,
     EmailAuthProvider,
     updatePassword,
+    updateProfile, // Import updateProfile
   } from "firebase/auth";
-  import { page } from "$app/stores";
-  import { TrashSimple } from "phosphor-svelte";
+  import { ref, getDownloadURL, uploadBytes } from "firebase/storage";
+  import Tabs from "$lib/components/Tabs.svelte"; // Import Tabs component
 
-  let workspaceVariables = {};
-  let newVariable = { field_name: "", placeholder: "" };
   let currentPassword = "";
   let newPassword = "";
   let passwordError = writable("");
@@ -25,75 +25,74 @@
   let workspaceName = "";
   let workspaceNameError = writable("");
   let workspaceNameSuccess = writable("");
+  let displayName = ""; // New displayName state
+  let displayNameError = writable(""); // Error state for displayName
+  let displayNameSuccess = writable(""); // Success state for displayName
 
-  let activeTab = "variables";
+  let profileImage = "";
+  let profileImageError = writable("");
+  let profileImageSuccess = writable("");
+  let selectedFile = null;
 
-  // Fetch all workspace variables when the component mounts
-  const fetchVariables = async () => {
-    if (!browser) return;
-
-    const workspaceId = localStorage.getItem("workspace");
-    if (!workspaceId) {
-      console.error("Workspace ID not found in localStorage");
-      return;
+  // Get the current user's displayName from the store
+  onMount(() => {
+    const currentUser = get(user); // Get the current user
+    console.log(currentUser);
+    if (currentUser) {
+      displayName = currentUser.displayName || "";
+      profileImage = currentUser.photoURL || "";
     }
+  });
 
-    const docRef = doc(db, "workspaces", workspaceId);
-    const docSnap = await getDoc(docRef);
+  const handleFileChange = (event) => {
+    profileImageError.set("");
+    profileImageSuccess.set("");
 
-    if (docSnap.exists()) {
-      const workspaceData = docSnap.data();
-      workspaceVariables = workspaceData.variables || {};
-      workspaceName = workspaceData.name || "";
-      console.log("Workspace Variables:", workspaceVariables);
-    } else {
-      console.log("No such document!");
-    }
-  };
-
-  const saveVariables = async () => {
-    if (!browser) return;
-
-    const workspaceId = localStorage.getItem("workspace");
-    if (!workspaceId) {
-      console.error("Workspace ID not found in localStorage");
-      return;
-    }
-
-    const docRef = doc(db, "workspaces", workspaceId);
-    await updateDoc(docRef, { variables: workspaceVariables });
-    console.log("Variables saved successfully");
-  };
-
-  const generateUniqueId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-  };
-
-  const addVariable = () => {
-    if (newVariable.field_name && newVariable.placeholder) {
-      const id = generateUniqueId();
-      workspaceVariables = {
-        ...workspaceVariables,
-        [id]: {
-          field_name: newVariable.field_name,
-          placeholder: newVariable.placeholder,
-        },
+    const file = event.target.files[0];
+    if (file) {
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        profileImage = e.target.result;
       };
-      newVariable = { field_name: "", placeholder: "" };
-      saveVariables();
+      reader.readAsDataURL(file);
     }
   };
 
-  const updateVariable = (id, field, value) => {
-    workspaceVariables[id][field] = value;
-    saveVariables();
-  };
+  const handleChangeProfilePicture = async () => {
+    profileImageError.set("");
+    profileImageSuccess.set("");
 
-  const removeVariable = (id) => {
-    if (confirm("Weet je zeker dat je deze variabele wilt verwijderen?")) {
-      delete workspaceVariables[id];
-      workspaceVariables = workspaceVariables;
-      saveVariables();
+    if (!selectedFile) {
+      profileImageError.set("Selecteer een afbeelding.");
+      return;
+    }
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error("No user is currently signed in.");
+      }
+
+      // Create a storage reference
+      const storageRef = ref(storage, `profilePictures/${currentUser.uid}`);
+
+      // Upload the file
+      await uploadBytes(storageRef, selectedFile);
+
+      // Get the download URL
+      const photoURL = await getDownloadURL(storageRef);
+
+      // Update the user's profile
+      await updateProfile(currentUser, { photoURL });
+
+      // Optionally, update the user's profile in Firestore
+      // const userDocRef = doc(db, "users", currentUser.uid);
+      // await updateDoc(userDocRef, { photoURL });
+
+      profileImageSuccess.set("Profielfoto aangepast.");
+    } catch (error) {
+      profileImageError.set(error.message);
     }
   };
 
@@ -106,7 +105,7 @@
       const user = auth.currentUser;
       const credential = EmailAuthProvider.credential(
         user.email,
-        currentPassword,
+        currentPassword
       );
 
       await reauthenticateWithCredential(user, credential);
@@ -119,6 +118,24 @@
       } else {
         passwordError.set(error.message);
       }
+    }
+  };
+
+  // Function to handle display name change
+  const handleChangeDisplayName = async () => {
+    displayNameError.set("");
+    displayNameSuccess.set("");
+
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error("No user is currently signed in.");
+      }
+
+      await updateProfile(currentUser, { displayName }); // Correct usage of updateProfile
+      displayNameSuccess.set("Naam aangepast.");
+    } catch (error) {
+      displayNameError.set(error.message);
     }
   };
 
@@ -160,148 +177,127 @@
       inviteError.set(error.message);
     }
   };
-
-  onMount(() => {
-    fetchVariables();
-  });
 </script>
 
 <h1>Instellingen</h1>
 
-<!-- Tab Navigation -->
-<div class="tabs">
-  <button
-    class:active={activeTab === "variables"}
-    on:click={() => (activeTab = "variables")}>Variabelen</button
-  >
-  <button
-    class:active={activeTab === "account"}
-    on:click={() => (activeTab = "account")}>Account</button
-  >
-  <button
-    class:active={activeTab === "workspace"}
-    on:click={() => (activeTab = "workspace")}>Workspace</button
-  >
-</div>
+<Tabs tabs={[{ label: "Account" }, { label: "Workspace" }]}>
+  <!-- Account Tab Content -->
+  <div slot="tab-0">
+    <div>
+      <span class="legend">Wachtwoord wijzigen</span>
+      <input
+        type="password"
+        placeholder="Huidig wachtwoord"
+        bind:value={currentPassword}
+      />
+      <input
+        type="password"
+        placeholder="Nieuw wachtwoord"
+        bind:value={newPassword}
+      />
+      <button class="button" on:click={handleChangePassword}>
+        Wachtwoord wijzigen
+      </button>
+      {#if $passwordError}
+        <p style="color: red">{$passwordError}</p>
+      {/if}
+      {#if $passwordSuccess}
+        <p style="color: green">{$passwordSuccess}</p>
+      {/if}
+    </div>
 
-<!-- Tab Content -->
-{#if activeTab === "variables"}
-  <div class="tab-content">
-    <h2>Variabelen managen</h2>
-    <input type="text" placeholder="Naam" bind:value={newVariable.field_name} />
-    <input
-      type="text"
-      placeholder="Placeholder"
-      bind:value={newVariable.placeholder}
-    />
-    <button class="button" on:click={addVariable}>+ Voeg toe</button>
+    <div>
+      <span class="legend">Naam wijzigen</span>
+      <input type="text" placeholder="Nieuwe naam" bind:value={displayName} />
+      <button class="button" on:click={handleChangeDisplayName}>
+        Naam wijzigen
+      </button>
+      {#if $displayNameError}
+        <p style="color: red">{$displayNameError}</p>
+      {/if}
+      {#if $displayNameSuccess}
+        <p style="color: green">{$displayNameSuccess}</p>
+      {/if}
+    </div>
+    <div>
+      <span class="legend">Profielfoto wijzigen</span>
+      <div class="columns" style="grid-template-columns: auto 1fr;">
+        {#if profileImage}
+          <img
+            src={profileImage}
+            alt="Profile Picture Preview"
+            class="profile-preview"
+          />
+        {/if}
+        <div>
+          <input type="file" accept="image/*" on:change={handleFileChange} />
 
-    {#if Object.keys(workspaceVariables).length > 0}
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Naam</th>
-            <th>Placeholder</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each Object.entries(workspaceVariables) as [variableId, variableData]}
-            <tr>
-              <td>{variableId}</td>
-              <td>
-                <input
-                  type="text"
-                  value={variableData.field_name}
-                  on:input={(e) =>
-                    updateVariable(variableId, "field_name", e.target.value)}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  value={variableData.placeholder}
-                  on:input={(e) =>
-                    updateVariable(variableId, "placeholder", e.target.value)}
-                />
-              </td>
-              <td>
-                <button
-                  class="button basic"
-                  on:click={() => removeVariable(variableId)}
-                  ><TrashSimple size="18" /></button
-                >
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    {:else}
-      <p>Loading variables...</p>
-    {/if}
+          <button class="button" on:click={handleChangeProfilePicture}>
+            Profielfoto wijzigen
+          </button>
+          {#if $profileImageError}
+            <p style="color: red">{$profileImageError}</p>
+          {/if}
+          {#if $profileImageSuccess}
+            <p style="color: green">{$profileImageSuccess}</p>
+          {/if}
+        </div>
+      </div>
+    </div>
   </div>
-{:else if activeTab === "account"}
-  <div class="tab-content">
-    <h2>Wachtwoord wijzigen</h2>
-    <input
-      type="password"
-      placeholder="Huidig wachtwoord"
-      bind:value={currentPassword}
-    />
-    <input
-      type="password"
-      placeholder="Nieuw wachtwoord"
-      bind:value={newPassword}
-    />
-    <button class="button" on:click={handleChangePassword}
-      >Wachtwoord wijzigen</button
-    >
-    {#if $passwordError}
-      <p style="color: red">{$passwordError}</p>
-    {/if}
-    {#if $passwordSuccess}
-      <p style="color: green">{$passwordSuccess}</p>
-    {/if}
+
+  <!-- Workspace Tab Content -->
+  <div slot="tab-1">
+    <div>
+      <span class="legend">Workspacenaam wijzigen</span>
+      <input
+        type="text"
+        placeholder="Nieuwe workspacenaam"
+        bind:value={workspaceName}
+      />
+      <button class="button" on:click={handleChangeWorkspaceName}>
+        Workspacenaam wijzigen
+      </button>
+      {#if $workspaceNameError}
+        <p style="color: red">{$workspaceNameError}</p>
+      {/if}
+      {#if $workspaceNameSuccess}
+        <p style="color: green">{$workspaceNameSuccess}</p>
+      {/if}
+    </div>
+    <div>
+      <span class="legend">Uitnodigen voor Workspace</span>
+      <input type="email" placeholder="E-mailadres" bind:value={inviteEmail} />
+      <button class="button" on:click={generateInviteLink}>
+        Genereer uitnodigingslink
+      </button>
+      {#if $inviteError}
+        <p style="color: red">{$inviteError}</p>
+      {/if}
+      {#if $inviteSuccess}
+        <p style="color: green">{$inviteSuccess}</p>
+      {/if}
+      {#if $inviteLink}
+        <p>
+          Uitnodigingslink: <a href={$inviteLink} target="_blank"
+            >{$inviteLink}</a
+          >
+        </p>
+      {/if}
+    </div>
   </div>
-{:else if activeTab === "workspace"}
-  <div class="tab-content">
-    <h2>Workspacenaam wijzigen</h2>
-    <input
-      type="text"
-      placeholder="Nieuwe workspacenaam"
-      bind:value={workspaceName}
-    />
-    <button class="button" on:click={handleChangeWorkspaceName}
-      >Workspacenaam wijzigen</button
-    >
-    {#if $workspaceNameError}
-      <p style="color: red">{$workspaceNameError}</p>
-    {/if}
-    {#if $workspaceNameSuccess}
-      <p style="color: green">{$workspaceNameSuccess}</p>
-    {/if}
-    <h2>Uitnodigen voor Workspace</h2>
-    <input type="email" placeholder="E-mailadres" bind:value={inviteEmail} />
-    <button class="button" on:click={generateInviteLink}
-      >Genereer uitnodigingslink</button
-    >
-    {#if $inviteError}
-      <p style="color: red">{$inviteError}</p>
-    {/if}
-    {#if $inviteSuccess}
-      <p style="color: green">{$inviteSuccess}</p>
-    {/if}
-    {#if $inviteLink}
-      <p>
-        Uitnodigingslink: <a href={$inviteLink} target="_blank">{$inviteLink}</a
-        >
-      </p>
-    {/if}
-  </div>
-{/if}
+</Tabs>
 
 <style lang="scss">
+  .profile-preview {
+    max-width: 150px;
+    max-height: 150px;
+    margin-top: 10px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
   .tabs {
     display: flex;
     justify-content: center;
@@ -310,13 +306,19 @@
   }
 
   .tabs button {
+    color: var(--gray-400);
     background: none;
     border: none;
+    border-radius: 0;
     padding: 6px 0;
     cursor: pointer;
     font-size: 16px;
     border-bottom: 2px solid transparent;
     transition: border-color 0.2s ease-out;
+  }
+
+  .columns .button {
+    display: block;
   }
 
   .tabs button:hover {
@@ -328,10 +330,14 @@
     border-color: currentColor;
   }
 
-  .tab-content {
-    /* padding: 20px;
-    border: 1px solid #ddd;
-    border-top: none; */
+  .legend {
+    display: block;
+    margin-top: 20px;
+  }
+
+  .button {
+    width: max-content;
+    margin-top: 10px;
   }
 
   table {
@@ -360,11 +366,11 @@
   }
 
   h1 {
-    text-align: center;
+    // text-align: center;
     margin-bottom: 20px;
   }
 
-  h2 {
+  h3 {
     margin-top: 20px;
   }
 

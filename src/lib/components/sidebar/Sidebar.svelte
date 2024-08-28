@@ -13,6 +13,7 @@
     SignOut,
     ListChecks,
     Layout,
+    GearSix,
   } from "phosphor-svelte";
 
   $: currentUser = $user;
@@ -46,6 +47,11 @@
       route: "/tasks",
       icon: ListChecks,
     },
+    {
+      label: "Instellingen",
+      route: "/settings",
+      icon: GearSix,
+    },
     // Add additional items here
   ];
 
@@ -78,13 +84,22 @@
   };
 
   // Function to get the image source
-  function getImageSrc(userName = "placeholder") {
-    if (!userName) {
-      userName = "placeholder";
+  function getImageSrc() {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (currentUser && currentUser.photoURL) {
+      return currentUser.photoURL; // Return the user's profile picture URL
+    } else {
+      // Fallback to the placeholder image
+      let userName = currentUser ? currentUser.displayName : "placeholder";
+      if (!userName) {
+        userName = "placeholder";
+      }
+      // Convert userName to lowercase and append .jpg
+      const filename = `${userName.toLowerCase()}.jpg`;
+      return `/img/people/${filename}`; // Update with the correct path to your images
     }
-    // Convert userName to lowercase and append .jpg
-    const filename = `${userName.toLowerCase()}.jpg`;
-    return `/img/people/${filename}`; // Update with the correct path to your images
   }
 </script>
 
@@ -97,6 +112,7 @@
       <a
         class="menu_item {item.route === $page.url.pathname ? 'active' : ''}"
         href={item.route}
+        data-item={item.label}
       >
         <svelte:component this={item.icon} size={20} />
         {item.label}
@@ -220,6 +236,13 @@
       &:not(.active):hover {
         border-color: rgba(255, 255, 255, 0.6);
       }
+
+      &[data-item="Instellingen"] {
+        margin-top: auto;
+        + .logout-button {
+          margin-top: 15px;
+        }
+      }
     }
 
     .logout-button {
@@ -280,7 +303,7 @@
     .main_nav {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .main_nav_items {
@@ -331,9 +354,16 @@
     .more-menu {
       padding: 10px;
 
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 20px;
+
       .logout-button {
         font-size: 1.4rem;
         background: transparent;
+        padding: 5px 0;
       }
 
       .more_item {
