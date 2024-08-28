@@ -30,6 +30,11 @@ export async function updateWorkspaceArray(
 
   if (remove) {
     delete collectionData[docId];
+
+    // Also remove from localStorage
+    const cachedCollection = JSON.parse(localStorage.getItem(collection)) || {};
+    delete cachedCollection[docId];
+    localStorage.setItem(collection, JSON.stringify(cachedCollection));
   } else {
     collectionData[docId] = {
       lastUpdated: new Date(),
@@ -119,7 +124,7 @@ export async function getCachedDocs(collectionName) {
       : null;
 
     if (lastFetched && lastUpdated && lastFetched > lastUpdated) {
-      resultData.push(cachedItem.data);
+      resultData.push({ id: docId, ...cachedItem.data });
     } else {
       idsToFetch.push(docId);
     }
@@ -150,7 +155,7 @@ export async function getCachedDocs(collectionName) {
             data: docData,
           };
 
-          resultData.push(docData);
+          resultData.push({ id: docId, ...docData });
         }
       });
     }

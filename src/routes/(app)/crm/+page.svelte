@@ -56,7 +56,6 @@
   let filteredClientsList = derived(
     [clientsList, searchQuery],
     ([$clientsList, $searchQuery]) => {
-      console.log("Inside derived store:", $searchQuery);
       const query = $searchQuery.toLowerCase().trim();
 
       return $clientsList.filter((client) => {
@@ -131,33 +130,28 @@
     }
 
     if (client && client.id) {
-      const clientRef = doc(
-        db,
-        "workspaces",
-        localStorage.getItem("workspace"),
-        "clients",
-        client.id
-      );
-      const clientSnap = await getDoc(clientRef);
+      let geboortedatumFormatted = "";
 
-      if (clientSnap.exists()) {
-        const updatedClient = { id: clientSnap.id, ...clientSnap.data() };
-        currentClient.set({
-          ...updatedClient,
-          geboortedatum: updatedClient.geboortedatum
-            ? format(updatedClient.geboortedatum.toDate(), "yyyy-MM-dd")
-            : "",
-        });
+      if (client.geboortedatum) {
+        const geboortedatum = client.geboortedatum;
 
-        clientsList.update((clients) => {
-          const index = clients.findIndex((c) => c.id === client.id);
-          if (index !== -1) {
-            clients[index] = updatedClient;
-            saveToCache("clientsList", clients); // Update cache
-          }
-          return clients;
-        });
+        // Determine if geboortedatum is a Firestore Timestamp or a plain object
+        const dateObj = geboortedatum.toDate
+          ? geboortedatum.toDate() // Firestore Timestamp
+          : geboortedatum.seconds
+            ? new Date(
+                geboortedatum.seconds * 1000 +
+                  geboortedatum.nanoseconds / 1000000
+              ) // Plain object
+            : new Date(geboortedatum); // Assuming geboortedatum is a date string or other formats
+
+        geboortedatumFormatted = format(dateObj, "yyyy-MM-dd");
       }
+
+      currentClient.set({
+        ...client,
+        geboortedatum: geboortedatumFormatted,
+      });
     } else {
       resetForm();
     }
@@ -186,6 +180,10 @@
     successMessage.set("");
 
     try {
+      const dobTimestamp = clientData.geboortedatum
+        ? Timestamp.fromDate(new Date(clientData.geboortedatum))
+        : null;
+
       const workspaceId = localStorage.getItem("workspace");
       const clientsRef = collection(db, "workspaces", workspaceId, "clients");
 
@@ -228,7 +226,6 @@
       }
 
       clientsList.set(updatedClientsList);
-      saveToCache("clientsList", updatedClientsList);
 
       resetForm();
       dialogEl.close();
@@ -256,6 +253,8 @@
       adres: "",
       website: "",
     });
+    errorMessage.set("");
+    successMessage.set("");
   }
 
   async function deleteContact() {
@@ -281,7 +280,6 @@
         (client) => client.id !== contactToDelete.id
       );
       clientsList.set(updatedClientsList);
-      saveToCache("clientsList", updatedClientsList);
 
       // Update the workspace document
       await updateWorkspaceArray(
