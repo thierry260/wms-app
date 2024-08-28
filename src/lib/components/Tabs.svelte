@@ -82,6 +82,8 @@
     display: flex;
     flex-direction: column;
     gap: 15px;
+    max-height: 60vh;
+    overflow-y: auto;
   }
   :global([slot]) {
     display: contents;

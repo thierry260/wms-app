@@ -212,7 +212,7 @@
       }
 
       @media (max-width: $md) {
-        max-height: unset;
+        // max-height: unset;
       }
 
       li {

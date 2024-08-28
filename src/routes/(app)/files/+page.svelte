@@ -104,9 +104,7 @@
   let proposedFileId;
 
   let clients = [];
-  let contacts = [
-    { name: "", role: "" }, // Initial contact row
-  ];
+  let contacts = [];
 
   let filterText = "";
   let tasks = writable([]);
@@ -233,7 +231,12 @@
       const prev = clients.filter((i) => !i.created);
       clients = [
         ...prev,
-        { value: filterText, label: filterText, created: true },
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          value: filterText,
+          label: filterText,
+          created: true,
+        },
       ];
     }
   }
@@ -252,17 +255,8 @@
 
   // Remove a contact row by index
   function removeContact(index) {
+    if (!confirm("Weet je zeker dat je dit contact wilt verwijderen?")) return;
     contacts = contacts.filter((_, i) => i !== index);
-  }
-
-  // Update the selected contact name
-  function handleSelect(index, selected) {
-    if (selected) {
-      contacts[index].name = selected.label;
-    } else {
-      // Handle cases where the user types a new contact
-      contacts[index].name = ""; // Set to an empty string or handle new contact logic
-    }
   }
 
   // Update the role of the contact
@@ -706,13 +700,13 @@
         </div>
 
         <div slot="tab-1">
-          <p></p>
-          <!-- <div class="contact-list">
+          <div class="contact-list">
             {#each contacts as contact, index}
               <div class="contact-row">
                 <label>
                   <Select
                     items={clients}
+                    name="contact_input_{index}"
                     bind:value={contact.name}
                     getOptionValue={(option) => option.id}
                     getOptionLabel={(option) => option.label}
@@ -751,7 +745,7 @@
             <button type="button" class="basic" on:click={addContact}
               ><Plus size="16" />Contact toevoegen</button
             >
-          </div> -->
+          </div>
         </div>
 
         <div slot="tab-2">
@@ -1223,6 +1217,7 @@
 
   .file_logs {
     li {
+      position: relative;
       .log-header {
         h2 {
           font-size: 1.6rem;
