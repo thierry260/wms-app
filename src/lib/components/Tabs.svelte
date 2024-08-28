@@ -58,7 +58,7 @@
   {/if}
 </div>
 
-<style>
+<style lang="scss">
   .tabs {
     display: flex;
     border-bottom: 2px solid var(--gray-200);
@@ -82,8 +82,10 @@
     display: flex;
     flex-direction: column;
     gap: 15px;
-    max-height: 60vh;
-    overflow-y: auto;
+    @media (max-width: $sm) {
+      max-height: 58vh;
+      overflow-y: auto;
+    }
   }
   :global([slot]) {
     display: contents;

@@ -22,7 +22,12 @@
   } from "phosphor-svelte";
   import { format } from "date-fns";
   import { dbTracker } from "$lib/utils/dbTracker"; // Import dbTracker
-  import { saveToCache, getFromCache, removeFromCache } from "$lib/utils/cache"; // Import cache functions
+  import {
+    updateWorkspaceArray,
+    updateDocsArray,
+    getCachedDocs,
+  } from "$lib/utils/cache"; // Import cache functions
+  import { page } from "$app/stores";
 
   const pageName = "Contacts";
   let refreshTooltip = "Data vernieuwen";
@@ -77,43 +82,32 @@
   onMount(async () => {
     dbTracker.initPage(pageName);
     await fetchClients();
+
+    const unsubscribe = page.subscribe(async ($page) => {
+      const params = $page.url.searchParams;
+      if (params.has("load_clients")) {
+        console.log("load clients");
+        try {
+          const updatedData = await updateDocsArray("clients");
+          console.log("Updated Workspace Data:", updatedData);
+        } catch (error) {
+          console.error("Error updating workspace document:", error);
+        }
+      }
+    });
+
+    return () => unsubscribe();
   });
 
-  async function fetchClients(useCache = true) {
-    const cacheKey = "clientsList";
-    let clients = [];
-    console.log("fetchClients");
-
-    if (useCache) {
-      clients = getFromCache(cacheKey, 15);
-
-      if (clients) {
-        console.log("Using cached clients");
-        clientsList.set(clients);
-        return;
-      }
-    } else {
-      console.log("Refresh data");
-    }
-
-    console.log("Fetching clients from Firebase");
-    const clientsRef = collection(
-      db,
-      "workspaces",
-      localStorage.getItem("workspace"),
-      "clients"
-    );
-    const clientSnapshots = await getDocs(clientsRef);
-    clients = clientSnapshots.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    saveToCache(cacheKey, clients); // Save fetched clients to cache
+  async function fetchClients() {
+    let clients = await getCachedDocs("clients");
+    clients.sort((a, b) => {
+      if (a.achternaam < b.achternaam) return -1;
+      if (a.achternaam > b.achternaam) return 1;
+      return 0;
+    });
+    console.log(clients);
     clientsList.set(clients);
-    dbTracker.trackRead(pageName, clientSnapshots.docs.length);
-
-    console.log(clientsList);
   }
 
   function handleRefreshClick() {
@@ -192,18 +186,8 @@
     successMessage.set("");
 
     try {
-      // Convert geboortedatum to a Firestore Timestamp if provided
-      const dobTimestamp = clientData.geboortedatum
-        ? Timestamp.fromDate(new Date(clientData.geboortedatum))
-        : null;
-
-      // Reference to the clients collection
-      const clientsRef = collection(
-        db,
-        "workspaces",
-        localStorage.getItem("workspace"),
-        "clients"
-      );
+      const workspaceId = localStorage.getItem("workspace");
+      const clientsRef = collection(db, "workspaces", workspaceId, "clients");
 
       let updatedClientsList = get(clientsList);
 
@@ -215,18 +199,15 @@
           ...clientData,
           geboortedatum: dobTimestamp,
         });
-        dbTracker.trackWrite(pageName);
 
-        // Update the local clientsList with the edited client
         updatedClientsList = updatedClientsList.map((client) =>
           client.id === clientDocRef.id
-            ? {
-                id: clientDocRef.id,
-                ...clientData,
-                geboortedatum: dobTimestamp,
-              }
+            ? { id: clientDocRef.id, ...clientData }
             : client
         );
+
+        // Update the workspace document
+        await updateWorkspaceArray(workspaceId, "clients", clientDocRef.id);
 
         successMessage.set("Contact succesvol bijgewerkt!");
       } else if (action === "create") {
@@ -234,21 +215,19 @@
           ...clientData,
           geboortedatum: dobTimestamp,
         });
-        dbTracker.trackWrite(pageName);
 
-        // Add the new client to the local clientsList
         updatedClientsList = [
           ...updatedClientsList,
-          { id: newDocRef.id, ...clientData, geboortedatum: dobTimestamp },
+          { id: newDocRef.id, ...clientData },
         ];
+
+        // Update the workspace document
+        await updateWorkspaceArray(workspaceId, "clients", newDocRef.id);
 
         successMessage.set("Contact succesvol toegevoegd!");
       }
 
-      // Update the clientsList store
       clientsList.set(updatedClientsList);
-
-      // Update the cache with the new clientsList
       saveToCache("clientsList", updatedClientsList);
 
       resetForm();
@@ -260,8 +239,6 @@
       );
     } finally {
       submitting.set(false);
-      errorMessage.set("");
-      successMessage.set("");
     }
   }
 
@@ -283,16 +260,16 @@
 
   async function deleteContact() {
     const contactToDelete = get(currentClient);
-    console.log("Log to delete:", contactToDelete);
 
     if (!confirm("Weet je zeker dat je dit contact wilt verwijderen?")) {
       return;
     }
 
+    const workspaceId = localStorage.getItem("workspace");
     const clientRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      workspaceId,
       "clients",
       contactToDelete.id
     );
@@ -300,22 +277,21 @@
     try {
       await deleteDoc(clientRef);
 
-      // Update the clientsList by filtering out the deleted contact
       let updatedClientsList = get(clientsList).filter(
         (client) => client.id !== contactToDelete.id
       );
-
-      // Update the clientsList store
       clientsList.set(updatedClientsList);
-
-      // Update the cache with the new clientsList
       saveToCache("clientsList", updatedClientsList);
 
-      dbTracker.trackDelete(pageName);
+      // Update the workspace document
+      await updateWorkspaceArray(
+        workspaceId,
+        "clients",
+        contactToDelete.id,
+        true
+      );
 
-      errorMessage.set("");
-      successMessage.set("");
-
+      successMessage.set("Contact succesvol verwijderd!");
       dialogEl.close();
     } catch (error) {
       console.error("Fout bij het verwijderen van dossier:", error);
