@@ -100,7 +100,11 @@ export async function getCachedDocs(collectionName) {
   const workspaceDoc = workspaceDocSnap.data();
   const collectionData = workspaceDoc[collectionName];
   if (!collectionData) {
-    throw new Error(`No data found for collection: ${collectionName}`);
+    // If collectionData doesn't exist, update it using updateDocsArray
+    await updateDocsArray(collectionName);
+
+    // Re-run getCachedDocs after the update is complete
+    return await getCachedDocs(collectionName);
   }
 
   const cachedCollection =
@@ -164,7 +168,7 @@ export async function getCachedDocs(collectionName) {
     localStorage.setItem(collectionName, JSON.stringify(cachedCollection));
   }
 
-  console.log(resultData);
+  // console.log(resultData);
   return resultData;
 }
 

@@ -44,10 +44,15 @@
     fileId: "",
     timetracking: false,
     log: [],
+    contacts: [],
   });
 
   $: if ($currentFile.log && $currentFile.log.length > 0) {
     console.log("log: ", $currentFile.log);
+  }
+
+  $: if ($currentFile.contacts) {
+    console.log("contacts: ", $currentFile.contacts);
   }
 
   const specs = derived(currentFile, ($currentFile) => {
@@ -63,7 +68,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0,
+      0
     );
 
     // Convert total minutes to hours
@@ -76,7 +81,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0,
+      0
     );
 
     // Calculate mileage allowance
@@ -104,7 +109,6 @@
   let proposedFileId;
 
   let clients = [];
-  let contacts = [];
 
   let filterText = "";
   let tasks = writable([]);
@@ -118,7 +122,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients",
+      "clients"
     );
     const clientSnapshots = await getDocs(clientsRef);
     clients = clientSnapshots.docs.map((doc) => {
@@ -127,7 +131,8 @@
         id: doc.id,
         label:
           `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} ${data.bedrijfsnaam ? `(${data.bedrijfsnaam})` : ""}`.trim(),
-        ...data,
+        filterText: "",
+        // ...data,
       };
     });
 
@@ -137,19 +142,19 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
       filesSnapshots.docs
         .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() })),
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
     );
 
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0,
+      0
     );
 
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
@@ -174,7 +179,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -194,7 +199,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks",
+        "tasks"
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -206,7 +211,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id,
+          (status) => status.id === task.status_id
         )?.name;
 
         if (statusName) {
@@ -228,13 +233,14 @@
 
   function handleFilter(e) {
     const inputValue = e.detail.filter;
+    console.log("handleFilter");
 
     if (typeof inputValue === "string") {
       filterText = inputValue.toLowerCase().trim();
 
       // Check if the input matches any existing client
       const existingClient = clients.some(
-        (client) => client.label.toLowerCase() === filterText,
+        (client) => client.label.toLowerCase() === filterText
       );
 
       // If the filter text is not empty and no match is found, add the new item
@@ -254,8 +260,16 @@
     }
   }
 
-  function handleChange(e) {
+  function handleChange(e, index) {
+    console.log("handleChange");
     const selectedValue = e.detail ? e.detail.label : null;
+
+    if (selectedValue && index) {
+      $currentFile.contacts[index].id = e.detail.id;
+      $currentFile.contacts[index].name = e.detail.label;
+    }
+
+    $currentFile.contacts = $currentFile.contacts; // Trigger change
 
     clients = clients.map((client) => {
       if (client.created && client.label !== selectedValue) {
@@ -267,18 +281,28 @@
 
   // Add a new contact row
   function addContact() {
-    contacts = [...contacts, { name: "", role: "", filterText: "" }];
+    // Ensure contacts is an array before spreading
+
+    $currentFile.contacts = [
+      ...$currentFile.contacts,
+      {
+        // id: Math.random().toString(36).substr(2, 8),
+        name: "",
+        role: "",
+        filterText: "",
+      },
+    ];
   }
 
   // Remove a contact row by index
   function removeContact(index) {
     if (!confirm("Weet je zeker dat je dit contact wilt verwijderen?")) return;
-    contacts = contacts.filter((_, i) => i !== index);
+    $currentFile.contacts = $currentFile.contacts.filter((_, i) => i !== index);
   }
 
   // Update the role of the contact
   function handleRoleChange(index, event) {
-    contacts[index].role = event.target.value;
+    $currentFile.contacts[index].role = event.target.value;
   }
   let submitting = writable(false);
   let errorMessage = writable("");
@@ -302,7 +326,7 @@
             .includes(query)
         );
       });
-    },
+    }
   );
   let dialogEl = "";
 
@@ -344,7 +368,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files",
+        "files"
       );
 
       let timetracking = [];
@@ -353,7 +377,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString),
+          where("__name__", "==", fileIdString)
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -419,8 +443,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
-          ),
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
+          )
         );
       }
 
@@ -451,12 +475,23 @@
       fileId: proposedFileId,
       timetracking: false,
       log: [],
+      contacts: [],
     });
   }
 
   function openModal(file) {
-    console.log(file);
     if (file && file.id) {
+      // Assuming `client` is accessible in this function's scope
+      const defaultContact = file?.client_id?.id
+        ? [
+            {
+              name: file.client_id.label,
+              id: file.client_id.id,
+              filterText: "",
+            },
+          ]
+        : [];
+
       currentFile.set({
         ...file,
         fileId: file.id,
@@ -467,10 +502,12 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd",
+              "yyyy-MM-dd"
             )
           : "", // Convert and format the date
+        contacts: file.contacts || defaultContact,
       });
+      console.log($currentFile);
     } else {
       resetForm();
     }
@@ -497,7 +534,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id, // Access the id property of dossierId
+      fileToDelete.id // Access the id property of dossierId
     );
 
     try {
@@ -506,7 +543,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id),
+        currentFiles.filter((file) => file.id !== fileToDelete.id)
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -718,47 +755,64 @@
 
         <div slot="tab-1">
           <div class="contact-list">
-            {#each contacts as contact, index}
-              <div class="contact-row">
-                <label>
-                  <Select
-                    items={clients}
-                    name="contact_input_{index}"
-                    bind:value={contact.name}
-                    getOptionValue={(option) => option.id}
-                    getOptionLabel={(option) => option.label}
-                    placeholder="Selecteer of typ een contact"
-                    itemId="id"
-                    clearable={true}
-                    on:change={handleChange}
-                    on:filter={handleFilter}
-                    bind:filterText={contact.filterText}
-                  >
-                    <div slot="item" let:item>
-                      {item.created ? "Nieuw: " : ""}
-                      {item.label}
-                    </div>
-                  </Select>
-                </label>
-                <label class="input_wrapper">
-                  <input
-                    type="text"
-                    bind:value={contact.role}
-                    placeholder="&nbsp;"
-                    on:input={(e) => handleRoleChange(index, e)}
-                  />
-                  <span>Rol</span>
-                </label>
-                {#if contacts.length > 1}
-                  <button
-                    type="button"
-                    class="basic"
-                    on:click={() => removeContact(index)}
-                    ><TrashSimple size="16" /></button
-                  >
-                {/if}
-              </div>
-            {/each}
+            {#if $currentFile.contacts && $currentFile.contacts.length > 0}
+              {#each $currentFile.contacts as contact, index}
+                <div class="contact-row">
+                  <label>
+                    {#if contact.id}
+                      <Select
+                        items={clients}
+                        bind:value={contact}
+                        name="contact_input_{index}"
+                        getOptionValue={(option) => option.id}
+                        getOptionLabel={(option) => option.label}
+                        placeholder="Selecteer of typ een contact"
+                        itemId="id"
+                        clearable={true}
+                        on:change={(e) => {
+                          handleChange(e, index);
+                        }}
+                        on:filter={handleFilter}
+                        bind:filterText={contact.filterText}
+                      ></Select>
+                    {:else}
+                      <Select
+                        items={clients}
+                        name="contact_input_{index}"
+                        getOptionValue={(option) => option.id}
+                        getOptionLabel={(option) => option.label}
+                        placeholder="Selecteer of typ een contact"
+                        itemId="id"
+                        clearable={true}
+                        on:change={(e) => {
+                          handleChange(e, index);
+                        }}
+                        on:filter={handleFilter}
+                        bind:filterText={contact.filterText}
+                      ></Select>
+                    {/if}
+                  </label>
+                  <label class="input_wrapper">
+                    <input
+                      type="text"
+                      bind:value={contact.role}
+                      placeholder="&nbsp;"
+                      on:input={(e) => handleRoleChange(index, e)}
+                    />
+                    <span>Rol</span>
+                  </label>
+                  {#if $currentFile.contacts.length > 1}
+                    <button
+                      type="button"
+                      class="basic"
+                      on:click={() => removeContact(index)}
+                      ><TrashSimple size="16" /></button
+                    >
+                  {/if}
+                </div>
+              {/each}
+            {/if}
+
             <button type="button" class="basic" on:click={addContact}
               ><Plus size="16" />Contact toevoegen</button
             >
@@ -779,7 +833,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy",
+                          "dd-MM-yyyy"
                         )}</span
                       >
                     </li>
@@ -814,7 +868,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy",
+                      "dd-MM-yyyy"
                     )}
                   </p>
                 </li>
@@ -910,7 +964,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate,
+                          $specs.kmRate
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -1082,7 +1136,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000,
+                      file.opvolgdatum.seconds * 1000
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}

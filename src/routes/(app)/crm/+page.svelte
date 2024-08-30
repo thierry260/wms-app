@@ -105,7 +105,7 @@
       if (a.achternaam > b.achternaam) return 1;
       return 0;
     });
-    console.log(clients);
+    // console.log(clients);
     clientsList.set(clients);
   }
 
@@ -152,6 +152,8 @@
         ...client,
         geboortedatum: geboortedatumFormatted,
       });
+
+      console.log($currentClient);
     } else {
       resetForm();
     }
