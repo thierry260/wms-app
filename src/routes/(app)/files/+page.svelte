@@ -68,7 +68,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0
+      0,
     );
 
     // Convert total minutes to hours
@@ -81,7 +81,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0
+      0,
     );
 
     // Calculate mileage allowance
@@ -122,7 +122,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients"
+      "clients",
     );
     const clientSnapshots = await getDocs(clientsRef);
     clients = clientSnapshots.docs.map((doc) => {
@@ -142,19 +142,19 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files"
+      "files",
     );
     const filesSnapshots = await getDocs(filesRef);
 
     files.set(
       filesSnapshots.docs
         .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .map((doc) => ({ id: doc.id, ...doc.data() })),
     );
 
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0
+      0,
     );
 
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
@@ -179,7 +179,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -199,7 +199,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks"
+        "tasks",
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -211,7 +211,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id
+          (status) => status.id === task.status_id,
         )?.name;
 
         if (statusName) {
@@ -240,7 +240,7 @@
 
       // Check if the input matches any existing client
       const existingClient = clients.some(
-        (client) => client.label.toLowerCase() === filterText
+        (client) => client.label.toLowerCase() === filterText,
       );
 
       // If the filter text is not empty and no match is found, add the new item
@@ -261,37 +261,57 @@
   }
 
   function handleChange(e, index) {
-    console.log("handleChange");
+    console.log("handleChange", index);
     const selectedValue = e.detail ? e.detail.label : null;
+    const selectedId = e.detail ? e.detail.id : null;
 
-    if (selectedValue && index) {
-      $currentFile.contacts[index].id = e.detail.id;
-      $currentFile.contacts[index].name = e.detail.label;
+    // Check if the selectedValue exists in the clients list
+    const existingClient = clients.find(
+      (client) => client.label === selectedValue,
+    );
+
+    if (!existingClient && selectedValue) {
+      // The selected value is a custom entry
+      const newClient = {
+        id: Math.random().toString(36).substr(2, 9), // Generate a random ID
+        label: selectedValue,
+      };
+
+      // Add the new client to the list of clients
+      clients = [...clients, newClient];
+
+      // Update the specific contact with the new custom entry
+      $currentFile.contacts[index] = {
+        ...$currentFile.contacts[index],
+        id: newClient.id,
+        name: newClient.label,
+      };
+    } else {
+      // Update the specific contact with the selected value from the list
+      $currentFile.contacts[index] = {
+        ...$currentFile.contacts[index],
+        id: selectedId, // Set `id` to `null` if nothing is selected
+        name: selectedValue || "", // Set `name` to an empty string if nothing is selected
+      };
     }
 
-    $currentFile.contacts = $currentFile.contacts; // Trigger change
-
-    clients = clients.map((client) => {
-      if (client.created && client.label !== selectedValue) {
-        return { ...client, created: false }; // Reset 'created' flag if the item isn't selected
-      }
-      return client;
-    });
+    // Ensure the reactive update works
+    $currentFile.contacts = [...$currentFile.contacts];
   }
 
-  // Add a new contact row
   function addContact() {
-    // Ensure contacts is an array before spreading
+    const newContact = {
+      id: null, // Use null to indicate no selection
+      name: "", // Use null to indicate no selection
+      role: "",
+      filterText: "",
+    };
 
-    $currentFile.contacts = [
-      ...$currentFile.contacts,
-      {
-        // id: Math.random().toString(36).substr(2, 8),
-        name: "",
-        role: "",
-        filterText: "",
-      },
-    ];
+    console.log("Adding new contact:", newContact);
+
+    $currentFile.contacts = [...$currentFile.contacts, newContact];
+
+    console.log("Updated contacts:", $currentFile.contacts);
   }
 
   // Remove a contact row by index
@@ -326,7 +346,7 @@
             .includes(query)
         );
       });
-    }
+    },
   );
   let dialogEl = "";
 
@@ -368,7 +388,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files"
+        "files",
       );
 
       let timetracking = [];
@@ -377,7 +397,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString)
+          where("__name__", "==", fileIdString),
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -443,8 +463,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
-          )
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
+          ),
         );
       }
 
@@ -502,7 +522,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd"
+              "yyyy-MM-dd",
             )
           : "", // Convert and format the date
         contacts: file.contacts || defaultContact,
@@ -534,7 +554,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id // Access the id property of dossierId
+      fileToDelete.id, // Access the id property of dossierId
     );
 
     try {
@@ -543,7 +563,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id)
+        currentFiles.filter((file) => file.id !== fileToDelete.id),
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -759,19 +779,18 @@
               {#each $currentFile.contacts as contact, index}
                 <div class="contact-row">
                   <label>
-                    {#if contact.id}
+                    {#if contact && contact.id}
                       <Select
                         items={clients}
                         bind:value={contact}
                         name="contact_input_{index}"
-                        getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) => option.label}
+                        getOptionValue={(option) => option.id || ""}
+                        getOptionLabel={(option) => option.label || ""}
                         placeholder="Selecteer of typ een contact"
                         itemId="id"
                         clearable={true}
-                        on:change={(e) => {
-                          handleChange(e, index);
-                        }}
+                        allowUserInput={true}
+                        on:change={(e) => handleChange(e, index)}
                         on:filter={handleFilter}
                         bind:filterText={contact.filterText}
                       ></Select>
@@ -779,14 +798,13 @@
                       <Select
                         items={clients}
                         name="contact_input_{index}"
-                        getOptionValue={(option) => option.id}
-                        getOptionLabel={(option) => option.label}
+                        getOptionValue={(option) => option.id || ""}
+                        getOptionLabel={(option) => option.label || ""}
                         placeholder="Selecteer of typ een contact"
                         itemId="id"
                         clearable={true}
-                        on:change={(e) => {
-                          handleChange(e, index);
-                        }}
+                        allowUserInput={true}
+                        on:change={(e) => handleChange(e, index)}
                         on:filter={handleFilter}
                         bind:filterText={contact.filterText}
                       ></Select>
@@ -833,7 +851,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy"
+                          "dd-MM-yyyy",
                         )}</span
                       >
                     </li>
@@ -868,7 +886,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy"
+                      "dd-MM-yyyy",
                     )}
                   </p>
                 </li>
@@ -964,7 +982,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate
+                          $specs.kmRate,
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -996,53 +1014,53 @@
                 </tfoot>
               </table>
               <!-- Facturatie
-              <table class="specs">
-                <tbody>
-                  <tr>
-                    <td>Uren conform specificatie</td>
-                    <td>{formatMinutesToHHMM($specs.minutes)}</td>
-                    <td>uur</td>
-                  </tr>
-                  <tr>
-                    <td>Uurtarief</td>
-                    <td>{formatToEuro($specs.rate)}</td>
-                    <td>x</td>
-                  </tr>
-                  <tr>
-                    <td>Subtotaal</td>
-                    <td class="border">{formatToEuro($specs.subtotal)}</td>
-                    <td class="border">Exclusief BTW</td>
-                  </tr>
-                  {#if $specs.km > 0}
+                <table class="specs">
+                  <tbody>
                     <tr>
-                      <td
-                        >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate,
-                        )})</td
-                      >
-                      <td>{formatToEuro($specs.mileageAllowance)}</td>
-                      <td>Exclusief BTW</td>
+                      <td>Uren conform specificatie</td>
+                      <td>{formatMinutesToHHMM($specs.minutes)}</td>
+                      <td>uur</td>
                     </tr>
-                  {/if}
-                  <tr>
-                    <td>Totaal</td>
-                    <td class="border">{formatToEuro($specs.total)}</td>
-                    <td class="border">Exclusief BTW</td>
-                  </tr>
-                  <tr>
-                    <td>BTW ({$specs.taxRate * 100}%)</td>
-                    <td>{formatToEuro($specs.tax)}</td>
-                    <td>+</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td>Totaal</td>
-                    <td class="border">{formatToEuro($specs.totalTax)}</td>
-                    <td class="border">Inclusief BTW</td>
-                  </tr>
-                </tfoot>
-              </table> -->
+                    <tr>
+                      <td>Uurtarief</td>
+                      <td>{formatToEuro($specs.rate)}</td>
+                      <td>x</td>
+                    </tr>
+                    <tr>
+                      <td>Subtotaal</td>
+                      <td class="border">{formatToEuro($specs.subtotal)}</td>
+                      <td class="border">Exclusief BTW</td>
+                    </tr>
+                    {#if $specs.km > 0}
+                      <tr>
+                        <td
+                          >Kilometervergoeding (a {formatToEuro(
+                            $specs.kmRate,
+                          )})</td
+                        >
+                        <td>{formatToEuro($specs.mileageAllowance)}</td>
+                        <td>Exclusief BTW</td>
+                      </tr>
+                    {/if}
+                    <tr>
+                      <td>Totaal</td>
+                      <td class="border">{formatToEuro($specs.total)}</td>
+                      <td class="border">Exclusief BTW</td>
+                    </tr>
+                    <tr>
+                      <td>BTW ({$specs.taxRate * 100}%)</td>
+                      <td>{formatToEuro($specs.tax)}</td>
+                      <td>+</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td>Totaal</td>
+                      <td class="border">{formatToEuro($specs.totalTax)}</td>
+                      <td class="border">Inclusief BTW</td>
+                    </tr>
+                  </tfoot>
+                </table> -->
             </div>
             <button
               type="button"
@@ -1136,7 +1154,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000
+                      file.opvolgdatum.seconds * 1000,
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
