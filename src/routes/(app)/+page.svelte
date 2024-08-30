@@ -3,6 +3,7 @@
   import { doc, collection, getDocs, getDoc } from "firebase/firestore";
   import { writable, derived } from "svelte/store";
   import {
+    CaretLeft,
     CaretRight,
     TrendUp,
     TrendDown,
@@ -22,8 +23,11 @@
   const selectedTab = writable("today");
   const selectedPeriod = writable("week");
   const selectedChart = writable("administratie");
+  let offset = 0;
   let percentualChange = 0;
   let currentTurnover = 0;
+
+  selectedPeriod.subscribe(() => (offset = 0)); // Reset offset when period changes
 
   //// Data ////
   // Tasks
@@ -365,7 +369,8 @@
     <div class="card timetracking">
       <div class="top">
         <h2>
-          Omzet deze {$selectedPeriod}
+          Omzet {$selectedPeriod && $selectedPeriod == "jaar" ? "dit" : "deze"}
+          {$selectedPeriod}
           {#if percentualChange}
             <div>
               <span class="turnover" data-turnover={currentTurnover}>
@@ -403,6 +408,12 @@
           >
             Maand
           </button>
+          <button
+            class:active={$selectedPeriod === "jaar"}
+            on:click={() => selectedPeriod.set("jaar")}
+          >
+            Jaar
+          </button>
         </div>
       </div>
 
@@ -411,9 +422,27 @@
           <TimeTrackingChart
             logs={$logs}
             period={$selectedPeriod}
+            {offset}
             bind:percentualChange
             bind:currentTurnover
           />
+          <div class="offset_buttons">
+            <button class="basic" on:click={() => (offset += 1)}
+              ><CaretLeft size={14} />Vorig{$selectedPeriod &&
+              $selectedPeriod == "jaar"
+                ? ""
+                : "e"}
+              {$selectedPeriod}</button
+            >
+            {#if offset > 0}
+              <button class="basic" on:click={() => (offset -= 1)}
+                >Volgend{$selectedPeriod && $selectedPeriod == "jaar"
+                  ? ""
+                  : "e"}
+                {$selectedPeriod}<CaretRight size={14} /></button
+              >
+            {/if}
+          </div>
         {/if}
       </div>
     </div>
@@ -844,6 +873,16 @@
           }
         }
       }
+    }
+  }
+
+  .offset_buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    button {
+      font-size: 1.2rem;
+      align-items: center;
     }
   }
 </style>

@@ -222,7 +222,10 @@
     </div>
     <div>
       <span class="legend">Profielfoto wijzigen</span>
-      <div class="columns" style="grid-template-columns: auto 1fr;">
+      <div
+        class="columns"
+        style="grid-template-columns: auto 1fr; align-items: center; gap: 20px;"
+      >
         {#if profileImage}
           <img
             src={profileImage}
@@ -291,8 +294,8 @@
 
 <style lang="scss">
   .profile-preview {
-    max-width: 150px;
-    max-height: 150px;
+    max-width: 120px;
+    max-height: 120px;
     margin-top: 10px;
     border-radius: 50%;
     object-fit: cover;

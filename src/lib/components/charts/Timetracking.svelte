@@ -3,9 +3,12 @@
   import { onMount, afterUpdate } from "svelte";
 
   export let logs = [];
-  export let period = ""; // "week" or "maand"
+  export let period = ""; // "week", "maand", or "jaar"
+  export let offset = 0; // Offset to navigate through different periods
   export let percentualChange;
   export let currentTurnover = 0; // Store current period's turnover
+
+  $: console.log("offset", offset);
 
   let chart;
   let previousTurnover = 0; // Store previous period's turnover
@@ -15,23 +18,11 @@
     return dayNames[dayIndex];
   }
 
-  function convertToHHMM(decimalHours) {
-    // Extract hours
-    const hours = Math.floor(decimalHours);
-
-    // Extract minutes by multiplying the decimal part by 60
-    const minutes = Math.round((decimalHours - hours) * 60);
-
-    // Return in HH:MM format
-    return `${hours}:${minutes.toString().padStart(2, "0")}`;
-  }
-
   function getDateRange(period, offset = 0) {
     const now = new Date();
     let start, end;
 
     if (period === "week") {
-      // Calculate the start and end of the week with an offset
       const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1));
       start = new Date(weekStart.setDate(weekStart.getDate() - offset * 7));
       start.setHours(0, 0, 0, 0);
@@ -39,10 +30,13 @@
       end.setDate(start.getDate() + 6);
       end.setHours(23, 59, 0, 0);
     } else if (period === "maand") {
-      // Calculate the start and end of the month with an offset
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       start = new Date(monthStart.setMonth(monthStart.getMonth() - offset));
       end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    } else if (period === "jaar") {
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      start = new Date(yearStart.setFullYear(yearStart.getFullYear() - offset));
+      end = new Date(start.getFullYear(), 11, 31);
     }
 
     return { start, end };
@@ -59,70 +53,92 @@
       };
     }
 
-    // Sort logs by date in ascending order
     logs.sort((a, b) => a.date.seconds - b.date.seconds);
 
-    const { start, end } = getDateRange(period);
+    const { start, end } = getDateRange(period, offset);
 
     const categories = [];
-    const hoursSeries = [];
-    const turnoverSeries = [];
-    const billabilitySeries = [];
+    const hoursSeries = new Array(period === "jaar" ? 12 : 0).fill(0);
+    const turnoverSeries = new Array(period === "jaar" ? 12 : 0).fill(0);
+    const billabilitySeries = new Array(period === "jaar" ? 12 : 0).fill(0);
 
-    // Generate all dates for the selected period
-    let currentDate = new Date(start);
-    while (currentDate <= end) {
-      let category;
-      if (period === "week") {
-        // Use day names for week view
-        category = getDayNameInDutch(currentDate.getDay());
-      } else {
-        // Use day/month for month view
-        category = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
+    if (period === "jaar") {
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mrt",
+        "Apr",
+        "Mei",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Okt",
+        "Nov",
+        "Dec",
+      ];
+      categories.push(...monthNames);
+    } else {
+      let currentDate = new Date(start);
+      while (currentDate <= end) {
+        let category;
+        if (period === "week") {
+          category = getDayNameInDutch(currentDate.getDay());
+        } else {
+          category = `${currentDate.getDate()}/${currentDate.getMonth() + 1}`;
+        }
+        categories.push(category);
+        hoursSeries.push(0);
+        turnoverSeries.push(0);
+        billabilitySeries.push(0);
+        currentDate.setDate(currentDate.getDate() + 1);
       }
-      categories.push(category);
-      hoursSeries.push(0);
-      turnoverSeries.push(0);
-      billabilitySeries.push(0);
-      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     logs.forEach((log) => {
       const date = new Date(log.date.seconds * 1000);
-
-      // Only consider logs within the selected period
       if (date >= start && date <= end) {
-        let category;
-        if (period === "week") {
-          // Use day names for week view
-          category = getDayNameInDutch(date.getDay());
+        let index;
+        if (period === "jaar") {
+          index = date.getMonth();
         } else {
-          // Use day/month for month view
-          category = `${date.getDate()}/${date.getMonth() + 1}`;
+          let category;
+          if (period === "week") {
+            category = getDayNameInDutch(date.getDay());
+          } else {
+            category = `${date.getDate()}/${date.getMonth() + 1}`;
+          }
+          index = categories.indexOf(category);
         }
-        const index = categories.indexOf(category);
-        const hours = parseFloat((log.minutes / 60).toFixed(2)); // Convert minutes to hours
+
+        const hours = parseFloat((log.minutes / 60).toFixed(2));
         const turnover = log.billable
           ? parseFloat((hours * 250).toFixed(2))
-          : 0; // Calculate turnover
+          : 0;
 
-        hoursSeries[index] += hours;
-        turnoverSeries[index] += turnover;
-
-        if (log.billable) {
-          billabilitySeries[index] += hours;
+        if (index >= 0) {
+          hoursSeries[index] += hours;
+          turnoverSeries[index] += turnover;
+          if (log.billable) {
+            billabilitySeries[index] += hours;
+          }
         }
       }
     });
 
-    // Calculate the billability percentage per day
     for (let i = 0; i < categories.length; i++) {
       billabilitySeries[i] =
         hoursSeries[i] > 0 ? (billabilitySeries[i] / hoursSeries[i]) * 100 : 0;
     }
 
-    // Store current period's turnover
     currentTurnover = turnoverSeries.reduce((a, b) => a + b, 0);
+
+    console.log("Transformed Data:", {
+      categories,
+      hoursSeries,
+      turnoverSeries,
+      billabilitySeries,
+    });
 
     return {
       categories,
@@ -133,19 +149,14 @@
   }
 
   function calculatePercentualChange(previousTurnover, currentTurnover) {
-    if (previousTurnover === 0) return 0; // Avoid division by zero
+    if (previousTurnover === 0) return 0;
     const change =
       ((currentTurnover - previousTurnover) / previousTurnover) * 100;
-    return Math.round(change); // Round to the nearest integer
+    return Math.round(change);
   }
 
   function fetchPreviousPeriodTurnover(period) {
-    // Get date range for the previous period
-    const { start, end } = getDateRange(period, 1); // offset by 1 period (week or month)
-
-    console.log({ start, end });
-
-    // Filter logs to only include those in the previous period
+    const { start, end } = getDateRange(period, 1);
     const previousPeriodLogs = logs.filter((log) => {
       const date = new Date(log.date.seconds * 1000);
       return date >= start && date <= end;
@@ -155,20 +166,13 @@
 
     previousPeriodLogs.forEach((log) => {
       const date = new Date(log.date.seconds * 1000);
-      const hours = parseFloat((log.minutes / 60).toFixed(2)); // Convert minutes to hours
+      const hours = parseFloat((log.minutes / 60).toFixed(2));
+      const turnover = log.billable ? parseFloat((hours * 250).toFixed(2)) : 0;
 
-      // Only consider logs within the selected period
-      if (date >= start && date <= end) {
-        const turnover = log.billable
-          ? parseFloat((hours * 250).toFixed(2))
-          : 0; // Calculate turnover
-
-        previousPeriodTurnover += turnover;
-      }
+      previousPeriodTurnover += turnover;
     });
 
-    console.log("previousPeriodLogs", previousPeriodLogs);
-    return previousPeriodTurnover; // Return total turnover for previous period
+    return previousPeriodTurnover;
   }
 
   function renderChart() {
@@ -184,86 +188,25 @@
 
       const turnoverSeriesWithColors = chartData.turnoverSeries.map(
         (value, index) => {
-          const billability = chartData.billabilitySeries[index] / 100; // Normalize billability to 0-1 range
+          const billability = chartData.billabilitySeries[index] / 100;
           return {
             y: value,
             color: {
               linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
               stops: [
                 [0, "#d4e3fc"],
-                [1 - billability, "#d4e3fc"], // Light blue for non-billable portion
-                [1 - billability, "#22ABE7"], // Darker blue for billable portion
+                [1 - billability, "#d4e3fc"],
+                [1 - billability, "#22ABE7"],
                 [1, "#22ABE7"],
               ],
             },
           };
-        },
+        }
       );
 
       if (chart) {
-        chart.update({
-          xAxis: {
-            categories: chartData.categories,
-          },
-          series: [
-            {
-              name: "Omzet",
-              data: turnoverSeriesWithColors,
-              type: "column",
-              lineWidth: 2,
-              marker: {
-                enabled: false,
-              },
-              // yAxis: 1,
-              fillColor: {
-                linearGradient: {
-                  x1: 0,
-                  y1: 0,
-                  x2: 0,
-                  y2: 1,
-                },
-                stops: [
-                  [0, "rgba(45, 30, 237, 0.5)"], // Top color
-                  [1, "rgba(45, 30, 237, 0)"], // Bottom color
-                ],
-              },
-            },
-          ],
-          tooltip: {
-            shared: true,
-            style: {
-              fontSize: "12px",
-            },
-            formatter: function () {
-              const index = this.points[0].point.index;
-              return `
-                <i>${this.x}</i><br/>
-                Tijd: <b>${convertToHHMM(chartData.hoursSeries[index])}</b><br/>
-                Declarabiliteit: <b>${chartData.billabilitySeries[index].toFixed(2)}%</b><br/>
-                Omzet: <b>€${chartData.turnoverSeries[index]}</b>
-              `;
-            },
-          },
-          yAxis: [
-            {
-              title: {
-                text: "Omzet (€)",
-                style: {
-                  fontSize: "12px",
-                },
-              },
-              labels: {
-                formatter: function () {
-                  return Math.floor(this.value); // Remove decimals
-                },
-                style: {
-                  fontSize: "12px",
-                },
-              },
-              opposite: true,
-            },
-          ],
-        });
+        chart.series[0].setData(turnoverSeriesWithColors, true);
+        chart.xAxis[0].setCategories(chartData.categories, true);
       } else {
         chart = Highcharts.chart("chart-container", {
           chart: {
@@ -272,11 +215,33 @@
           },
           title: {
             text: "",
+            style: {
+              fontSize: "12px",
+            },
           },
           credits: {
             enabled: false,
           },
-          xAxis: {
+          tooltip: {
+            style: {
+              fontSize: "12px",
+            },
+          },
+          plotOptions: {
+            pie: {
+              dataLabels: {
+                style: {
+                  fontSize: "12px",
+                },
+              },
+            },
+          },
+          legend: {
+            itemStyle: {
+              fontSize: "12px",
+            },
+          },
+          is: {
             categories: chartData.categories,
             labels: {
               style: {
@@ -294,71 +259,33 @@
               },
               labels: {
                 formatter: function () {
-                  return Math.floor(this.value); // Remove decimals
+                  return "€" + this.value;
                 },
                 style: {
                   fontSize: "12px",
                 },
               },
+              gridLineWidth: 0,
               opposite: true,
             },
           ],
-          legend: {
-            itemStyle: {
-              fontSize: "12px",
-            },
-          },
-          tooltip: {
-            shared: true,
-            style: {
-              fontSize: "12px",
-            },
-            formatter: function () {
-              const index = this.points[0].point.index;
-              return `
-                <i>${this.x}</i><br/>
-                Tijd: <b>${convertToHHMM(chartData.hoursSeries[index])}</b><br/>
-                Declarabiliteit: <b>${chartData.billabilitySeries[index].toFixed(2)}%</b><br/>
-                Omzet: <b>€${chartData.turnoverSeries[index]}</b>
-              `;
-            },
-          },
           series: [
             {
-              name: "Omzet",
+              name: "Omzet (€)",
               data: turnoverSeriesWithColors,
-              type: "column",
-              lineWidth: 2,
-              marker: {
-                enabled: false,
-              },
-              // yAxis: 1,
-              fillColor: {
-                linearGradient: {
-                  x1: 0,
-                  y1: 0,
-                  x2: 0,
-                  y2: 1,
-                },
-                stops: [
-                  [0, "rgba(45, 30, 237, 0.5)"], // Top color
-                  [1, "rgba(45, 30, 237, 0)"], // Bottom color
-                ],
-              },
             },
           ],
         });
       }
 
-      // Fetch previous period's turnover
       previousTurnover = fetchPreviousPeriodTurnover(period);
-
-      // Calculate percentual change
       percentualChange = calculatePercentualChange(
         previousTurnover,
-        currentTurnover,
+        currentTurnover
       );
 
+      console.log("Current Turnover:", currentTurnover);
+      console.log("Previous Turnover:", previousTurnover);
       console.log("Percentual Change:", percentualChange);
     } catch (error) {
       console.error("Error rendering chart:", error);
@@ -375,9 +302,3 @@
 </script>
 
 <div id="chart-container"></div>
-
-<style>
-  #chart-container {
-    height: 260px;
-  }
-</style>
