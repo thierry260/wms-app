@@ -7,6 +7,7 @@
   export let offset = 0; // Offset to navigate through different periods
   export let percentualChange;
   export let currentTurnover = 0; // Store current period's turnover
+  export let selectedPeriodLabel = "";
 
   $: console.log("offset", offset);
 
@@ -23,20 +24,42 @@
     let start, end;
 
     if (period === "week") {
-      const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1));
-      start = new Date(weekStart.setDate(weekStart.getDate() - offset * 7));
+      // Calculate the start of the week as Monday
+      const currentDayOfWeek = (now.getDay() + 6) % 7; // Converts Sunday (0) to 6 and Monday (1) to 0
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - currentDayOfWeek);
+      weekStart.setHours(0, 0, 0, 0);
+
+      start = new Date(weekStart);
+      start.setDate(weekStart.getDate() - offset * 7);
       start.setHours(0, 0, 0, 0);
+
       end = new Date(start);
       end.setDate(start.getDate() + 6);
-      end.setHours(23, 59, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      // Log the computed dates
+      console.log(`Period: ${period}, Offset: ${offset}`);
+      console.log(`Week Start: ${start}`);
+      console.log(`Week End: ${end}`);
     } else if (period === "maand") {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       start = new Date(monthStart.setMonth(monthStart.getMonth() - offset));
       end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+
+      // Log the computed dates
+      console.log(`Period: ${period}, Offset: ${offset}`);
+      console.log(`Month Start: ${start}`);
+      console.log(`Month End: ${end}`);
     } else if (period === "jaar") {
       const yearStart = new Date(now.getFullYear(), 0, 1);
       start = new Date(yearStart.setFullYear(yearStart.getFullYear() - offset));
       end = new Date(start.getFullYear(), 11, 31);
+
+      // Log the computed dates
+      console.log(`Period: ${period}, Offset: ${offset}`);
+      console.log(`Year Start: ${start}`);
+      console.log(`Year End: ${end}`);
     }
 
     return { start, end };
@@ -152,11 +175,14 @@
     if (previousTurnover === 0) return 0;
     const change =
       ((currentTurnover - previousTurnover) / previousTurnover) * 100;
-    return Math.round(change);
+
+    // Conditionally format the result
+    return Math.abs(change) < 1 ? change.toFixed(2) : Math.round(change);
   }
 
   function fetchPreviousPeriodTurnover(period) {
-    const { start, end } = getDateRange(period, 1);
+    // Use offset + 1 to get the previous period range
+    const { start, end } = getDateRange(period, offset + 1);
     const previousPeriodLogs = logs.filter((log) => {
       const date = new Date(log.date.seconds * 1000);
       return date >= start && date <= end;
@@ -165,7 +191,6 @@
     let previousPeriodTurnover = 0;
 
     previousPeriodLogs.forEach((log) => {
-      const date = new Date(log.date.seconds * 1000);
       const hours = parseFloat((log.minutes / 60).toFixed(2));
       const turnover = log.billable ? parseFloat((hours * 250).toFixed(2)) : 0;
 
@@ -291,6 +316,46 @@
       console.error("Error rendering chart:", error);
     }
   }
+
+  // Add this function to get the current period label
+  function getCurrentPeriodLabel(period, offset) {
+    const now = new Date();
+    let label = "";
+
+    if (period === "week") {
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const weekStart = new Date(now.setDate(now.getDate() - now.getDay() + 1));
+      const start = new Date(
+        weekStart.setDate(weekStart.getDate() - offset * 7)
+      );
+
+      const oneJan = new Date(start.getFullYear(), 0, 1);
+      const daysSinceYearStart = Math.floor(
+        (start - oneJan) / (24 * 60 * 60 * 1000)
+      );
+      const weekNumber = Math.ceil(
+        (daysSinceYearStart + oneJan.getDay() + 1) / 7
+      );
+
+      label = `Week ${weekNumber}`;
+    } else if (period === "maand") {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const start = new Date(
+        monthStart.setMonth(monthStart.getMonth() - offset)
+      );
+      label = start.toLocaleString("nl-NL", {
+        month: "long",
+        year: "numeric",
+      });
+    } else if (period === "jaar") {
+      const year = now.getFullYear() - offset;
+      label = `${year}`;
+    }
+
+    return label;
+  }
+
+  $: selectedPeriodLabel = getCurrentPeriodLabel(period, offset);
 
   onMount(() => {
     renderChart();
