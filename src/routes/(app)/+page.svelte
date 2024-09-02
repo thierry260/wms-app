@@ -26,6 +26,7 @@
   let offset = 0;
   let percentualChange = 0;
   let currentTurnover = 0;
+  let selectedPeriodLabel = "";
 
   selectedPeriod.subscribe(() => (offset = 0)); // Reset offset when period changes
 
@@ -425,22 +426,25 @@
             {offset}
             bind:percentualChange
             bind:currentTurnover
+            bind:selectedPeriodLabel
           />
           <div class="offset_buttons">
-            <button class="basic" on:click={() => (offset += 1)}
-              ><CaretLeft size={14} />Vorig{$selectedPeriod &&
-              $selectedPeriod == "jaar"
-                ? ""
-                : "e"}
-              {$selectedPeriod}</button
-            >
+            <button class="basic" on:click={() => (offset += 1)}>
+              <CaretLeft size={14} />
+            </button>
+
+            <span class="period-label">
+              {selectedPeriodLabel}
+            </span>
+
             {#if offset > 0}
-              <button class="basic" on:click={() => (offset -= 1)}
-                >Volgend{$selectedPeriod && $selectedPeriod == "jaar"
-                  ? ""
-                  : "e"}
-                {$selectedPeriod}<CaretRight size={14} /></button
-              >
+              <button class="basic" on:click={() => (offset -= 1)}>
+                <CaretRight size={14} />
+              </button>
+            {:else}
+              <button class="basic" on:click={() => (offset -= 1)} disabled>
+                <CaretRight size={14} />
+              </button>
             {/if}
           </div>
         {/if}
@@ -880,9 +884,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background-color: var(--background);
+    padding: 5px;
+    border-radius: 5px;
+
     button {
       font-size: 1.2rem;
       align-items: center;
+      background-color: #fff;
+
+      &[disabled] {
+        background-color: transparent;
+        border-color: transparent;
+        pointer-events: none;
+      }
+    }
+
+    .period-label {
+      font-size: 1.4rem;
     }
   }
 </style>
