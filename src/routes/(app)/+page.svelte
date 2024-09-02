@@ -787,6 +787,12 @@
                 &:nth-child(2) {
                   border-top: none;
                 }
+                &:first-child:last-child {
+                  border: none;
+                }
+                &:nth-child(2):has(+ :last-child) {
+                  border-bottom: 1px solid var(--border);
+                }
                 .assignees {
                   display: flex;
                   flex-direction: row-reverse;

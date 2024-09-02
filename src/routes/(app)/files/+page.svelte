@@ -20,6 +20,7 @@
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   import Log from "$lib/components/Log.svelte";
+  import filter from "svelte-select/filter";
   const pageName = "Files";
 
   let html2pdf;
@@ -51,6 +52,10 @@
     console.log("log: ", $currentFile.log);
   }
 
+  $: if ($currentFile.timetracking && $currentFile.timetracking.length > 0) {
+    console.log("timetracking: ", $currentFile.timetracking);
+  }
+
   $: if ($currentFile.contacts) {
     console.log("contacts: ", $currentFile.contacts);
   }
@@ -68,7 +73,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0,
+      0
     );
 
     // Convert total minutes to hours
@@ -81,7 +86,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0,
+      0
     );
 
     // Calculate mileage allowance
@@ -110,59 +115,90 @@
 
   let clients = [];
 
-  let filterText = "";
   let tasks = writable([]);
   let activeTab = "";
 
   let taskStatuses = writable([]);
 
   onMount(async () => {
+    // Initialize the page tracking
     dbTracker.initPage(pageName);
+
+    // Fetch clients
     const clientsRef = collection(
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients",
+      "clients"
     );
     const clientSnapshots = await getDocs(clientsRef);
-    clients = clientSnapshots.docs.map((doc) => {
+
+    // Create a map of client data keyed by client ID
+    const clientsMap = new Map();
+    clientSnapshots.docs.forEach((doc) => {
       const data = doc.data();
-      return {
+      clientsMap.set(doc.id, {
         id: doc.id,
+        voornaam: data.voornaam || "",
+        achternaam: data.achternaam || "",
+        tussenvoegsels: data.tussenvoegsels || "",
         label:
           `${data.voornaam || ""} ${data.tussenvoegsels || ""} ${data.achternaam || ""} ${data.bedrijfsnaam ? `(${data.bedrijfsnaam})` : ""}`.trim(),
         filterText: "",
-        // ...data,
-      };
+      });
     });
 
+    // Update the clients reactive variable
+    clients = Array.from(clientsMap.values());
+
+    // Track the read operation for clients
     dbTracker.trackRead(pageName, clientSnapshots.docs.length);
 
+    // Fetch files
     const filesRef = collection(
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const filesSnapshots = await getDocs(filesRef);
 
-    files.set(
-      filesSnapshots.docs
-        .filter((doc) => doc.id !== "0000")
-        .map((doc) => ({ id: doc.id, ...doc.data() })),
-    );
+    // Process files and add corresponding client data
+    const processedFiles = filesSnapshots.docs
+      .filter((doc) => doc.id !== "0000")
+      .map((doc) => {
+        const fileData = doc.data();
+        const clientData = clientsMap.get(fileData.client_id?.id);
 
+        // Add client data to the file object
+        return {
+          id: doc.id,
+          ...fileData,
+          client_id: {
+            ...fileData.client_id,
+            voornaam: clientData?.voornaam || "",
+            tussenvoegsels: clientData?.tussenvoegsels || "",
+            achternaam: clientData?.achternaam || "",
+          },
+        };
+      });
+
+    // Update the files reactive variable
+    files.set(processedFiles);
+
+    // Calculate and set the proposed file ID
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0,
+      0
     );
-
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
 
+    // Update the current file reactive variable
     currentFile.set({
       fileId: (lastFileId + 1).toString().padStart(4, "0"),
     });
 
+    // Track the read operation for files
     dbTracker.trackRead(pageName, filesSnapshots.docs.length);
   });
 
@@ -179,7 +215,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -199,7 +235,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks",
+        "tasks"
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -211,7 +247,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id,
+          (status) => status.id === task.status_id
         )?.name;
 
         if (statusName) {
@@ -231,16 +267,20 @@
     }
   }
 
-  function handleFilter(e) {
-    const inputValue = e.detail.filter;
+  function handleFilter(e, filterText) {
+    console.log("filterText: ", filterText);
+    console.log("e: ", e);
 
-    if (typeof inputValue === "string") {
-      filterText = inputValue.toLowerCase().trim();
+    if (e.detail.length === 0 && filterText.length > 0) {
+      filterText = filterText.toLowerCase().trim();
 
       // Check if the input matches any existing client
       const existingClient = clients.some(
-        (client) => client.label.toLowerCase() === filterText,
+        (client) => client.label.toLowerCase() === filterText
       );
+
+      console.log("existingClient: ", existingClient);
+      console.log("filterText.length: ", filterText.length);
 
       // If the filter text is not empty and no match is found, add the new item
       if (filterText.length > 0 && !existingClient) {
@@ -248,15 +288,13 @@
         clients = [
           ...clients.filter((client) => !client.created),
           {
-            id: "custom", // Identifiable ID for custom entries
+            id: Math.random().toString(36).substr(2, 9), // Identifiable ID for custom entries
             label: `Custom: ${filterText.charAt(0).toUpperCase() + filterText.slice(1)}`,
             created: true,
           },
         ];
         console.log("Custom contact added:", clients);
       }
-    } else {
-      filterText = ""; // Set to empty string if inputValue is not a string
     }
   }
 
@@ -264,27 +302,39 @@
     const selectedValue = e.detail ? e.detail.label : null;
     const selectedId = e.detail ? e.detail.id : null;
 
-    if (selectedId === "custom") {
-      // Handle the custom entry
-      const customName = selectedValue.replace("Custom: ", "");
+    let updatedContact = {
+      ...$currentFile.contacts[index], // Ensure a new instance
+      id: selectedId,
+      name: selectedValue || "",
+    };
 
-      $currentFile.contacts[index] = {
-        id: Math.random().toString(36).substr(2, 9), // Generate a random ID for custom contacts
-        name: customName,
-        role: $currentFile.contacts[index].role || "", // Preserve the existing role if any
-      };
+    // if (selectedId === "custom") {
+    //   const customName = selectedValue.replace("Custom: ", "");
+    //   updatedContact = {
+    //     id: Math.random().toString(36).substr(2, 9), // Generate a unique ID
+    //     label: customName,
+    //     role: $currentFile.contacts[index].role || "",
+    //   };
+    // }
 
-      console.log("Custom contact selected:", $currentFile.contacts[index]);
-    } else {
-      // Update the specific contact with the selected value from the list
-      $currentFile.contacts[index] = {
-        id: selectedId,
-        name: selectedValue || "",
-        role: $currentFile.contacts[index].role || "", // Preserve the existing role if any
-      };
+    $currentFile.contacts = [
+      ...$currentFile.contacts.slice(0, index),
+      updatedContact,
+      ...$currentFile.contacts.slice(index + 1),
+    ];
 
-      console.log("Existing contact selected:", $currentFile.contacts[index]);
-    }
+    console.log("Contact updated:", $currentFile.contacts[index]);
+  }
+
+  function handleClear(e, index) {
+    // Prevent contact from being undefined
+    console.log("handle clear");
+
+    $currentFile.contacts[index] = {
+      id: null,
+      name: "",
+      role: "",
+    };
 
     // Ensure the reactive update works
     $currentFile.contacts = [...$currentFile.contacts];
@@ -311,11 +361,23 @@
     $currentFile.contacts = $currentFile.contacts.filter((_, i) => i !== index);
   }
 
-  function handleRoleChange(index, event) {
-    $currentFile.contacts[index].role = event.target.value;
-    $currentFile.contacts = [...$currentFile.contacts]; // Trigger reactivity
-    console.log("Role updated:", $currentFile.contacts[index].role);
+  function handleRoleChange(event, index) {
+    const updatedRole = event.target.value;
+
+    const updatedContact = {
+      ...$currentFile.contacts[index], // Ensure a new instance
+      role: updatedRole,
+    };
+
+    $currentFile.contacts = [
+      ...$currentFile.contacts.slice(0, index),
+      updatedContact,
+      ...$currentFile.contacts.slice(index + 1),
+    ];
+
+    console.log("Role updated:", $currentFile.contacts[index]);
   }
+
   let submitting = writable(false);
   let errorMessage = writable("");
   let successMessage = writable("");
@@ -338,9 +400,16 @@
             .includes(query)
         );
       });
-    },
+    }
   );
   let dialogEl = "";
+  $: {
+    if (dialogEl) {
+      dialogEl.addEventListener("close", (event) => {
+        document.querySelector(".tabs .tab:first-child")?.click();
+      });
+    }
+  }
 
   async function handleSubmit(event) {
     // Prevent form submission
@@ -363,8 +432,25 @@
 
     console.log(fileIdString);
 
+    // Transform contacts to remove filterText and ensure id is a string
+    const transformedContacts = $currentFile.contacts.map((contact) => ({
+      name: contact.name,
+      role: contact.role,
+      id:
+        typeof contact.id === "object" && contact.id !== null
+          ? contact.id.id
+          : contact.id,
+    }));
+
+    console.log("$currentFile.contacts", $currentFile.contacts);
     // Extract current file data
-    const fileData = $currentFile;
+    const fileData = {
+      ...$currentFile,
+      contacts: transformedContacts,
+      client_id: { id: $currentFile.client_id?.id || $currentFile.client_id },
+    };
+
+    console.log("fileData.contacts", fileData.contacts);
 
     if (!fileData.fileId || !fileData.client_id || !fileData.name) {
       errorMessage.set("Vul alle verplichte velden in.");
@@ -380,7 +466,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files",
+        "files"
       );
 
       let timetracking = [];
@@ -389,7 +475,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString),
+          where("__name__", "==", fileIdString)
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -455,8 +541,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
-          ),
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
+          )
         );
       }
 
@@ -493,13 +579,18 @@
 
   function openModal(file) {
     if (file && file.id) {
+      // Create a unique instance of each contact
+      const contacts = (file.contacts || []).map((contact) => ({
+        ...contact,
+      }));
+
       const defaultContact = file?.client_id?.id
         ? [
             {
               name: file.client_id.label,
               id: file.client_id.id,
+              role: "",
               filterText: "",
-              role: "", // Ensure the role is initialized
             },
           ]
         : [];
@@ -513,10 +604,10 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd",
+              "yyyy-MM-dd"
             )
           : "",
-        contacts: file.contacts || defaultContact,
+        contacts: file.contacts,
       });
 
       console.log("Modal opened with file:", $currentFile);
@@ -546,7 +637,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id, // Access the id property of dossierId
+      fileToDelete.id // Access the id property of dossierId
     );
 
     try {
@@ -555,7 +646,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id),
+        currentFiles.filter((file) => file.id !== fileToDelete.id)
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -628,6 +719,21 @@
       currency: "EUR",
     }).format(amount);
   }
+
+  function formatDate(timestamp) {
+    if (!timestamp || !timestamp.seconds) return "";
+
+    // Convert seconds to milliseconds and create a Date object
+    const date = new Date(timestamp.seconds * 1000);
+
+    // Extract day, month, year
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+
+    // Return formatted date in dd-mm-yyyy format
+    return `${day}-${month}-${year}`;
+  }
 </script>
 
 <main>
@@ -682,18 +788,6 @@
             {/if}
           </label>
 
-          <label>
-            <span class="legend">Contact</span>
-            <Select
-              items={clients}
-              bind:value={$currentFile.client_id}
-              getOptionValue={(option) => option.id}
-              getOptionLabel={(option) => option.label}
-              placeholder="Zoek een contact"
-              itemId="id"
-              clearable={false}
-            />
-          </label>
           <label>
             <span class="legend">Dossiernaam</span>
             <input
@@ -766,60 +860,80 @@
         </div>
 
         <div slot="tab-1">
+          <label>
+            <span class="legend">Cliënt/contactpersoon</span>
+            <Select
+              items={clients}
+              bind:value={$currentFile.client_id}
+              getOptionValue={(option) => option.id}
+              getOptionLabel={(option) => option.label}
+              placeholder="Zoek een contact"
+              itemId="id"
+              clearable={false}
+            />
+          </label>
           <div class="contact-list">
+            <span class="legend">Overige contacten</span>
             {#if $currentFile.contacts && $currentFile.contacts.length > 0}
               {#each $currentFile.contacts as contact, index}
-                <div class="contact-row">
-                  <label>
-                    {#if contact && contact.id}
-                      <Select
-                        items={clients}
-                        bind:value={contact}
-                        name="contact_input_{index}"
-                        getOptionValue={(option) => option.id || ""}
-                        getOptionLabel={(option) => option.label || ""}
-                        placeholder="Selecteer of typ een contact"
-                        itemId="id"
-                        clearable={true}
-                        allowUserInput={true}
-                        on:change={(e) => handleChange(e, index)}
-                        on:filter={handleFilter}
-                        bind:filterText={contact.filterText}
-                      ></Select>
-                    {:else}
-                      <Select
-                        items={clients}
-                        name="contact_input_{index}"
-                        getOptionValue={(option) => option.id || ""}
-                        getOptionLabel={(option) => option.label || ""}
-                        placeholder="Selecteer of typ een contact"
-                        itemId="id"
-                        clearable={true}
-                        allowUserInput={true}
-                        on:change={(e) => handleChange(e, index)}
-                        on:filter={handleFilter}
-                        bind:filterText={contact.filterText}
-                      ></Select>
+                {#if contact}
+                  <div class="contact-row">
+                    <label>
+                      {#if contact.id}
+                        <Select
+                          items={clients}
+                          bind:value={contact.id}
+                          name="contact_input_{index}"
+                          placeholder="Selecteer of typ een contact"
+                          itemId="id"
+                          clearable={true}
+                          on:change={(e) => handleChange(e, index)}
+                          on:clear={(e) => handleClear(e, index)}
+                          on:filter={(e) => handleFilter(e, contact.filterText)}
+                          bind:filterText={contact.filterText}
+                          clearFilterTextOnBlur={false}
+                          ><div slot="item" let:item>
+                            {item.label}
+                          </div></Select
+                        >
+                      {:else}
+                        <Select
+                          items={clients}
+                          name="contact_input_{index}"
+                          placeholder="Selecteer of typ een contact"
+                          itemId="id"
+                          clearable={true}
+                          on:change={(e) => handleChange(e, index)}
+                          on:clear={(e) => handleClear(e, index)}
+                          on:filter={(e) => handleFilter(e, contact.filterText)}
+                          bind:filterText={contact.filterText}
+                          clearFilterTextOnBlur={false}
+                          ><div slot="item" let:item>
+                            {item.label}
+                          </div></Select
+                        >
+                      {/if}
+                    </label>
+                    <label class="input_wrapper">
+                      <input
+                        type="text"
+                        name="{$currentFile.id}_role_input_{index}"
+                        bind:value={contact.role}
+                        placeholder="&nbsp;"
+                        on:input={(e) => handleRoleChange(e, index)}
+                      />
+                      <span>Rol</span>
+                    </label>
+                    {#if $currentFile.contacts.length > 1}
+                      <button
+                        type="button"
+                        class="basic"
+                        on:click={() => removeContact(index)}
+                        ><TrashSimple size="16" /></button
+                      >
                     {/if}
-                  </label>
-                  <label class="input_wrapper">
-                    <input
-                      type="text"
-                      bind:value={contact.role}
-                      placeholder="&nbsp;"
-                      on:input={(e) => handleRoleChange(index, e)}
-                    />
-                    <span>Rol</span>
-                  </label>
-                  {#if $currentFile.contacts.length > 1}
-                    <button
-                      type="button"
-                      class="basic"
-                      on:click={() => removeContact(index)}
-                      ><TrashSimple size="16" /></button
-                    >
-                  {/if}
-                </div>
+                  </div>
+                {/if}
               {/each}
             {/if}
 
@@ -843,7 +957,7 @@
                       <span
                         ><Clock size="18" />{format(
                           task.deadline.toDate(),
-                          "dd-MM-yyyy",
+                          "dd-MM-yyyy"
                         )}</span
                       >
                     </li>
@@ -878,7 +992,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy",
+                      "dd-MM-yyyy"
                     )}
                   </p>
                 </li>
@@ -919,11 +1033,7 @@
                 <tbody>
                   {#each $currentFile.timetracking as item}
                     <tr>
-                      <td
-                        >{item.datum
-                          ? item.datum.split("-").reverse().join("-")
-                          : ""}</td
-                      >
+                      <td>{formatDate(item.date)}</td>
                       <td>{item.description || ""}</td>
                       <td
                         >{item.minutes
@@ -974,7 +1084,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate,
+                          $specs.kmRate
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -1137,7 +1247,9 @@
               <td class="limit_width">{file.id}. {file.name}</td>
               <td class="limit_width">
                 {file.client_id.voornaam
-                  ? file.client_id.voornaam + " " + file.client_id.achternaam
+                  ? `${file.client_id.voornaam}` +
+                    `${file.client_id.tussenvoegsels ? ` ${file.client_id.tussenvoegsels} ` : " "}` +
+                    file.client_id.achternaam
                   : "Onbekend"}
               </td>
               <td>{file.dossierstatus}</td>
@@ -1146,7 +1258,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000,
+                      file.opvolgdatum.seconds * 1000
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
@@ -1239,6 +1351,12 @@
     flex-direction: column;
     align-items: center;
     gap: 15px;
+
+    .legend {
+      align-self: flex-start;
+      margin-bottom: -10px;
+      margin-top: 10px;
+    }
   }
 
   .contact-row {

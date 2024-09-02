@@ -11,7 +11,6 @@ import {
 } from "firebase/firestore";
 import { db } from "$lib/firebase";
 import { browser } from "$app/environment";
-import { fetchWorkspaceData } from "$lib/utils/get";
 
 export async function updateWorkspaceArray(
   workspaceId,

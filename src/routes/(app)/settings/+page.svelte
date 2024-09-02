@@ -83,12 +83,20 @@
       // Get the download URL
       const photoURL = await getDownloadURL(storageRef);
 
-      // Update the user's profile
+      // Update the user's profile in Firebase Authentication
       await updateProfile(currentUser, { photoURL });
 
-      // Optionally, update the user's profile in Firestore
-      // const userDocRef = doc(db, "users", currentUser.uid);
-      // await updateDoc(userDocRef, { photoURL });
+      // Update the user's profile in Firestore
+      const userDocRef = doc(db, "users", currentUser.uid);
+      await updateDoc(userDocRef, { photoURL });
+
+      // Update the user store with the new photoURL
+      user.update((currentUserData) => {
+        return {
+          ...currentUserData,
+          photoURL, // Update the photoURL in the user store
+        };
+      });
 
       profileImageSuccess.set("Profielfoto aangepast.");
     } catch (error) {

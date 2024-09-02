@@ -32,11 +32,9 @@
 
       start = new Date(weekStart);
       start.setDate(weekStart.getDate() - offset * 7);
-      start.setHours(0, 0, 0, 0);
 
       end = new Date(start);
       end.setDate(start.getDate() + 6);
-      end.setHours(23, 59, 59, 999);
 
       // Log the computed dates
       console.log(`Period: ${period}, Offset: ${offset}`);
@@ -61,6 +59,9 @@
       console.log(`Year Start: ${start}`);
       console.log(`Year End: ${end}`);
     }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
 
     return { start, end };
   }
@@ -181,23 +182,54 @@
   }
 
   function fetchPreviousPeriodTurnover(period) {
-    // Use offset + 1 to get the previous period range
     const { start, end } = getDateRange(period, offset + 1);
+    const now = new Date();
+
+    if (offset === 0) {
+      if (period === "week") {
+        // Go back exactly one week (7 days) from now
+        end.setDate(now.getDate() - 7);
+      } else if (period === "maand") {
+        // Go back exactly one month from now
+        const previousMonthEnd = new Date(now);
+        previousMonthEnd.setMonth(now.getMonth() - 1);
+
+        // Handle case where the previous month has fewer days
+        const currentDay = now.getDate();
+        if (currentDay > getLastDayOfMonth(previousMonthEnd)) {
+          end.setDate(getLastDayOfMonth(previousMonthEnd));
+        } else {
+          end.setDate(currentDay);
+        }
+        end.setMonth(now.getMonth() - 1);
+      } else if (period === "jaar") {
+        // Go back exactly one year from now
+        end.setFullYear(now.getFullYear() - 1);
+        end.setMonth(now.getMonth());
+        end.setDate(now.getDate());
+      }
+    }
+
+    console.log("start date: ", start.toDateString());
+    console.log("end date: ", end.toDateString());
+
     const previousPeriodLogs = logs.filter((log) => {
       const date = new Date(log.date.seconds * 1000);
       return date >= start && date <= end;
     });
 
     let previousPeriodTurnover = 0;
-
     previousPeriodLogs.forEach((log) => {
       const hours = parseFloat((log.minutes / 60).toFixed(2));
       const turnover = log.billable ? parseFloat((hours * 250).toFixed(2)) : 0;
-
       previousPeriodTurnover += turnover;
     });
 
     return previousPeriodTurnover;
+  }
+
+  function getLastDayOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   }
 
   function renderChart() {
