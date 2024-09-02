@@ -233,7 +233,6 @@
 
   function handleFilter(e) {
     const inputValue = e.detail.filter;
-    console.log("handleFilter");
 
     if (typeof inputValue === "string") {
       filterText = inputValue.toLowerCase().trim();
@@ -245,15 +244,16 @@
 
       // If the filter text is not empty and no match is found, add the new item
       if (filterText.length > 0 && !existingClient) {
-        // Add a new client to the list
+        // Add a new "Custom: [input]" option to the list
         clients = [
           ...clients.filter((client) => !client.created),
           {
-            id: Math.random().toString(36).substr(2, 9), // Generate a random ID
-            label: filterText.charAt(0).toUpperCase() + filterText.slice(1), // Capitalize the first letter
+            id: "custom", // Identifiable ID for custom entries
+            label: `Custom: ${filterText.charAt(0).toUpperCase() + filterText.slice(1)}`,
             created: true,
           },
         ];
+        console.log("Custom contact added:", clients);
       }
     } else {
       filterText = ""; // Set to empty string if inputValue is not a string
@@ -261,38 +261,29 @@
   }
 
   function handleChange(e, index) {
-    console.log("handleChange", index);
     const selectedValue = e.detail ? e.detail.label : null;
     const selectedId = e.detail ? e.detail.id : null;
 
-    // Check if the selectedValue exists in the clients list
-    const existingClient = clients.find(
-      (client) => client.label === selectedValue,
-    );
+    if (selectedId === "custom") {
+      // Handle the custom entry
+      const customName = selectedValue.replace("Custom: ", "");
 
-    if (!existingClient && selectedValue) {
-      // The selected value is a custom entry
-      const newClient = {
-        id: Math.random().toString(36).substr(2, 9), // Generate a random ID
-        label: selectedValue,
-      };
-
-      // Add the new client to the list of clients
-      clients = [...clients, newClient];
-
-      // Update the specific contact with the new custom entry
       $currentFile.contacts[index] = {
-        ...$currentFile.contacts[index],
-        id: newClient.id,
-        name: newClient.label,
+        id: Math.random().toString(36).substr(2, 9), // Generate a random ID for custom contacts
+        name: customName,
+        role: $currentFile.contacts[index].role || "", // Preserve the existing role if any
       };
+
+      console.log("Custom contact selected:", $currentFile.contacts[index]);
     } else {
       // Update the specific contact with the selected value from the list
       $currentFile.contacts[index] = {
-        ...$currentFile.contacts[index],
-        id: selectedId, // Set `id` to `null` if nothing is selected
-        name: selectedValue || "", // Set `name` to an empty string if nothing is selected
+        id: selectedId,
+        name: selectedValue || "",
+        role: $currentFile.contacts[index].role || "", // Preserve the existing role if any
       };
+
+      console.log("Existing contact selected:", $currentFile.contacts[index]);
     }
 
     // Ensure the reactive update works
@@ -320,9 +311,10 @@
     $currentFile.contacts = $currentFile.contacts.filter((_, i) => i !== index);
   }
 
-  // Update the role of the contact
   function handleRoleChange(index, event) {
     $currentFile.contacts[index].role = event.target.value;
+    $currentFile.contacts = [...$currentFile.contacts]; // Trigger reactivity
+    console.log("Role updated:", $currentFile.contacts[index].role);
   }
   let submitting = writable(false);
   let errorMessage = writable("");
@@ -501,13 +493,13 @@
 
   function openModal(file) {
     if (file && file.id) {
-      // Assuming `client` is accessible in this function's scope
       const defaultContact = file?.client_id?.id
         ? [
             {
               name: file.client_id.label,
               id: file.client_id.id,
               filterText: "",
+              role: "", // Ensure the role is initialized
             },
           ]
         : [];
@@ -518,16 +510,16 @@
         timetracking: file.timetracking,
         opvolgdatum: file.opvolgdatum
           ? format(
-              // Check if file.opvolgdatum is a Firebase Timestamp
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
               "yyyy-MM-dd",
             )
-          : "", // Convert and format the date
+          : "",
         contacts: file.contacts || defaultContact,
       });
-      console.log($currentFile);
+
+      console.log("Modal opened with file:", $currentFile);
     } else {
       resetForm();
     }
