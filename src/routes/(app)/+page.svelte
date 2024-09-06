@@ -690,7 +690,7 @@
             &.active {
               color: var(--primary);
               border-color: var(--primary);
-              font-weight: bold;
+              font-weight: 500;
               span {
                 background-color: var(--primary);
               }

@@ -787,7 +787,6 @@
     {/if}
   </dialog>
 </main>
->
 
 <style lang="scss">
   @media (max-width: $md) {

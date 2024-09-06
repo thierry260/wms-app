@@ -432,6 +432,10 @@
 
     .main_nav_items {
       display: contents;
+
+      + .nav_item {
+        padding-inline: 0;
+      }
     }
 
     .nav_item {
