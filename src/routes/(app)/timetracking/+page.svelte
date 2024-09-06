@@ -29,7 +29,7 @@
     CaretCircleLeft,
     CaretCircleRight,
     TrashSimple,
-    Funnel,
+    SlidersHorizontal,
     X,
     Plus,
   } from "phosphor-svelte";
@@ -608,35 +608,33 @@
 </script>
 
 <section class="timetracking_section">
-  <div class="top">
-    <h2>Urenregistratie</h2>
+  <div class="top floating">
+    <h2>Uren<span class="hide_mobile">registratie</span></h2>
     <div class="buttons">
+      <div class="task-search">
+        <input
+          type="text"
+          class="search"
+          placeholder="Zoek op urenregistratie..."
+          on:input={handleSearchInput}
+          bind:value={$searchQuery}
+        />
+      </div>
+      <button class="basic" on:click={() => (showFilters = !showFilters)}>
+        {#if !showFilters}
+          <SlidersHorizontal size="20" />
+        {:else}
+          <X size="18" />
+        {/if}
+      </button>
       <button class="mobile_icon_only" on:click={() => openModal()}
         ><Plus size={16} />Uren registreren</button
       >
     </div>
   </div>
-</section>
-<main>
   {#if $loading}
     <p class="loading-text">Laden...</p>
   {:else}
-    <div class="search_filter">
-      <input
-        type="text"
-        class="search"
-        placeholder="Zoek op urenregistratie..."
-        on:input={handleSearchInput}
-        bind:value={$searchQuery}
-      />
-      <button class="basic" on:click={() => (showFilters = !showFilters)}>
-        {#if !showFilters}
-          <Funnel size="18" />
-        {:else}
-          <X size="18" />
-        {/if}
-      </button>
-    </div>
     {#if showFilters}
       <div class="columns" data-col="2">
         <div class="date_input">
@@ -695,114 +693,114 @@
       </ul>
     </div>
   {/if}
-  <dialog id="timetrackingDialog" bind:this={dialogEl}>
-    {#if $currentTimetracking}
-      <div class="top">
-        <h6>Log bewerken</h6>
-        <button class="basic" on:click={closeDialog}><X size="16" /></button>
+</section>
+<dialog id="timetrackingDialog" bind:this={dialogEl}>
+  {#if $currentTimetracking}
+    <div class="top">
+      <h6>Log bewerken</h6>
+      <button class="basic" on:click={closeDialog}><X size="16" /></button>
+    </div>
+    <div class="content">
+      <div>
+        <label class="legend">Dossiernaam</label>
+        <Select
+          items={dossiers}
+          bind:value={$currentTimetracking.dossierId}
+          getOptionLabel={(option) => option.label}
+          getOptionValue={(option) => option.id}
+          getSelectionLabel={(option) =>
+            option?.label || $currentTimetracking.name}
+          placeholder="Select dossier"
+          itemId="id"
+          clearable={false}
+        />
       </div>
-      <div class="content">
+      <div>
+        <label class="legend">Datum</label>
+        <input type="date" bind:value={$currentTimetracking.date} />
+      </div>
+      <div>
+        <label class="legend">Omschrijving</label>
+        <textarea bind:value={$currentTimetracking.description}></textarea>
+      </div>
+      <div class="modal_columns" data-col="2">
         <div>
-          <label class="legend">Dossiernaam</label>
-          <Select
-            items={dossiers}
-            bind:value={$currentTimetracking.dossierId}
-            getOptionLabel={(option) => option.label}
-            getOptionValue={(option) => option.id}
-            getSelectionLabel={(option) =>
-              option?.label || $currentTimetracking.name}
-            placeholder="Select dossier"
-            itemId="id"
-            clearable={false}
-          />
+          <label class="legend">Uitvoerder</label>
+          <select bind:value={$currentTimetracking.assignee}>
+            <option value="Michel">Michel</option>
+            <option value="Toon">Toon</option>
+          </select>
         </div>
         <div>
-          <label class="legend">Datum</label>
-          <input type="date" bind:value={$currentTimetracking.date} />
-        </div>
-        <div>
-          <label class="legend">Omschrijving</label>
-          <textarea bind:value={$currentTimetracking.description}></textarea>
-        </div>
-        <div class="modal_columns" data-col="2">
-          <div>
-            <label class="legend">Uitvoerder</label>
-            <select bind:value={$currentTimetracking.assignee}>
-              <option value="Michel">Michel</option>
-              <option value="Toon">Toon</option>
-            </select>
-          </div>
-          <div>
-            <label class="legend">Tijdsduur</label>
-            <input type="time" bind:value={$currentTimetracking.hhmm} />
-          </div>
-        </div>
-        <div>
-          <label class="legend">Extern?</label>
-          <input
-            type="checkbox"
-            bind:checked={$currentTimetracking.isExternal}
-            on:change={() => {
-              if (!$currentTimetracking.isExternal) {
-                $currentTimetracking.location = ""; // Clear location if not external
-                $currentTimetracking.kilometers = ""; // Clear kilometers if not external
-              }
-            }}
-          />
-        </div>
-
-        {#if $currentTimetracking.isExternal}
-          <div class="columns" data-col="2">
-            <div>
-              <label class="legend">Locatie</label>
-              <input type="text" bind:value={$currentTimetracking.location} />
-            </div>
-            <div>
-              <label class="legend">Kilometers</label>
-              <input
-                type="number"
-                bind:value={$currentTimetracking.kilometers}
-                min="0"
-              />
-            </div>
-          </div>
-        {/if}
-        <div>
-          <label class="legend">Facturabel</label>
-          <input type="checkbox" bind:checked={$currentTimetracking.billable} />
+          <label class="legend">Tijdsduur</label>
+          <input type="time" bind:value={$currentTimetracking.hhmm} />
         </div>
       </div>
+      <div>
+        <label class="legend">Extern?</label>
+        <input
+          type="checkbox"
+          bind:checked={$currentTimetracking.isExternal}
+          on:change={() => {
+            if (!$currentTimetracking.isExternal) {
+              $currentTimetracking.location = ""; // Clear location if not external
+              $currentTimetracking.kilometers = ""; // Clear kilometers if not external
+            }
+          }}
+        />
+      </div>
 
-      <div class="buttons">
-        <button class="basic" on:click={deleteLog}
-          ><TrashSimple size="16" /></button
+      {#if $currentTimetracking.isExternal}
+        <div class="columns" data-col="2">
+          <div>
+            <label class="legend">Locatie</label>
+            <input type="text" bind:value={$currentTimetracking.location} />
+          </div>
+          <div>
+            <label class="legend">Kilometers</label>
+            <input
+              type="number"
+              bind:value={$currentTimetracking.kilometers}
+              min="0"
+            />
+          </div>
+        </div>
+      {/if}
+      <div>
+        <label class="legend">Facturabel</label>
+        <input type="checkbox" bind:checked={$currentTimetracking.billable} />
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="basic" on:click={deleteLog}
+        ><TrashSimple size="16" /></button
+      >
+      <div>
+        <button class="basic" type="button" on:click={closeDialog}
+          >Annuleren</button
         >
-        <div>
-          <button class="basic" type="button" on:click={closeDialog}
-            >Annuleren</button
-          >
-          <button on:click={saveLog}>Opslaan</button>
-        </div>
+        <button on:click={saveLog}>Opslaan</button>
       </div>
-    {/if}
-  </dialog>
-</main>
+    </div>
+  {/if}
+</dialog>
 
 <style lang="scss">
   @media (max-width: $md) {
     .mobile_icon_only {
-      position: fixed;
-      bottom: 80px;
-      right: 40px;
-      z-index: 1;
+      // position: fixed;
+      // bottom: 80px;
+      // right: 40px;
+      // z-index: 1;
 
-      right: unset;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 50%;
-      bottom: 45px;
-      z-index: 9999;
-      background: #258ad4;
+      // right: unset;
+      // left: 50%;
+      // transform: translateX(-50%);
+      // border-radius: 50%;
+      // bottom: 45px;
+      // z-index: 9999;
+      // background: #258ad4;
     }
   }
   section {
@@ -813,13 +811,38 @@
       justify-content: space-between;
       gap: 10px 30px;
       flex-wrap: wrap;
-      padding-bottom: 30px;
+      padding-block: 30px;
       border-bottom: 1px solid var(--border);
       margin-bottom: 30px;
+      position: relative;
+
+      &.floating {
+        z-index: 1;
+        position: sticky;
+        background-color: var(--body-background);
+        top: 0;
+      }
+
+      .buttons {
+        display: flex;
+        justify-content: stretch;
+        align-items: stretch;
+        gap: 12px;
+
+        .basic {
+          min-width: 42px;
+          background-color: #f1f1f1;
+        }
+      }
 
       @media (max-width: $md) {
-        padding-bottom: 15px;
-        margin-bottom: 10px;
+        padding-block: 20px;
+        justify-content: flex-end;
+
+        h2 {
+          position: absolute;
+          left: 0;
+        }
       }
 
       h2 {
@@ -1076,6 +1099,7 @@
     .search_filter button {
       min-width: 42px;
     }
+    .timetracking_section > .columns,
     main > .columns {
       grid-template-columns: 100%;
       padding-top: 20px;
@@ -1099,13 +1123,36 @@
   }
   input.search.search {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a8a8a8' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z'%3E%3C/path%3E%3C/svg%3E");
-    background-position: left 15px center;
+    background-position: left 12px center;
     background-repeat: no-repeat;
     background-size: 16px;
-    padding: 15px 30px 15px 40px;
+    padding-left: 35px;
+    width: 100%;
 
-    @media (max-width: $sm) {
-      padding-block: 13px;
+    // @media (min-width: $xlm) {
+    max-width: 42px;
+    padding-inline: 18px;
+    transition: max-width 0.2s ease-out;
+    cursor: pointer;
+    &::placeholder {
+      opacity: 0;
+      transition: opacity 0.2s ease-out;
+    }
+
+    &:focus,
+    &:not(:placeholder-shown) {
+      max-width: 300px;
+      padding-inline: 40px 20px;
+      cursor: unset;
+      &::placeholder {
+        opacity: 0.5;
+      }
+    }
+    // }
+  }
+  @media (max-width: $xs) {
+    .hide_mobile {
+      display: none;
     }
   }
 </style>

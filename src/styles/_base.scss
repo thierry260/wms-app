@@ -614,6 +614,7 @@ dialog {
   max-width: 625px;
   border-radius: 0;
   z-index: 99;
+  position: fixed;
 
   display: flex !important;
   transform: translate(100%);

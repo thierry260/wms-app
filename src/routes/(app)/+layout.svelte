@@ -22,6 +22,13 @@
       padding-bottom: 100px;
     }
 
+    &:has(.top.floating) {
+      padding-top: 0;
+      @media (max-width: $sm) {
+        padding-top: 0;
+      }
+    }
+
     &:has(.bottom-nav) {
       padding: 120px 60px 60px 60px;
       @media (max-width: $sm) {
