@@ -20,7 +20,7 @@
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   import Log from "$lib/components/Log.svelte";
-  import filter from "svelte-select/filter";
+  import { debounce } from "$lib/utils/debounce.js";
   const pageName = "Files";
 
   let html2pdf;
@@ -268,19 +268,12 @@
   }
 
   function handleFilter(e, filterText) {
-    console.log("filterText: ", filterText);
-    console.log("e: ", e);
-
     if (e.detail.length === 0 && filterText.length > 0) {
       filterText = filterText.toLowerCase().trim();
-
       // Check if the input matches any existing client
       const existingClient = clients.some(
         (client) => client.label.toLowerCase() === filterText
       );
-
-      console.log("existingClient: ", existingClient);
-      console.log("filterText.length: ", filterText.length);
 
       // If the filter text is not empty and no match is found, add the new item
       if (filterText.length > 0 && !existingClient) {
@@ -289,13 +282,24 @@
           ...clients.filter((client) => !client.created),
           {
             id: Math.random().toString(36).substr(2, 9), // Identifiable ID for custom entries
-            label: `Custom: ${filterText.charAt(0).toUpperCase() + filterText.slice(1)}`,
+            label: `${filterText.charAt(0).toUpperCase() + filterText.slice(1)}`,
             created: true,
           },
         ];
         console.log("Custom contact added:", clients);
       }
     }
+  }
+
+  // Create a debounced version of handleFilter
+  const debouncedHandleFilter = debounce(
+    (e, filterText) => handleFilter(e, filterText),
+    400
+  ); // 400ms delay
+
+  // Bind the debounced function to the filter event
+  function onFilter(e, filterText) {
+    debouncedHandleFilter(e, filterText);
   }
 
   function handleChange(e, index) {
@@ -433,14 +437,16 @@
     console.log(fileIdString);
 
     // Transform contacts to remove filterText and ensure id is a string
-    const transformedContacts = $currentFile.contacts.map((contact) => ({
-      name: contact.name,
-      role: contact.role,
-      id:
-        typeof contact.id === "object" && contact.id !== null
-          ? contact.id.id
-          : contact.id,
-    }));
+    const transformedContacts = Array.isArray($currentFile.contacts)
+      ? $currentFile.contacts.map((contact) => ({
+          name: contact.name,
+          role: contact.role,
+          id:
+            typeof contact.id === "object" && contact.id !== null
+              ? contact.id.id
+              : contact.id,
+        }))
+      : [];
 
     console.log("$currentFile.contacts", $currentFile.contacts);
     // Extract current file data
@@ -607,7 +613,7 @@
               "yyyy-MM-dd"
             )
           : "",
-        contacts: file.contacts,
+        contacts: file.contacts || [],
       });
 
       console.log("Modal opened with file:", $currentFile);
@@ -889,7 +895,7 @@
                           clearable={true}
                           on:change={(e) => handleChange(e, index)}
                           on:clear={(e) => handleClear(e, index)}
-                          on:filter={(e) => handleFilter(e, contact.filterText)}
+                          on:filter={(e) => onFilter(e, contact.filterText)}
                           bind:filterText={contact.filterText}
                           clearFilterTextOnBlur={false}
                           ><div slot="item" let:item>
@@ -905,7 +911,7 @@
                           clearable={true}
                           on:change={(e) => handleChange(e, index)}
                           on:clear={(e) => handleClear(e, index)}
-                          on:filter={(e) => handleFilter(e, contact.filterText)}
+                          on:filter={(e) => onFilter(e, contact.filterText)}
                           bind:filterText={contact.filterText}
                           clearFilterTextOnBlur={false}
                           ><div slot="item" let:item>
@@ -1570,6 +1576,10 @@
         &:nth-of-type(even) {
           background-color: #f3f5f9;
         }
+        td {
+          font-size: 1.3rem;
+          padding: 0 10px;
+        }
       }
       thead {
         * {
@@ -1667,6 +1677,10 @@
     .spec table.timetracking {
       margin-block: 0;
       background-color: var(--background);
+
+      tr td {
+        font-size: 1.4rem;
+      }
 
       tfoot {
         tr {
