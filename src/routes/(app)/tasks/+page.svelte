@@ -75,6 +75,22 @@
     filtersVisible.update((visible) => !visible);
   }
 
+  $: {
+    if (modal) {
+      modal.addEventListener("click", function (event) {
+        const rect = modal.getBoundingClientRect();
+        const isInDialog =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (!isInDialog) {
+          modal.close();
+        }
+      });
+    }
+  }
+
   onMount(async () => {
     dbTracker.initPage("Tasks");
     // Fetch assignees (Example: hardcoded, adjust based on your structure)
@@ -1428,11 +1444,6 @@
   }
 
   .buttons {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    border-top: 1px solid var(--border);
-    padding-top: 20px;
     div {
       display: flex;
       gap: inherit;

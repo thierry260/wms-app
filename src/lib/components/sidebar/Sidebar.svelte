@@ -139,7 +139,11 @@
         href={item.route}
         data-item={item.label}
       >
-        <svelte:component this={item.icon} size={20} />
+        {#if item.route === $page.url.pathname}
+          <svelte:component this={item.icon} size={20} weight="fill" />
+        {:else}
+          <svelte:component this={item.icon} size={20} />
+        {/if}
         {item.label}
       </a>
     {/each}
@@ -165,7 +169,7 @@
       <SignOut size={20} />
     </button>
     <span class="sidebar_toggle" on:click={toggleSidebar}>
-      <div><CaretLeft size={14} /></div>
+      <div class="icon_outer"><CaretLeft size={14} /></div>
     </span>
   </aside>
 {/if}
@@ -350,15 +354,16 @@
       transition:
         transform 0.2s ease-out 0.1s,
         background-color 0.3s ease-out;
-      * {
+      .icon_outer {
         transition: transform 0.25s ease-out;
+        display: flex;
       }
 
-      // &:hover {
-      //   background-color: lighten($primary-color, 40%);
-      //   background-color: lighten(adjust-hue($primary-color, -1), 33.73);
-      //   background-color: $background;
-      // }
+      &:hover {
+        .icon_outer {
+          transform: translateX(-2px);
+        }
+      }
     }
 
     &.compact {
@@ -374,8 +379,13 @@
         gap: 0;
       }
       .sidebar_toggle {
-        * {
+        .icon_outer {
           transform: rotate(180deg);
+        }
+        &:hover {
+          .icon_outer {
+            transform: rotate(180deg) translateX(-3px);
+          }
         }
       }
       .logout-button {

@@ -586,10 +586,11 @@ fieldset legend {
 }
 
 dialog {
-  width: calc(100% - 60px);
+  --dialog-padding: 20px;
+  width: calc(100% - 30px);
   outline: none;
   max-width: 800px;
-  padding: 20px;
+  padding: 0 var(--dialog-padding, 20px);
   background-color: var(--card_background);
   border-radius: var(--border-radius);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -597,11 +598,95 @@ dialog {
   flex-direction: column;
   gap: 5px;
 
-  &[open] {
+  margin-left: auto;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  margin-right: 0;
+  margin-block: 0;
+  height: 100%;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
+  // box-sizing: unset;
+  max-width: 625px;
+  border-radius: 0;
+  z-index: 99;
+
+  display: flex !important;
+  transform: translate(100%);
+  transition: transform 0.3s ease-out;
+
+  .top {
+    position: sticky;
+    top: 0;
+    padding-block: var(--dialog-padding, 20px);
+    background-color: #fff;
+    z-index: 1;
+  }
+  .buttons {
     display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+
+    position: sticky;
+    bottom: 0;
+    padding-block: var(--dialog-padding, 20px);
+    background-color: #fff;
+    z-index: 1;
+    margin-top: auto;
+
+    // position: fixed;
+    // width: calc(100% - var(--dialog-padding, 20px) * 2);
+  }
+
+  form,
+  .content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
   }
 
   &::backdrop {
+    transition: background-color 0.2s ease-out;
+    background: rgba(0, 0, 0, 0);
+
+    animation: backdrop-fade 0.2s ease backwards;
+    animation-direction: reverse;
+  }
+
+  &[open] {
+    display: flex;
+    transform: translate(0);
+    &::backdrop {
+      animation: backdrop-fade 0.2s ease forwards;
+    }
+  }
+
+  @media (max-width: $md) {
+    margin: 0;
+    width: 100%;
+    max-width: unset;
+    margin-top: 60px;
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
+    max-height: calc(100vh - 60px);
+    max-height: calc(100dvh - 60px);
+    border-radius: 15px 15px 0 0;
+    transform: translate(0, 100%);
+    transition: transform 0.4s ease-out;
+  }
+}
+
+@keyframes backdrop-fade {
+  from {
+    background: rgba(0, 0, 0, 0);
+  }
+  to {
     background: rgba(0, 0, 0, 0.3);
   }
 }

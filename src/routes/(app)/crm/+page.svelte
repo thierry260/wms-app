@@ -78,6 +78,22 @@
 
   let dialogEl = "";
 
+  $: {
+    if (dialogEl) {
+      dialogEl.addEventListener("click", function (event) {
+        const rect = dialogEl.getBoundingClientRect();
+        const isInDialog =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (!isInDialog) {
+          dialogEl.close();
+        }
+      });
+    }
+  }
+
   onMount(async () => {
     dbTracker.initPage(pageName);
     await fetchClients();
@@ -653,13 +669,6 @@
   }
 
   dialog .buttons {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    border-top: 1px solid var(--border);
-    padding-top: 20px;
-    margin-top: 20px;
-
     &:has(> :first-child:last-child) {
       justify-content: flex-end;
     }

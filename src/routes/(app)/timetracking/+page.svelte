@@ -68,6 +68,22 @@
 
   export let updateLogs; // Receive the updateLogs prop
 
+  $: {
+    if (dialogEl) {
+      dialogEl.addEventListener("click", function (event) {
+        const rect = dialogEl.getBoundingClientRect();
+        const isInDialog =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (!isInDialog) {
+          dialogEl.close();
+        }
+      });
+    }
+  }
+
   $: if ($currentTimetracking && $currentTimetracking.date) {
     $currentTimetracking.date = new Date($currentTimetracking.date)
       .toISOString()
@@ -685,75 +701,78 @@
         <h6>Log bewerken</h6>
         <button class="basic" on:click={closeDialog}><X size="16" /></button>
       </div>
-      <div>
-        <label class="legend">Dossiernaam</label>
-        <Select
-          items={dossiers}
-          bind:value={$currentTimetracking.dossierId}
-          getOptionLabel={(option) => option.label}
-          getOptionValue={(option) => option.id}
-          getSelectionLabel={(option) =>
-            option?.label || $currentTimetracking.name}
-          placeholder="Select dossier"
-          itemId="id"
-          clearable={false}
-        />
-      </div>
-      <div>
-        <label class="legend">Datum</label>
-        <input type="date" bind:value={$currentTimetracking.date} />
-      </div>
-      <div>
-        <label class="legend">Omschrijving</label>
-        <textarea bind:value={$currentTimetracking.description}></textarea>
-      </div>
-      <div class="modal_columns" data-col="2">
+      <div class="content">
         <div>
-          <label class="legend">Uitvoerder</label>
-          <select bind:value={$currentTimetracking.assignee}>
-            <option value="Michel">Michel</option>
-            <option value="Toon">Toon</option>
-          </select>
+          <label class="legend">Dossiernaam</label>
+          <Select
+            items={dossiers}
+            bind:value={$currentTimetracking.dossierId}
+            getOptionLabel={(option) => option.label}
+            getOptionValue={(option) => option.id}
+            getSelectionLabel={(option) =>
+              option?.label || $currentTimetracking.name}
+            placeholder="Select dossier"
+            itemId="id"
+            clearable={false}
+          />
         </div>
         <div>
-          <label class="legend">Tijdsduur</label>
-          <input type="time" bind:value={$currentTimetracking.hhmm} />
+          <label class="legend">Datum</label>
+          <input type="date" bind:value={$currentTimetracking.date} />
         </div>
-      </div>
-      <div>
-        <label class="legend">Extern?</label>
-        <input
-          type="checkbox"
-          bind:checked={$currentTimetracking.isExternal}
-          on:change={() => {
-            if (!$currentTimetracking.isExternal) {
-              $currentTimetracking.location = ""; // Clear location if not external
-              $currentTimetracking.kilometers = ""; // Clear kilometers if not external
-            }
-          }}
-        />
+        <div>
+          <label class="legend">Omschrijving</label>
+          <textarea bind:value={$currentTimetracking.description}></textarea>
+        </div>
+        <div class="modal_columns" data-col="2">
+          <div>
+            <label class="legend">Uitvoerder</label>
+            <select bind:value={$currentTimetracking.assignee}>
+              <option value="Michel">Michel</option>
+              <option value="Toon">Toon</option>
+            </select>
+          </div>
+          <div>
+            <label class="legend">Tijdsduur</label>
+            <input type="time" bind:value={$currentTimetracking.hhmm} />
+          </div>
+        </div>
+        <div>
+          <label class="legend">Extern?</label>
+          <input
+            type="checkbox"
+            bind:checked={$currentTimetracking.isExternal}
+            on:change={() => {
+              if (!$currentTimetracking.isExternal) {
+                $currentTimetracking.location = ""; // Clear location if not external
+                $currentTimetracking.kilometers = ""; // Clear kilometers if not external
+              }
+            }}
+          />
+        </div>
+
+        {#if $currentTimetracking.isExternal}
+          <div class="columns" data-col="2">
+            <div>
+              <label class="legend">Locatie</label>
+              <input type="text" bind:value={$currentTimetracking.location} />
+            </div>
+            <div>
+              <label class="legend">Kilometers</label>
+              <input
+                type="number"
+                bind:value={$currentTimetracking.kilometers}
+                min="0"
+              />
+            </div>
+          </div>
+        {/if}
+        <div>
+          <label class="legend">Facturabel</label>
+          <input type="checkbox" bind:checked={$currentTimetracking.billable} />
+        </div>
       </div>
 
-      {#if $currentTimetracking.isExternal}
-        <div class="columns" data-col="2">
-          <div>
-            <label class="legend">Locatie</label>
-            <input type="text" bind:value={$currentTimetracking.location} />
-          </div>
-          <div>
-            <label class="legend">Kilometers</label>
-            <input
-              type="number"
-              bind:value={$currentTimetracking.kilometers}
-              min="0"
-            />
-          </div>
-        </div>
-      {/if}
-      <div>
-        <label class="legend">Facturabel</label>
-        <input type="checkbox" bind:checked={$currentTimetracking.billable} />
-      </div>
       <div class="buttons">
         <button class="basic" on:click={deleteLog}
           ><TrashSimple size="16" /></button
@@ -768,6 +787,7 @@
     {/if}
   </dialog>
 </main>
+>
 
 <style lang="scss">
   @media (max-width: $md) {
@@ -824,13 +844,6 @@
   }
 
   dialog .buttons {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    border-top: 1px solid var(--border);
-    padding-top: 20px;
-    margin-top: 20px;
-
     &:has(> :first-child:last-child) {
       justify-content: flex-end;
     }

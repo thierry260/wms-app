@@ -65,6 +65,12 @@
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;
+
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+    scrollbar-width: none; /* Firefox */
+    &::-webkit-scrollbar {
+      display: none; /* Safari and Chrome */
+    }
   }
 
   .tab {
@@ -83,7 +89,7 @@
     flex-direction: column;
     gap: 15px;
     @media (max-width: $sm) {
-      max-height: 58vh;
+      // max-height: 58vh;
       overflow-y: auto;
     }
   }

@@ -46,6 +46,25 @@
 
   export let updateLogs; // Receive the updateLogs prop
 
+  let dialogEl;
+
+  $: {
+    if (dialogEl) {
+      dialogEl.addEventListener("click", function (event) {
+        console.log("dialog clicked");
+        const rect = dialogEl.getBoundingClientRect();
+        const isInDialog =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (!isInDialog) {
+          dialogEl.close();
+        }
+      });
+    }
+  }
+
   $: if ($currentLog && $currentLog.date) {
     $currentLog.date = new Date($currentLog.date).toISOString().split("T")[0];
   }
@@ -68,7 +87,7 @@
           name: dossier.name, // Add the dossier's name to each timetracking entry
           id: dossier.id,
           index: index,
-        })),
+        }))
       );
       allLogs = data;
       updateLogsForSearch();
@@ -92,7 +111,7 @@
     if (searchValue) {
       data = data.filter((log) => {
         const dossier = dossiersData.find(
-          (dossier) => dossier.id === log.id, // Adjusted to use log.id to find the dossier
+          (dossier) => dossier.id === log.id // Adjusted to use log.id to find the dossier
         );
         const dossierName = dossier?.name?.toLowerCase() || "";
         const dossierId = dossier?.id?.toLowerCase() || "";
@@ -193,7 +212,7 @@
     if (!dossier.timetracking || dossier.timetracking.length === 0) {
       console.error(
         "Timetracking array not found or empty for dossier ID:",
-        dossier.id,
+        dossier.id
       );
       return;
     }
@@ -204,13 +223,13 @@
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location,
+        entry.location === log.location
     );
 
     if (index === -1) {
       console.error(
         "Log entry not found in dossier's timetracking array for dossier ID:",
-        dossier.id,
+        dossier.id
       );
       return;
     }
@@ -263,7 +282,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        dossierId,
+        dossierId
       );
       const newDocSnap = await getDoc(newDossierRef);
 
@@ -301,7 +320,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId,
+      originalDossierId
     );
 
     const newDossierRef = doc(
@@ -309,7 +328,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId,
+      dossierId
     );
 
     try {
@@ -321,7 +340,7 @@
 
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
-            (entry, index) => index !== editedLog.index,
+            (entry, index) => index !== editedLog.index
           );
 
           await updateDoc(originalDossierRef, {
@@ -330,7 +349,7 @@
         }
       } else {
         console.warn(
-          `Original dossier (ID: ${originalDossierId}) does not exist.`,
+          `Original dossier (ID: ${originalDossierId}) does not exist.`
         );
       }
 
@@ -347,7 +366,7 @@
       }
 
       const existingIndex = newTimetracking.findIndex(
-        (entry, idx) => idx === editedLog.index,
+        (entry, idx) => idx === editedLog.index
       );
 
       if (existingIndex !== -1) {
@@ -393,7 +412,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId.id, // Access the id property of dossierId
+      logToDelete.dossierId.id // Access the id property of dossierId
     );
 
     try {
@@ -405,7 +424,7 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index,
+          (entry, index) => index !== logToDelete.index
         );
 
         // Update the Firestore document with the updated timetracking array
@@ -586,77 +605,79 @@
     </div>
   {/if}
 
-  <dialog id="editDialog">
+  <dialog id="editDialog" bind:this={dialogEl}>
     {#if $currentLog}
       <div class="top">
         <h6>Log bewerken</h6>
         <button class="basic" on:click={closeDialog}><X size="16" /></button>
       </div>
-      <div>
-        <label class="legend">Dossiernaam</label>
-        <Select
-          items={dossiers}
-          bind:value={$currentLog.dossierId}
-          getOptionLabel={(option) => option.label}
-          getOptionValue={(option) => option.id}
-          getSelectionLabel={(option) => option?.label || $currentLog.name}
-          placeholder="Select dossier"
-          itemId="id"
-          clearable={false}
-        />
-      </div>
-      <div>
-        <label class="legend">Datum</label>
-        <input type="date" bind:value={$currentLog.date} />
-      </div>
-      <div>
-        <label class="legend">Omschrijving</label>
-        <textarea bind:value={$currentLog.description}></textarea>
-      </div>
-      <div>
-        <label class="legend">Uitvoerder</label>
-        <select bind:value={$currentLog.assignee}>
-          <option value="Michel">Michel</option>
-          <option value="Toon">Toon</option>
-        </select>
-      </div>
-      <div>
-        <label class="legend">Extern?</label>
-        <input
-          type="checkbox"
-          bind:checked={$currentLog.isExternal}
-          on:change={() => {
-            if (!$currentLog.isExternal) {
-              $currentLog.location = ""; // Clear location if not external
-              $currentLog.kilometers = ""; // Clear kilometers if not external
-            }
-          }}
-        />
-      </div>
+      <div class="content">
+        <div>
+          <label class="legend">Dossiernaam</label>
+          <Select
+            items={dossiers}
+            bind:value={$currentLog.dossierId}
+            getOptionLabel={(option) => option.label}
+            getOptionValue={(option) => option.id}
+            getSelectionLabel={(option) => option?.label || $currentLog.name}
+            placeholder="Select dossier"
+            itemId="id"
+            clearable={false}
+          />
+        </div>
+        <div>
+          <label class="legend">Datum</label>
+          <input type="date" bind:value={$currentLog.date} />
+        </div>
+        <div>
+          <label class="legend">Omschrijving</label>
+          <textarea bind:value={$currentLog.description}></textarea>
+        </div>
+        <div>
+          <label class="legend">Uitvoerder</label>
+          <select bind:value={$currentLog.assignee}>
+            <option value="Michel">Michel</option>
+            <option value="Toon">Toon</option>
+          </select>
+        </div>
+        <div>
+          <label class="legend">Extern?</label>
+          <input
+            type="checkbox"
+            bind:checked={$currentLog.isExternal}
+            on:change={() => {
+              if (!$currentLog.isExternal) {
+                $currentLog.location = ""; // Clear location if not external
+                $currentLog.kilometers = ""; // Clear kilometers if not external
+              }
+            }}
+          />
+        </div>
 
-      {#if $currentLog.isExternal}
-        <div>
-          <label class="legend">Locatie</label>
-          <input type="text" bind:value={$currentLog.location} />
+        {#if $currentLog.isExternal}
+          <div>
+            <label class="legend">Locatie</label>
+            <input type="text" bind:value={$currentLog.location} />
+          </div>
+          <div>
+            <label class="legend">Kilometers</label>
+            <input type="number" bind:value={$currentLog.kilometers} min="0" />
+          </div>
+        {/if}
+        <div class="columns" data-col="2">
+          <div>
+            <label class="legend">Minuten</label>
+            <input type="text" bind:value={$currentLog.min} />
+          </div>
+          <div>
+            <label class="legend">Uren</label>
+            <input type="text" bind:value={$currentLog.uur} />
+          </div>
         </div>
         <div>
-          <label class="legend">Kilometers</label>
-          <input type="number" bind:value={$currentLog.kilometers} min="0" />
+          <label class="legend">Facturabel</label>
+          <input type="checkbox" bind:checked={$currentLog.billable} />
         </div>
-      {/if}
-      <div class="columns" data-col="2">
-        <div>
-          <label class="legend">Minuten</label>
-          <input type="text" bind:value={$currentLog.min} />
-        </div>
-        <div>
-          <label class="legend">Uren</label>
-          <input type="text" bind:value={$currentLog.uur} />
-        </div>
-      </div>
-      <div>
-        <label class="legend">Facturabel</label>
-        <input type="checkbox" bind:checked={$currentLog.billable} />
       </div>
       <div class="buttons">
         <button class="basic" on:click={deleteLog}
