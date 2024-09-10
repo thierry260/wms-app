@@ -25,7 +25,7 @@
         step = 2;
       } else {
         workspaceErrorMessage.set(
-          "Deze workspace is niet bij ons bekend. Probeer het nog een keer.",
+          "Deze workspace is niet bij ons bekend. Probeer het nog een keer."
         );
       }
     } catch (error) {
@@ -38,15 +38,20 @@
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
-        password,
+        password
       );
       const user = userCredential.user;
 
       const userRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userRef);
 
-      if (userDoc.exists() && userDoc.data().workspaces.includes(workspace)) {
-        localStorage.setItem("workspace", workspace);
+      if (
+        userDoc.exists() &&
+        userDoc
+          .data()
+          .workspaces.some((w) => w.toLowerCase() === workspace.toLowerCase())
+      ) {
+        localStorage.setItem("workspace", workspace.toLowerCase());
         goto("/");
       } else {
         errorMessage.set("Je account is geen onderdeel van deze workspace.");

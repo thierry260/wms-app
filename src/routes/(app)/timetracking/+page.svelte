@@ -416,12 +416,6 @@
 
       if (newDocSnap.exists()) {
         newTimetracking = newDocSnap.data().timetracking || [];
-      } else {
-        console.error("New Dossier document not found, creating a new one.");
-        await setDoc(newDossierRef, {
-          timetracking: newTimetracking,
-        });
-        dbTracker.trackWrite(pageName);
       }
 
       const existingIndex = newTimetracking.findIndex(
@@ -431,51 +425,44 @@
       // Fetch the correct dossier from dossiersData to get its name or label
       const dossier = dossiersData.find((dossier) => dossier.id === dossierId);
 
+      const logEntry = {
+        ...editedLog,
+        date: firestoreTimestamp,
+        minutes: timeToMinutes(editedLog.hhmm),
+        id: dossierId, // Ensure id is set correctly
+        name: dossier.name || "", // Assign the name or label correctly
+      };
+
       if (existingIndex !== -1) {
         // If log exists, update it
-        newTimetracking[existingIndex] = {
-          ...editedLog,
-          date: firestoreTimestamp,
-          minutes: timeToMinutes(editedLog.hhmm),
-          id: dossierId, // Ensure id is set correctly
-          name: dossier.name || "", // Assign the name or label correctly
-        };
+        newTimetracking[existingIndex] = logEntry;
       } else {
-        // Otherwise, add it as a new entry
-        newTimetracking.push({
-          ...editedLog,
-          date: firestoreTimestamp,
-          minutes: timeToMinutes(editedLog.hhmm),
-          id: dossierId, // Ensure id is set correctly
-          name: dossier.name || "", // Assign the name or label correctly
-        });
+        // Add as a new entry
+        newTimetracking.push(logEntry);
       }
 
+      // Update Firestore
       await updateDoc(newDossierRef, {
         timetracking: newTimetracking,
       });
       dbTracker.trackWrite(pageName);
 
+      // Ensure logs writable is updated for both new and existing logs
       if (
         $currentTimetracking.allLogsIndex &&
         $currentTimetracking.allLogsIndex !== -1
       ) {
-        // If log exists, update it
-        allLogs[$currentTimetracking.allLogsIndex] = {
-          ...editedLog,
-          date: firestoreTimestamp,
-          minutes: timeToMinutes(editedLog.hhmm),
-          id: dossierId, // Ensure id is set correctly
-          name: dossier.name || "", // Assign the name or label correctly
-        };
+        allLogs[$currentTimetracking.allLogsIndex] = logEntry;
+      } else {
+        allLogs.push(logEntry); // Add new log to allLogs if it doesn't exist
       }
 
       logs.set([...allLogs]);
       updateLogsForSearch(); // Refresh logs after saving
       closeDialog();
     } catch (error) {
-      console.error("Fout bij het bijwerken van urenregistratie:", error);
-      alert("Fout bij het bijwerken van urenregistratie");
+      console.error("Error updating timetracking log:", error);
+      alert("Error updating timetracking log");
     }
   }
 

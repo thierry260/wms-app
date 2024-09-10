@@ -40,6 +40,7 @@
 		"highcharts": "^11.4.7",
 		"html2pdf.js": "^0.10.2",
 		"sortablejs": "^1.15.2",
-		"svelte-select": "^5.8.3"
+		"svelte-select": "^5.8.3",
+		"vite-plugin-pwa": "^0.20.5"
 	}
 }
