@@ -27,6 +27,8 @@
 
   let html2pdf;
 
+  $: console.log("isEdited: ", isEdited);
+
   if (typeof window !== "undefined") {
     // Import html2pdf.js only in a browser environment
     import("html2pdf.js").then((module) => {
@@ -49,18 +51,7 @@
     log: [],
     contacts: [],
   });
-
-  $: if ($currentFile.log && $currentFile.log.length > 0) {
-    console.log("log: ", $currentFile.log);
-  }
-
-  $: if ($currentFile.timetracking && $currentFile.timetracking.length > 0) {
-    console.log("timetracking: ", $currentFile.timetracking);
-  }
-
-  $: if ($currentFile.contacts) {
-    console.log("contacts: ", $currentFile.contacts);
-  }
+  let isEdited = false;
 
   const specs = derived(currentFile, ($currentFile) => {
     const rate = $currentFile.uurtarief;
@@ -150,10 +141,12 @@
   $: {
     if (dialogEl) {
       dialogEl.addEventListener("close", (event) => {
+        event.preventDefault();
         document.querySelector(".tabs .tab:first-child")?.click();
         const url = new URL(window.location);
         url.searchParams.delete("id");
         window.history.replaceState({}, "", url);
+        isEdited = false;
       });
       dialogEl.addEventListener("click", function (event) {
         const rect = dialogEl.getBoundingClientRect();
@@ -163,7 +156,15 @@
           rect.left <= event.clientX &&
           event.clientX <= rect.left + rect.width;
         if (!isInDialog) {
-          dialogEl.close();
+          if (
+            !isEdited ||
+            confirm(
+              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+            )
+          ) {
+            isEdited = false;
+            dialogEl.close();
+          }
         }
       });
     }
@@ -412,6 +413,7 @@
     $currentFile.contacts = [...$currentFile.contacts, newContact];
 
     console.log("Updated contacts:", $currentFile.contacts);
+    isEdited = true;
   }
 
   // Remove a contact row by index
@@ -766,19 +768,42 @@
     {#if $currentFile.id}
       <div class="top">
         <h6>Dossier bewerken</h6>
-        <button class="basic" on:click={dialogEl.close()}
-          ><X size="16" /></button
+        <button
+          class="basic"
+          on:click={() => {
+            if (
+              !isEdited ||
+              confirm(
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              )
+            ) {
+              dialogEl.close();
+            }
+          }}><X size="16" /></button
         >
       </div>
     {:else}
       <div class="top">
         <h6>Dossier toevoegen</h6>
-        <button class="basic" on:click={dialogEl.close()}
-          ><X size="16" /></button
+        <button
+          class="basic"
+          on:click={() => {
+            if (
+              !isEdited ||
+              confirm(
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              )
+            ) {
+              dialogEl.close();
+            }
+          }}><X size="16" /></button
         >
       </div>
     {/if}
-    <form on:submit|preventDefault={handleSubmit}>
+    <form
+      on:submit|preventDefault={handleSubmit}
+      on:input={() => (isEdited = true)}
+    >
       <Tabs
         tabs={[
           { label: "Algemeen" },
@@ -1219,8 +1244,19 @@
             ><TrashSimple size="16" /></button
           >
           <div>
-            <button class="basic" type="button" on:click={dialogEl.close()}
-              >Annuleren</button
+            <button
+              class="basic"
+              type="button"
+              on:click={() => {
+                if (
+                  !isEdited ||
+                  confirm(
+                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                  )
+                ) {
+                  dialogEl.close();
+                }
+              }}>Annuleren</button
             >
             <button type="submit" data-action="edit" disabled={$submitting}
               >Opslaan</button

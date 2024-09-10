@@ -26,7 +26,7 @@
     PencilSimple,
     X,
     DotsSixVertical,
-    ExclamationMark,
+    Warning,
     ArrowDown,
     Funnel,
     DotsThreeVertical,
@@ -854,7 +854,7 @@
                     {#if task.priority}
                       <div class="priority" data-priority={task.priority}>
                         {#if task.priority == "High"}
-                          <ExclamationMark size={16} weight="bold" />
+                          <Warning size={16} weight="fill" />
                         {/if}
                         {#if task.priority == "Low"}
                           <ArrowDown size={16} />
