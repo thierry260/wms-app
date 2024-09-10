@@ -7,8 +7,6 @@
 
   $: currentUser = $user;
 
-  //   $: console.log(logItems);
-
   function getUserImage(assignee) {
     if (!assignee || assignee == "") {
       assignee = "placeholder";
@@ -19,12 +17,18 @@
   }
 
   function addLogItem() {
+    const now = new Date().toLocaleString("sv-SE", {
+      timeZone: "Europe/Amsterdam",
+      hour12: false,
+    });
+
     const newLogItem = {
       id: Math.random().toString(36).substr(2, 9),
       content: "",
-      date: new Date().toISOString().slice(0, 16),
+      date: now.slice(0, 16), // Keeps the format as yyyy-mm-ddThh:mm
       assignee: currentUser.displayName || currentUser.email || "Unknown User",
     };
+
     logItems.unshift(newLogItem);
     logItems = logItems;
     setTimeout(() => {

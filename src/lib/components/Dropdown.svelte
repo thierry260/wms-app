@@ -1,11 +1,13 @@
 <!-- src/lib/components/Dropdown.svelte -->
 <script>
   import { goto } from "$app/navigation";
-  import { deleteCategory } from "$lib/utils/delete";
-  import { updateCategoryName } from "$lib/utils/set";
-  import { createNewTemplate } from "$lib/utils/create";
-  import { createCategory } from "$lib/utils/create";
-  import { Plus, TrashSimple, PencilSimple, Star } from "phosphor-svelte";
+  import {
+    Plus,
+    TrashSimple,
+    PencilSimple,
+    Star,
+    ArrowSquareOut,
+  } from "phosphor-svelte";
 
   // Icons map for dynamic rendering
   const icons = {
@@ -13,13 +15,14 @@
     delete: TrashSimple,
     edit: PencilSimple,
     star: Star,
+    link: ArrowSquareOut,
   };
 
   export let item;
   export let items = [];
   export let id = ""; // Unique ID for the dropdown
-  export let categoryId = ""; // Unique ID for the category
   export let open = false;
+  export let file_id = null;
 
   const toggleDropdown = () => {
     open = !open;
@@ -33,58 +36,11 @@
   async function handleItemClick(action) {
     console.log(`Clicked item with action: ${action}`);
 
-    if (action === "templ_add") {
-      const newTemplateName = prompt(
-        "Geef een naam in voor de nieuwe template:"
-      );
-      const newTemplateId = await createNewTemplate(
-        categoryId,
-        newTemplateName
-      );
-
-      console.log(newTemplateId);
-      if (newTemplateId) {
-        const newTemplate = { name: newTemplateName, id: newTemplateId };
-        item = {
-          ...item,
-          templates: [...item.templates, newTemplate],
-          open: true,
-        };
-        goto(`/template/${newTemplateId}#edit`);
-      }
+    if (action === "open_file") {
+      window.open(`/files?id=${file_id}`, "_blank");
       closeDropdown();
     } else if (action === "cat_delete") {
-      if (
-        confirm(
-          "Weet je zeker dat je deze categorie wilt verwijderen? Alle onderliggende categorieën en templates zullen tevens worden verwijderd."
-        )
-      ) {
-        deleteCategory(categoryId).then(() => {
-          item = {};
-          closeDropdown();
-        });
-      }
-    } else if (action === "cat_modify-name") {
-      const newName = prompt("Geef een nieuwe naam voor de categorie:");
-      if (newName) {
-        updateCategoryName(categoryId, newName).then(() => {
-          item.name = newName;
-          closeDropdown();
-        });
-      }
-    } else if (action === "cat_add") {
-      const newCategoryName = prompt(
-        "Geef een naam in voor de nieuwe categorie:"
-      );
-      if (newCategoryName) {
-        createCategory(categoryId, newCategoryName).then((newCategory) => {
-          item = {
-            ...item,
-            sub: [...item.sub, newCategory],
-          };
-          closeDropdown();
-        });
-      }
+      closeDropdown();
     }
   }
 

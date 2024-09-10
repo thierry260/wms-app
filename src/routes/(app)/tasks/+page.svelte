@@ -29,8 +29,9 @@
     ExclamationMark,
     ArrowDown,
     Funnel,
+    DotsThreeVertical,
   } from "phosphor-svelte";
-
+  import Dropdown from "$lib/components/Dropdown.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   const pageName = "Tasks";
 
@@ -70,6 +71,25 @@
   }
 
   let filtersVisible = writable(false);
+  let dropdownState = false;
+
+  function closeDropdown() {
+    const event = new CustomEvent("close-dropdown", {
+      bubbles: true,
+      composed: true,
+    });
+    window.dispatchEvent(event);
+  }
+
+  function triggerDropdown(id) {
+    console.log("Dispatching toggle-dropdown event with id:", id);
+    const event = new CustomEvent("toggle-dropdown", {
+      detail: id,
+      bubbles: true,
+      composed: true,
+    });
+    window.dispatchEvent(event);
+  }
 
   function toggleFilters() {
     filtersVisible.update((visible) => !visible);
@@ -414,14 +434,18 @@
   }
 
   function openModal(task, statusId) {
+    console.log(task);
     if (task) {
+      console.log("task found");
       currentTask.set({
         ...task,
         deadline: task.deadline
           ? format(task.deadline.toDate(), "yyyy-MM-dd")
           : "", // Convert and format the date
       });
+      console.log($currentTask);
     } else {
+      console.log("task not found");
       currentTask.update((n) => ({
         ...n,
         id: undefined,
@@ -658,7 +682,7 @@
     tasks.set(sortedTasks);
   }
 
-  $: console.log("$currentTask.assignees: ", $currentTask.assignees);
+  // $: console.log("$currentTask.assignees: ", $currentTask.assignees);
 </script>
 
 <div class="filter-sort-controls">
@@ -870,10 +894,36 @@
 </div>
 
 <dialog bind:this={modal} class="task-modal">
-  {#if $currentTask.id}
+  {#if $currentTask && $currentTask.id}
     <div class="top">
       <h6>Taak bewerken</h6>
-      <button class="basic" on:click={closeModal}><X size="16" /></button>
+      <div>
+        <button
+          class="basic open_ddown"
+          type="button"
+          on:click={(event) => {
+            event.stopPropagation();
+            dropdownState = !dropdownState;
+            console.log("dropdownState: ", dropdownState);
+          }}
+        >
+          <DotsThreeVertical size={18} data-action="options" />
+          <Dropdown
+            open={dropdownState}
+            items={[
+              {
+                label: "Dossier openen",
+                class: "",
+                action: "open_file",
+                icon: "link",
+              },
+            ]}
+            id={`options_${$currentTask.id}`}
+            file_id={$currentTask.file_id.id}
+          />
+        </button>
+        <button class="basic" on:click={closeModal}><X size="16" /></button>
+      </div>
     </div>
   {:else}
     <div class="top">
@@ -967,6 +1017,14 @@
 </dialog>
 
 <style lang="scss">
+  button.open_ddown {
+    overflow: unset;
+    border: none;
+    box-shadow: none;
+    &:hover {
+      box-shadow: none;
+    }
+  }
   .filter-sort-controls {
     display: flex;
     flex-direction: row;

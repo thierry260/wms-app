@@ -1,4 +1,5 @@
 <script>
+  import { page } from "$app/stores"; // Import the page store from SvelteKit
   import { db } from "$lib/firebase";
   import {
     collection,
@@ -21,6 +22,7 @@
   import { dbTracker } from "$lib/utils/dbTracker";
   import Log from "$lib/components/Log.svelte";
   import { debounce } from "$lib/utils/debounce.js";
+  import { browser } from "$app/environment";
   const pageName = "Files";
 
   let html2pdf;
@@ -120,6 +122,53 @@
 
   let taskStatuses = writable([]);
 
+  let submitting = writable(false);
+  let errorMessage = writable("");
+  let successMessage = writable("");
+  let files = writable([]);
+  let searchQuery = writable("");
+  let filteredFiles = derived(
+    [files, searchQuery],
+    ([$files, $searchQuery]) => {
+      const query = $searchQuery.toLowerCase().trim();
+      return $files.filter((file) => {
+        return (
+          file.id.toLowerCase().includes(query) ||
+          file.name.toLowerCase().includes(query) ||
+          file.dossierstatus.toLowerCase().includes(query) ||
+          (file.administratiestatus &&
+            file.administratiestatus.toLowerCase().includes(query)) ||
+          clients
+            .find((client) => client.id === file.client_id)
+            ?.label.toLowerCase()
+            .includes(query)
+        );
+      });
+    }
+  );
+  let dialogEl = "";
+  $: {
+    if (dialogEl) {
+      dialogEl.addEventListener("close", (event) => {
+        document.querySelector(".tabs .tab:first-child")?.click();
+        const url = new URL(window.location);
+        url.searchParams.delete("id");
+        window.history.replaceState({}, "", url);
+      });
+      dialogEl.addEventListener("click", function (event) {
+        const rect = dialogEl.getBoundingClientRect();
+        const isInDialog =
+          rect.top <= event.clientY &&
+          event.clientY <= rect.top + rect.height &&
+          rect.left <= event.clientX &&
+          event.clientX <= rect.left + rect.width;
+        if (!isInDialog) {
+          dialogEl.close();
+        }
+      });
+    }
+  }
+
   onMount(async () => {
     // Initialize the page tracking
     dbTracker.initPage(pageName);
@@ -200,6 +249,12 @@
 
     // Track the read operation for files
     dbTracker.trackRead(pageName, filesSnapshots.docs.length);
+
+    // Reactive statement to watch for URL parameter changes
+    const id = $page.url.searchParams.get("id");
+    if (id && browser) {
+      openModal(id.toString());
+    }
   });
 
   function handleTabChange(event) {
@@ -382,50 +437,6 @@
     console.log("Role updated:", $currentFile.contacts[index]);
   }
 
-  let submitting = writable(false);
-  let errorMessage = writable("");
-  let successMessage = writable("");
-  let files = writable([]);
-  let searchQuery = writable("");
-  let filteredFiles = derived(
-    [files, searchQuery],
-    ([$files, $searchQuery]) => {
-      const query = $searchQuery.toLowerCase().trim();
-      return $files.filter((file) => {
-        return (
-          file.id.toLowerCase().includes(query) ||
-          file.name.toLowerCase().includes(query) ||
-          file.dossierstatus.toLowerCase().includes(query) ||
-          (file.administratiestatus &&
-            file.administratiestatus.toLowerCase().includes(query)) ||
-          clients
-            .find((client) => client.id === file.client_id)
-            ?.label.toLowerCase()
-            .includes(query)
-        );
-      });
-    }
-  );
-  let dialogEl = "";
-  $: {
-    if (dialogEl) {
-      dialogEl.addEventListener("close", (event) => {
-        document.querySelector(".tabs .tab:first-child")?.click();
-      });
-      dialogEl.addEventListener("click", function (event) {
-        const rect = dialogEl.getBoundingClientRect();
-        const isInDialog =
-          rect.top <= event.clientY &&
-          event.clientY <= rect.top + rect.height &&
-          rect.left <= event.clientX &&
-          event.clientX <= rect.left + rect.width;
-        if (!isInDialog) {
-          dialogEl.close();
-        }
-      });
-    }
-  }
-
   async function handleSubmit(event) {
     // Prevent form submission
     event.preventDefault();
@@ -594,28 +605,17 @@
     });
   }
 
-  function openModal(file) {
-    if (file && file.id) {
-      // Create a unique instance of each contact
-      const contacts = (file.contacts || []).map((contact) => ({
-        ...contact,
-      }));
-
-      const defaultContact = file?.client_id?.id
-        ? [
-            {
-              name: file.client_id.label,
-              id: file.client_id.id,
-              role: "",
-              filterText: "",
-            },
-          ]
-        : [];
-
+  function openModal(fileId) {
+    // console.log("fileId: ", fileId);
+    // console.log("filteredFiles: ", get(filteredFiles));
+    const file = fileId
+      ? get(filteredFiles).find((f) => f.id === fileId.toString())
+      : null;
+    // console.log("file: ", file);
+    if (file) {
       currentFile.set({
         ...file,
         fileId: file.id,
-        timetracking: file.timetracking,
         opvolgdatum: file.opvolgdatum
           ? format(
               file.opvolgdatum instanceof Timestamp
@@ -624,8 +624,16 @@
               "yyyy-MM-dd"
             )
           : "",
-        contacts: file.contacts || [],
       });
+
+      const url = new URL(window.location);
+      if (
+        !url.searchParams.get("id") ||
+        url.searchParams.get("id") !== fileId
+      ) {
+        url.searchParams.set("id", $currentFile.id);
+        window.history.replaceState({}, "", url);
+      }
 
       console.log("Modal opened with file:", $currentFile);
     } else {
@@ -1258,7 +1266,7 @@
             <tr
               on:click={(event) => {
                 // console.log("Clicked", file);
-                openModal(file);
+                openModal(file.id);
               }}
             >
               <td class="limit_width">{file.id}. {file.name}</td>
