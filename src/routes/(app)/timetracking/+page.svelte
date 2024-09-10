@@ -10,6 +10,7 @@
     arrayUnion,
   } from "firebase/firestore";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
+  import ToggleSwitch from "$lib/components/ToggleSwitch.svelte";
   import { auth, db } from "$lib/firebase";
   import {
     parse,
@@ -723,10 +724,8 @@
           <input type="time" bind:value={$currentTimetracking.hhmm} />
         </div>
       </div>
-      <div>
-        <label class="legend">Extern?</label>
-        <input
-          type="checkbox"
+      <label class="toggle_outer">
+        <ToggleSwitch
           bind:checked={$currentTimetracking.isExternal}
           on:change={() => {
             if (!$currentTimetracking.isExternal) {
@@ -735,7 +734,8 @@
             }
           }}
         />
-      </div>
+        <span class="legend">Extern?</span>
+      </label>
 
       {#if $currentTimetracking.isExternal}
         <div class="columns" data-col="2">
@@ -753,10 +753,10 @@
           </div>
         </div>
       {/if}
-      <div>
-        <label class="legend">Facturabel</label>
-        <input type="checkbox" bind:checked={$currentTimetracking.billable} />
-      </div>
+      <label class="toggle_outer">
+        <ToggleSwitch bind:checked={$currentTimetracking.billable} />
+        <span class="legend">Facturabel</span>
+      </label>
     </div>
 
     <div class="buttons">
@@ -774,6 +774,21 @@
 </dialog>
 
 <style lang="scss">
+  .toggle_outer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    &:first-of-type {
+      margin-top: 10px;
+    }
+    &:last-of-type {
+      margin-bottom: 10px;
+    }
+    .legend {
+      margin-bottom: 0;
+    }
+  }
   @media (max-width: $md) {
     .mobile_icon_only {
       // position: fixed;
@@ -808,6 +823,7 @@
         position: sticky;
         background-color: var(--body-background);
         top: 0;
+        margin-top: 30px;
       }
 
       .buttons {

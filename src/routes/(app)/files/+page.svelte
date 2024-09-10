@@ -1002,14 +1002,21 @@
                 <!-- Display the status label -->
                 <ul class="file_tasks">
                   {#each tasks as task}
-                    <li>
-                      <h6>{task.title}</h6>
-                      <span
-                        ><Clock size="18" />{format(
-                          task.deadline.toDate(),
-                          "dd-MM-yyyy"
-                        )}</span
-                      >
+                    <li
+                      on:click={() => {
+                        window.open(`/tasks?id=${task.id}`, "_blank");
+                      }}
+                    >
+                      <div>
+                        <h6>{task.title}</h6>
+                        <span
+                          ><Clock size="18" />{format(
+                            task.deadline.toDate(),
+                            "dd-MM-yyyy"
+                          )}</span
+                        >
+                      </div>
+                      <ArrowSquareOut color={"var(--gray-400)"} size={18} />
                     </li>
                     <!-- Display each task's description -->
                   {/each}
@@ -1453,17 +1460,28 @@
       border-radius: var(--border-radius);
       font-size: 1.4rem;
       background-color: var(--background);
+      cursor: pointer;
+
       gap: 5px;
       display: flex;
-      flex-direction: column;
-      h6 {
-        font-size: inherit;
-      }
-      span {
-        display: flex;
-        align-items: center;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+
+      div {
         gap: 5px;
-        color: var(--gray-400);
+        display: flex;
+        flex-direction: column;
+
+        h6 {
+          font-size: inherit;
+        }
+        span {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          color: var(--gray-400);
+        }
       }
     }
   }

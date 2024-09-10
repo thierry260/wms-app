@@ -1,4 +1,6 @@
 <script>
+  import { page } from "$app/stores"; // Import the page store from SvelteKit
+  import { browser } from "$app/environment";
   import { db } from "$lib/firebase";
   import { onMount, tick } from "svelte";
   import Sortable from "sortablejs";
@@ -97,6 +99,11 @@
 
   $: {
     if (modal) {
+      modal.addEventListener("close", function (event) {
+        const url = new URL(window.location);
+        url.searchParams.delete("id");
+        window.history.replaceState({}, "", url);
+      });
       modal.addEventListener("click", function (event) {
         const rect = modal.getBoundingClientRect();
         const isInDialog =
@@ -105,7 +112,7 @@
           rect.left <= event.clientX &&
           event.clientX <= rect.left + rect.width;
         if (!isInDialog) {
-          modal.close();
+          closeModal();
         }
       });
     }
@@ -139,6 +146,12 @@
     console.log(allTasks);
     sortAndFilterTasks(get(sortOrder));
     setupSortable();
+
+    // Reactive statement to watch for URL parameter changes
+    const id = $page.url.searchParams.get("id");
+    if (id && browser) {
+      openModal(id.toString());
+    }
   });
 
   async function fetchTasks() {
@@ -433,8 +446,10 @@
     });
   }
 
-  function openModal(task, statusId) {
-    console.log(task);
+  function openModal(taskId, statusId) {
+    console.log("taskId: ", taskId);
+    console.log("$tasks: ", $tasks);
+    const task = taskId ? $tasks.find((t) => t.id === taskId.toString()) : null;
     if (task) {
       console.log("task found");
       currentTask.set({
@@ -443,6 +458,16 @@
           ? format(task.deadline.toDate(), "yyyy-MM-dd")
           : "", // Convert and format the date
       });
+
+      const url = new URL(window.location);
+      if (
+        !url.searchParams.get("id") ||
+        url.searchParams.get("id") !== taskId
+      ) {
+        url.searchParams.set("id", $currentTask.id);
+        window.history.replaceState({}, "", url);
+      }
+
       console.log($currentTask);
     } else {
       console.log("task not found");
@@ -820,7 +845,7 @@
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
                 data-priority={task.priority}
-                on:click={() => openModal(task)}
+                on:click={() => openModal(task.id)}
               >
                 <div class="drag-handle"><DotsSixVertical size="16" /></div>
                 <div class="main">
@@ -854,10 +879,10 @@
                     {#if task.priority}
                       <div class="priority" data-priority={task.priority}>
                         {#if task.priority == "High"}
-                          <Warning size={16} weight="fill" />
+                          <Warning size={18} weight="fill" />
                         {/if}
                         {#if task.priority == "Low"}
-                          <ArrowDown size={16} />
+                          <ArrowDown size={18} />
                         {/if}
                       </div>
                     {/if}

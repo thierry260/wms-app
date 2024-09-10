@@ -117,10 +117,18 @@
   async function fetchClients() {
     let clients = await getCachedDocs("clients");
     clients.sort((a, b) => {
+      // Place clients without achternaam after those with achternaam
+      if (!a.achternaam) return 1;
+      if (!b.achternaam) return -1;
+
       if (a.achternaam < b.achternaam) return -1;
       if (a.achternaam > b.achternaam) return 1;
+      // If achternaam is the same, compare voornaam
+      if (a.voornaam < b.voornaam) return -1;
+      if (a.voornaam > b.voornaam) return 1;
       return 0;
     });
+
     // console.log(clients);
     clientsList.set(clients);
   }
@@ -614,7 +622,6 @@
         > * {
           flex-grow: 1;
           padding: 20px;
-          // justify-content: center;
           &:first-child {
             border-right: 1px solid var(--border);
             border-bottom-left-radius: var(--border-radius, 10px);
@@ -656,7 +663,6 @@
           text-decoration: none;
           font-size: 1.3rem;
           color: var(--gray-400);
-          // background-color: var(--gray-100);
         }
       }
     }
