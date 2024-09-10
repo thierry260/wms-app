@@ -54,6 +54,7 @@
   let modal;
   let assignees = writable([]);
   let files = writable([]);
+  let searchEl;
 
   let allTasks = [];
   let sortOrder = writable("asc");
@@ -152,7 +153,27 @@
     if (id && browser) {
       openModal(id.toString());
     }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => {
+      console.log("onMount return");
+      window.removeEventListener("keydown", handleShortcut);
+    };
   });
+
+  // Add event listener for keyboard shortcut
+  function handleShortcut(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "f") {
+      event.preventDefault(); // Prevent the default browser search
+      searchEl?.focus(); // Focus on the search input element
+    } else if (event.key === "Escape") {
+      if (document.activeElement === searchEl) {
+        if (searchEl) searchEl.value = "";
+        searchEl?.dispatchEvent(new Event("input", { bubbles: true }));
+        searchEl?.blur(); // Remove focus from the search input element
+      }
+    }
+  }
 
   async function fetchTasks() {
     const statuses = await fetchTaskStatuses();
@@ -806,6 +827,7 @@
         type="text"
         class="search"
         placeholder="Zoek taken..."
+        bind:this={searchEl}
         on:input={handleSearchInput}
       />
     </div>

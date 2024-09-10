@@ -52,6 +52,7 @@
     contacts: [],
   });
   let isEdited = false;
+  let searchEl = "";
 
   const specs = derived(currentFile, ($currentFile) => {
     const rate = $currentFile.uurtarief;
@@ -256,7 +257,26 @@
     if (id && browser) {
       openModal(id.toString());
     }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleShortcut);
+    };
   });
+
+  // Add event listener for keyboard shortcut
+  function handleShortcut(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "f") {
+      event.preventDefault(); // Prevent the default browser search
+      searchEl?.focus(); // Focus on the search input element
+    } else if (event.key === "Escape") {
+      if (document.activeElement === searchEl) {
+        if (searchEl) searchEl.value = "";
+        searchEl?.dispatchEvent(new Event("input", { bubbles: true }));
+        searchEl?.blur(); // Remove focus from the search input element
+      }
+    }
+  }
 
   function handleTabChange(event) {
     console.log("handleTabChange", event.detail);
@@ -1291,6 +1311,7 @@
       type="text"
       class="search"
       placeholder="Zoek dossiers..."
+      bind:this={searchEl}
       bind:value={$searchQuery}
     />
     {#if $filteredFiles.length}

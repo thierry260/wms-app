@@ -54,6 +54,7 @@
   let dossiers = [];
   let dossiersData = [];
   let dialogEl;
+  let searchEl;
 
   const searchQuery = writable("");
   const searchQueryFrom = writable("");
@@ -134,7 +135,31 @@
     } finally {
       loading.set(false);
     }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => {
+      console.log("onMount return");
+      window.removeEventListener("keydown", handleShortcut);
+    };
   });
+
+  // Add event listener for keyboard shortcut
+  function handleShortcut(event) {
+    // Check if Ctrl+F (Windows/Linux) or Cmd+F (Mac) is pressed
+    if ((event.ctrlKey || event.metaKey) && event.key === "f") {
+      event.preventDefault(); // Prevent the default browser search
+      searchEl?.focus(); // Focus on the search input element
+    }
+
+    // Handle Escape key
+    else if (event.key === "Escape") {
+      if (document.activeElement === searchEl) {
+        if (searchEl) searchEl.value = "";
+        searchEl?.dispatchEvent(new Event("input", { bubbles: true }));
+        searchEl?.blur(); // Remove focus from the search input element
+      }
+    }
+  }
 
   // Reactive declaration to automatically update the logs in the UI when `logs` changes
   $: filteredLogs = $logs;
@@ -605,6 +630,7 @@
           class="search"
           placeholder="Zoek op urenregistratie..."
           on:input={handleSearchInput}
+          bind:this={searchEl}
           bind:value={$searchQuery}
         />
       </div>
