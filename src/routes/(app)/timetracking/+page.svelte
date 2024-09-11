@@ -1,5 +1,5 @@
 <script>
-  import { onMount, createEventDispatcher } from "svelte";
+  import { onMount } from "svelte";
   import { writable, derived, get } from "svelte/store";
   import Select from "svelte-select"; // Import Select component
   import {
@@ -45,15 +45,13 @@
     description: "",
     billable: true,
     location: "",
-    isExternal: false,
     kilometers: "",
   };
 
-  const dispatch = createEventDispatcher();
+  let isExternal = false;
   let currentTimetracking = writable(defaults);
   let dossiers = [];
   let dossiersData = [];
-  let dialogEl;
   let searchEl;
 
   const searchQuery = writable("");
@@ -70,8 +68,10 @@
 
   export let updateLogs; // Receive the updateLogs prop
 
+  let dialogEl;
+  let dialogElEventsAdded = false;
   $: {
-    if (dialogEl) {
+    if (dialogEl && !dialogElEventsAdded) {
       dialogEl.addEventListener("click", function (event) {
         const rect = dialogEl.getBoundingClientRect();
         const isInDialog =
@@ -81,8 +81,11 @@
           event.clientX <= rect.left + rect.width;
         if (!isInDialog) {
           dialogEl.close();
+          isExternal = false;
         }
       });
+
+      dialogElEventsAdded = true;
     }
   }
 
@@ -332,7 +335,12 @@
       billable: log.billable,
       assignee: log.assignee,
       location: log.location,
+      kilometers: log.kilometers,
     });
+
+    if (log.location || log.kilometers) {
+      isExternal = true;
+    }
 
     setTimeout(() => {
       if (dialogEl) {
@@ -574,6 +582,7 @@
 
   function closeDialog() {
     document.getElementById("timetrackingDialog").close();
+    isExternal = false;
   }
 
   const formattedCurrentWeek = derived(currentWeek, ($currentWeek) => {
@@ -752,9 +761,10 @@
       </div>
       <label class="toggle_outer">
         <ToggleSwitch
-          bind:checked={$currentTimetracking.isExternal}
-          on:change={() => {
-            if (!$currentTimetracking.isExternal) {
+          bind:checked={isExternal}
+          on:change={(e) => {
+            console.log(e);
+            if (e.detail.checked === false) {
               $currentTimetracking.location = ""; // Clear location if not external
               $currentTimetracking.kilometers = ""; // Clear kilometers if not external
             }
@@ -763,7 +773,7 @@
         <span class="legend">Extern?</span>
       </label>
 
-      {#if $currentTimetracking.isExternal}
+      {#if isExternal || $currentTimetracking.location || $currentTimetracking.kilometers}
         <div class="columns" data-col="2">
           <div>
             <label class="legend">Locatie</label>

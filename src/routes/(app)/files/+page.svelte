@@ -52,6 +52,7 @@
     contacts: [],
   });
   let isEdited = false;
+  let isExitIntent = false;
   let searchEl = "";
 
   const specs = derived(currentFile, ($currentFile) => {
@@ -139,8 +140,9 @@
     }
   );
   let dialogEl = "";
+  let dialogElEventsAdded = false;
   $: {
-    if (dialogEl) {
+    if (dialogEl && !dialogElEventsAdded) {
       dialogEl.addEventListener("close", (event) => {
         event.preventDefault();
         document.querySelector(".tabs .tab:first-child")?.click();
@@ -148,6 +150,7 @@
         url.searchParams.delete("id");
         window.history.replaceState({}, "", url);
         isEdited = false;
+        isExitIntent = false;
       });
       dialogEl.addEventListener("click", function (event) {
         const rect = dialogEl.getBoundingClientRect();
@@ -159,6 +162,7 @@
         if (!isInDialog) {
           if (
             !isEdited ||
+            isExitIntent ||
             confirm(
               "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
             )
@@ -168,6 +172,8 @@
           }
         }
       });
+
+      dialogElEventsAdded = true;
     }
   }
 
@@ -279,7 +285,6 @@
   }
 
   function handleTabChange(event) {
-    console.log("handleTabChange", event.detail);
     const { tabLabel } = event.detail;
     activeTab = tabLabel;
     if (tabLabel === "Taken") {
@@ -430,7 +435,12 @@
 
     console.log("Adding new contact:", newContact);
 
-    $currentFile.contacts = [...$currentFile.contacts, newContact];
+    const currentContacts =
+      $currentFile.contacts && $currentFile.contacts.length > 0
+        ? $currentFile.contacts
+        : [];
+
+    $currentFile.contacts = [...currentContacts, newContact];
 
     console.log("Updated contacts:", $currentFile.contacts);
     isEdited = true;
@@ -455,8 +465,6 @@
       updatedContact,
       ...$currentFile.contacts.slice(index + 1),
     ];
-
-    console.log("Role updated:", $currentFile.contacts[index]);
   }
 
   async function handleSubmit(event) {
@@ -483,12 +491,17 @@
     // Transform contacts to remove filterText and ensure id is a string
     const transformedContacts = Array.isArray($currentFile.contacts)
       ? $currentFile.contacts.map((contact) => ({
-          name: contact.name,
-          role: contact.role,
+          name:
+            contact.name &&
+            typeof contact.name === "object" &&
+            contact.name !== null
+              ? contact.name.label || "" // Default to empty string if name is undefined
+              : contact.name || "", // Default to empty string if name is undefined or not an object
+          role: contact.role || "", // Default to empty string if role is undefined
           id:
-            typeof contact.id === "object" && contact.id !== null
-              ? contact.id.id
-              : contact.id,
+            contact.id && typeof contact.id === "object" && contact.id !== null
+              ? contact.id.id || "" // Default to empty string if id is undefined
+              : contact.id || "", // Default to empty string if id is undefined or not an object
         }))
       : [];
 
@@ -599,6 +612,8 @@
       errorMessage.set("");
       successMessage.set("");
       resetForm();
+
+      isEdited = false;
       dialogEl.close();
     } catch (error) {
       console.error("Error adding file: ", error);
@@ -791,10 +806,11 @@
         <button
           class="basic"
           on:click={() => {
+            isExitIntent = true;
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "X - Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
               )
             ) {
               dialogEl.close();
@@ -808,10 +824,11 @@
         <button
           class="basic"
           on:click={() => {
+            isExitIntent = true;
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "X - Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
               )
             ) {
               dialogEl.close();
@@ -952,10 +969,10 @@
                       {#if contact.id}
                         <Select
                           items={clients}
-                          bind:value={contact.id}
+                          bind:value={contact.name}
                           name="contact_input_{index}"
                           placeholder="Selecteer of typ een contact"
-                          itemId="id"
+                          itemId="label"
                           clearable={true}
                           on:change={(e) => handleChange(e, index)}
                           on:clear={(e) => handleClear(e, index)}
@@ -1275,10 +1292,11 @@
               class="basic"
               type="button"
               on:click={() => {
+                isExitIntent = true;
                 if (
                   !isEdited ||
                   confirm(
-                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                    "Annuleren - Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
                   )
                 ) {
                   dialogEl.close();

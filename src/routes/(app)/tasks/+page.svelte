@@ -51,7 +51,6 @@
     deadline: "",
   });
   let newStatusName = writable("");
-  let modal;
   let assignees = writable([]);
   let files = writable([]);
   let searchEl;
@@ -98,24 +97,41 @@
     filtersVisible.update((visible) => !visible);
   }
 
+  let isEdited = false;
+  let isExitIntent = false;
+  let dialogEl;
+  let dialogElEventsAdded = false;
   $: {
-    if (modal) {
-      modal.addEventListener("close", function (event) {
+    if (dialogEl && !dialogElEventsAdded) {
+      dialogEl.addEventListener("close", function (event) {
         const url = new URL(window.location);
         url.searchParams.delete("id");
         window.history.replaceState({}, "", url);
+        isEdited = false;
+        isExitIntent = false;
       });
-      modal.addEventListener("click", function (event) {
-        const rect = modal.getBoundingClientRect();
+      dialogEl.addEventListener("click", function (event) {
+        const rect = dialogEl.getBoundingClientRect();
         const isInDialog =
           rect.top <= event.clientY &&
           event.clientY <= rect.top + rect.height &&
           rect.left <= event.clientX &&
           event.clientX <= rect.left + rect.width;
         if (!isInDialog) {
-          closeModal();
+          if (
+            !isEdited ||
+            isExitIntent ||
+            confirm(
+              "Weet je zeker dat je deze taak wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+            )
+          ) {
+            isEdited = false;
+            closeModal();
+          }
         }
       });
+
+      dialogElEventsAdded = true;
     }
   }
 
@@ -505,11 +521,11 @@
       }));
     }
 
-    modal.showModal();
+    dialogEl.showModal();
   }
 
   function closeModal() {
-    modal.close();
+    dialogEl.close();
   }
 
   // Ensure `updated_at` is saved every time
@@ -544,6 +560,8 @@
       });
       dbTracker.trackWrite(pageName);
       await fetchTasks(); // Refresh tasks to show the new task
+
+      isEdited = false;
       closeModal();
     } else {
       // Add new task
@@ -940,7 +958,7 @@
   </div>
 </div>
 
-<dialog bind:this={modal} class="task-modal">
+<dialog bind:this={dialogEl} class="task-modal">
   {#if $currentTask && $currentTask.id}
     <div class="top">
       <h6>Taak bewerken</h6>
@@ -969,16 +987,42 @@
             file_id={$currentTask.file_id.id}
           />
         </button>
-        <button class="basic" on:click={closeModal}><X size="16" /></button>
+        <button
+          class="basic"
+          on:click={() => {
+            isExitIntent = true;
+            if (
+              !isEdited ||
+              confirm(
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              )
+            ) {
+              dialogEl.close();
+            }
+          }}><X size="16" /></button
+        >
       </div>
     </div>
   {:else}
     <div class="top">
       <h6>Taak toevoegen</h6>
-      <button class="basic" on:click={closeModal}><X size="16" /></button>
+      <button
+        class="basic"
+        on:click={() => {
+          isExitIntent = true;
+          if (
+            !isEdited ||
+            confirm(
+              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+            )
+          ) {
+            dialogEl.close();
+          }
+        }}><X size="16" /></button
+      >
     </div>
   {/if}
-  <form on:submit|preventDefault={saveTask}>
+  <form on:submit|preventDefault={saveTask} on:input={() => (isEdited = true)}>
     <label
       ><span class="legend">Titel</span>
       <input type="text" bind:value={$currentTask.title} required />
@@ -1005,7 +1049,7 @@
           option?.name || `No name found for dossier ${option.id}`}
         placeholder="Selecteer de uitvoerder(s)"
         multiple={true}
-        ,
+        on:change={() => (isEdited = true)}
         clearable={true}
       />
     </label>
@@ -1054,8 +1098,20 @@
         ><TrashSimple size="16" /></button
       >
       <div>
-        <button class="basic" type="button" on:click={closeModal}
-          >Annuleren</button
+        <button
+          class="basic"
+          type="button"
+          on:click={() => {
+            isExitIntent = true;
+            if (
+              !isEdited ||
+              confirm(
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              )
+            ) {
+              dialogEl.close();
+            }
+          }}>Annuleren</button
         >
         <button type="submit">Opslaan</button>
       </div>

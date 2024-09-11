@@ -1,10 +1,16 @@
 <script>
+  import { createEventDispatcher } from "svelte";
   export let checked = false;
-  export let toggle = () => {};
+
+  const dispatch = createEventDispatcher();
+
+  function handleChange(event) {
+    dispatch("change", { checked: event.target.checked });
+  }
 </script>
 
 <div class="switch">
-  <input type="checkbox" bind:checked on:change={toggle} />
+  <input type="checkbox" bind:checked on:change={handleChange} />
   <span class="slider round"></span>
 </div>
 
