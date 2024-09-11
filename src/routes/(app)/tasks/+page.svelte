@@ -1035,11 +1035,6 @@
 
     <label
       ><span class="legend">Uitvoerders</span>
-      <!-- <select bind:value={$currentTask.assignees} multiple>
-        {#each $assignees as assignee}
-          <option value={assignee}>{assignee}</option>
-        {/each}
-      </select> -->
       <Select
         items={$assignees}
         bind:value={$currentTask.assignees}

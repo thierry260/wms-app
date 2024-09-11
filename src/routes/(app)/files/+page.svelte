@@ -810,7 +810,7 @@
             if (
               !isEdited ||
               confirm(
-                "X - Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
               )
             ) {
               dialogEl.close();
@@ -828,7 +828,7 @@
             if (
               !isEdited ||
               confirm(
-                "X - Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
               )
             ) {
               dialogEl.close();
@@ -1296,7 +1296,7 @@
                 if (
                   !isEdited ||
                   confirm(
-                    "Annuleren - Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
                   )
                 ) {
                   dialogEl.close();
