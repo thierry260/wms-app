@@ -1523,7 +1523,7 @@
       justify-content: space-between;
       align-items: center;
 
-      div {
+      > div:not(.log-header) {
         gap: 5px;
         display: flex;
         flex-direction: column;
@@ -1542,11 +1542,17 @@
   }
 
   .file_logs {
+    cursor: unset;
     li {
       position: relative;
+      gap: 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
       .log-header {
-        h2 {
-          font-size: 1.6rem;
+        h2,
+        h6 {
+          font-size: inherit;
           margin-bottom: 0;
         }
         .company {

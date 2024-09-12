@@ -29,6 +29,8 @@
   import {
     CaretCircleLeft,
     CaretCircleRight,
+    CurrencyEur,
+    Car,
     TrashSimple,
     SlidersHorizontal,
     X,
@@ -568,7 +570,7 @@
   function formatDateWithTodayOrYesterday(date) {
     const logDate = date.toDate();
     if (isToday(logDate)) {
-      return `Vandaag (${format(logDate, "dd-MM-yyyy")})`; // Skip "Today (date)" for the first entry
+      return `Vandaag`;
     } else if (isYesterday(logDate)) {
       return `Gisteren (${format(logDate, "dd-MM-yyyy")})`;
     } else {
@@ -629,6 +631,13 @@
         dialogEl.showModal();
       }
     }, 0);
+  }
+
+  // Function to get the image source
+  function getImageSrc(assignee) {
+    // Convert assignee to lowercase and append .jpg
+    const filename = `${assignee.toLowerCase()}.jpg`;
+    return `/img/people/${filename}`; // Update with the correct path to your images
   }
 </script>
 
@@ -700,22 +709,36 @@
               </div>
             {/if}
             <li on:click={() => handleLongPress(log, index)}>
+              <figure class="log-assignee">
+                <img
+                  width="30px"
+                  height="30px"
+                  src={getImageSrc(log.assignee)}
+                  alt="{log.assignee} profielfoto"
+                />
+              </figure>
               <div class="log-header">
                 <h2>{log.id}. {log.name}</h2>
-                <div class="total-revenue">
-                  <span>{formatMinutesToHHMM(log.minutes)}</span>
-                  <span class="total-revenue-single"
-                    >(€{calculateRevenue(log)})</span
-                  >
-                </div>
+                <p class="description">{log.description}</p>
               </div>
-              <p class="description">{log.description}</p>
-              {#if log.billable}
-                <span class="billable-icon">€</span>
-              {/if}
-              <p class="date">
-                {format(log.date.toDate(), "dd-MM-yyyy")}
-              </p>
+              <div class="log-icons">
+                {#if log.billable}
+                  <div>
+                    <CurrencyEur size={14} color={"var(--primary)"} />
+                  </div>
+                {/if}
+                {#if log.kilometers}
+                  <div>
+                    <Car size={14} color={"var(--primary)"} />
+                  </div>
+                {/if}
+              </div>
+              <div class="total-revenue">
+                <span class="total-revenue-single"
+                  >(€{calculateRevenue(log)})</span
+                >
+                <span>{formatMinutesToHHMM(log.minutes)}</span>
+              </div>
             </li>
           {/each}
         {:else}
@@ -868,6 +891,9 @@
         background-color: var(--body-background);
         top: 0;
         margin-top: 30px;
+        @media (max-width: $md) {
+          margin-top: 0;
+        }
       }
 
       .buttons {
@@ -964,13 +990,42 @@
       border-radius: var(--border-radius, 10px);
       background-color: #fff;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      align-items: center;
+      gap: 15px;
 
       cursor: pointer;
+
+      .log-assignee {
+        margin: 0;
+        display: flex;
+        img {
+          border-radius: 50%;
+          border: 3px solid #fff;
+          filter: brightness(0.95);
+        }
+      }
+
       .log-header {
+        flex-grow: 1;
+        flex-direction: column;
+        align-items: flex-start;
+
+        display: block;
+        max-width: 100%;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+
         h2 {
-          font-size: 1.6rem;
+          font-size: 1.5rem;
           margin-bottom: 0;
+
+          display: block;
+          max-width: 100%;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
         }
         .company {
           opacity: 0.6;
@@ -982,6 +1037,58 @@
           overflow: hidden;
           white-space: nowrap;
         }
+      }
+
+      .log-icons {
+        &:not(:has(div)),
+        &:empty {
+          display: none;
+        }
+        padding-right: 15px;
+        border-right: 1px solid var(--border);
+
+        @media (max-width: $xs) {
+          display: none;
+        }
+      }
+
+      .description {
+        margin: 0;
+        padding: 0;
+        margin-top: -0.2em;
+
+        opacity: 0.8;
+        font-size: 1.3rem;
+        display: block;
+        max-width: 100%;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .formatted_current_week {
+        color: var(--text);
+      }
+
+      .total-revenue {
+        display: flex;
+        justify-content: flex-end;
+        text-align: right;
+        flex-wrap: wrap;
+        column-gap: 5px;
+        row-gap: 2px;
+        align-items: center;
+        font-size: 1.5rem;
+        flex-direction: column-reverse;
+        align-items: center;
+        gap: 5px;
+        min-width: 58px;
+      }
+      .total-revenue-single {
+        color: var(--text);
+        font-size: 0.8em;
+        vertical-align: top;
+        margin-top: -0.1em;
       }
     }
 
@@ -1063,40 +1170,6 @@
     font-size: 0.8em;
   }
 
-  .description {
-    margin-top: 0;
-    padding: 0;
-
-    opacity: 0.8;
-    font-size: 1.3rem;
-    margin-top: 0.35em;
-    display: block;
-    max-width: 100%;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-
-  .formatted_current_week {
-    color: var(--text);
-  }
-
-  .total-revenue {
-    display: flex;
-    justify-content: flex-end;
-    text-align: right;
-    flex-wrap: wrap;
-    column-gap: 5px;
-    row-gap: 2px;
-    align-items: center;
-  }
-  .total-revenue-single {
-    color: var(--text);
-    font-style: italic;
-    font-size: 0.8em;
-    vertical-align: top;
-  }
-
   dialog .top {
     display: flex;
     justify-content: space-between;
@@ -1174,6 +1247,18 @@
       }
     }
   }
+
+  .top .buttons {
+    @media (max-width: $md) {
+      width: 100%;
+      justify-content: flex-end;
+      .task-search {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+  }
+
   input.search.search {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a8a8a8' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z'%3E%3C/path%3E%3C/svg%3E");
     background-position: left 12px center;
@@ -1195,6 +1280,9 @@
     &:focus,
     &:not(:placeholder-shown) {
       max-width: 300px;
+      @media (max-width: $md) {
+        max-width: 85vw;
+      }
       padding-inline: 40px 20px;
       cursor: unset;
       &::placeholder {
