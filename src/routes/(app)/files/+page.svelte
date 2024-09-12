@@ -1334,7 +1334,7 @@
       <div class="module-info">
         <h2>Dossiers</h2>
         <div class="result-count">
-          <small>{$resultCount} resultaten</small>
+          <small><span>{$resultCount}</span> resultaten</small>
         </div>
       </div>
 

@@ -27,8 +27,7 @@
     isYesterday,
   } from "date-fns";
   import {
-    CaretCircleLeft,
-    CaretCircleRight,
+    CircleNotch,
     CurrencyEur,
     Car,
     TrashSimple,
@@ -75,6 +74,21 @@
 
   const resultCount = derived(logs, ($logs) => $logs.length);
 
+  let currentBatch = writable(1); // Start with the first batch
+  const batchSize = 50; // Number of logs to load per batch
+  let loadingMore = writable(false); // Track if more logs are being loaded
+
+  $: console.log(currentBatch);
+
+  // visibleLogs is derived from the logs array and the currentBatch
+  const visibleLogs = derived(
+    [logs, currentBatch],
+    ([$logs, $currentBatch]) => {
+      const endIndex = $currentBatch * batchSize;
+      return $logs.slice(0, endIndex); // Return the portion of logs based on the current batch
+    }
+  );
+
   $: {
     if (dialogEl && !dialogElEventsAdded) {
       dialogEl.addEventListener("click", function (event) {
@@ -104,15 +118,6 @@
     console.log("updateLogs triggered"); // Add this for debugging
     updateLogsForSearch(); // Re-fetch and update the logs when updateLogs changes
   }
-
-  $: {
-    // Reactive block that triggers whenever logs is updated
-    const filteredLogs = get(logs); // This ensures that logs are re-evaluated reactively
-    console.log("Reactive logs update triggered");
-  }
-
-  // Reactive declaration to automatically update the logs in the UI when `logs` changes
-  $: filteredLogs = $logs;
 
   onMount(async () => {
     dbTracker.initPage(pageName);
@@ -148,11 +153,39 @@
     }
 
     window.addEventListener("keydown", handleShortcut);
+    document
+      .querySelector(".layout > main")
+      .addEventListener("scroll", handleScroll);
     return () => {
       console.log("onMount return");
       window.removeEventListener("keydown", handleShortcut);
+      document
+        .querySelector(".layout > main")
+        .removeEventListener("scroll", handleScroll);
     };
   });
+
+  function loadMoreLogs() {
+    loadingMore.set(true); // Set loading state to true
+
+    console.log("loading");
+
+    // Simulate asynchronous loading (e.g., API call or fetch more logs)
+    setTimeout(() => {
+      currentBatch.update((n) => n + 1);
+      loadingMore.set(false); // Stop loading once logs are loaded
+    }, 1000); // Simulating a 1 second load time
+  }
+
+  function handleScroll() {
+    if ($loadingMore) return;
+    const mainEl = document.querySelector("main");
+    const { scrollTop, scrollHeight, clientHeight } = mainEl; // Use mainEl for scroll values
+
+    if (scrollTop + clientHeight >= scrollHeight - 200) {
+      loadMoreLogs(); // Load more logs when scrolled near the bottom
+    }
+  }
 
   // Add event listener for keyboard shortcut
   function handleShortcut(event) {
@@ -649,7 +682,7 @@
     <div class="module-info">
       <h2>Uren<span class="hide_mobile">registratie</span></h2>
       <div class="result-count">
-        <small>{$resultCount} resultaten</small>
+        <small><span>{$resultCount}</span> resultaten</small>
       </div>
     </div>
     <div class="buttons">
@@ -700,8 +733,8 @@
     {/if}
     <div class="logs-container">
       <ul>
-        {#if $logs.length > 0}
-          {#each $logs as log, index}
+        {#if $visibleLogs.length > 0}
+          {#each $visibleLogs as log, index}
             {#if index !== 0 && formatDateWithTodayOrYesterday(log.date) !== "" && (index === 1 || format(log.date.toDate(), "dd-MM-yyyy") !== format($logs[index - 1].date.toDate(), "dd-MM-yyyy"))}
               <div class="date-divider">
                 <hr class="date-line" />
@@ -748,6 +781,12 @@
           Geen logs gevonden
         {/if}
       </ul>
+      {#if $loadingMore}
+        <div class="loading-spinner">
+          <span class="rotating"><CircleNotch size={16} /></span>Meer aan het
+          laden...
+        </div>
+      {/if}
     </div>
   {/if}
 </section>
@@ -1043,6 +1082,9 @@
       }
 
       .log-icons {
+        display: flex;
+        flex-direction: row-reverse;
+        gap: 10px;
         &:not(:has(div)),
         &:empty {
           display: none;
@@ -1297,6 +1339,58 @@
   @media (max-width: $xs) {
     .hide_mobile {
       display: none;
+    }
+  }
+
+  .loading-spinner {
+    margin-top: 30px;
+    text-align: center;
+    font-size: 1.3rem;
+    background-color: var(--gray-200);
+    width: max-content;
+    margin-inline: auto;
+    padding: 10px 15px;
+    border-radius: 10px;
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    .rotating {
+      display: flex;
+      -webkit-animation: rotating 2s linear infinite;
+      -moz-animation: rotating 2s linear infinite;
+      -ms-animation: rotating 2s linear infinite;
+      -o-animation: rotating 2s linear infinite;
+      animation: rotating 2s linear infinite;
+    }
+  }
+
+  @-webkit-keyframes rotating /* Safari and Chrome */ {
+    from {
+      -webkit-transform: rotate(0deg);
+      -o-transform: rotate(0deg);
+      transform: rotate(0deg);
+    }
+    to {
+      -webkit-transform: rotate(360deg);
+      -o-transform: rotate(360deg);
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes rotating {
+    from {
+      -ms-transform: rotate(0deg);
+      -moz-transform: rotate(0deg);
+      -webkit-transform: rotate(0deg);
+      -o-transform: rotate(0deg);
+      transform: rotate(0deg);
+    }
+    to {
+      -ms-transform: rotate(360deg);
+      -moz-transform: rotate(360deg);
+      -webkit-transform: rotate(360deg);
+      -o-transform: rotate(360deg);
+      transform: rotate(360deg);
     }
   }
 </style>
