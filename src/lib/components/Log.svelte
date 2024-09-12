@@ -7,11 +7,14 @@
 
   $: currentUser = $user;
 
+  let sortedLogItems = [...logItems].sort(
+    (a, b) => new Date(b.date) - new Date(a.date)
+  );
+
   function getUserImage(assignee) {
     if (!assignee || assignee == "") {
       assignee = "placeholder";
     }
-    // Convert assignee to lowercase and append .jpg
     const filename = `${assignee.toLowerCase()}.jpg`;
     return `/img/people/${filename}`; // Update with the correct path to your images
   }
@@ -30,7 +33,7 @@
     };
 
     logItems.unshift(newLogItem);
-    logItems = logItems;
+    updateSortedLogItems();
     setTimeout(() => {
       editLogItem(newLogItem);
     }, 10);
@@ -45,7 +48,18 @@
   function deleteLogItem(id) {
     if (confirm("Weet je zeker dat je dit logboek item wilt verwijderen?")) {
       logItems = logItems.filter((item) => item.id !== id);
+      updateSortedLogItems();
     }
+  }
+
+  function updateSortedLogItems() {
+    sortedLogItems = [...logItems].sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+  }
+
+  function handleDateBlur() {
+    updateSortedLogItems();
   }
 </script>
 
@@ -57,10 +71,8 @@
     >
   </div>
   <ul id="log_timeline">
-    {#if logItems && logItems.length > 0}
-      {#each logItems
-        .slice()
-        .sort((a, b) => new Date(b.date) - new Date(a.date)) as logItem}
+    {#if sortedLogItems && sortedLogItems.length > 0}
+      {#each sortedLogItems as logItem}
         <li data-id={logItem.id}>
           <div
             class="top"
@@ -71,6 +83,7 @@
               class="date"
               type="datetime-local"
               bind:value={logItem.date}
+              on:blur={handleDateBlur}
             />
 
             <span class="actions">
@@ -139,8 +152,6 @@
       display: flex;
       flex-direction: column;
       gap: 15px;
-      min-height: 213px;
-      max-height: 350px;
       overflow-y: auto;
       position: relative;
 
@@ -172,19 +183,6 @@
           min-height: 213px;
           box-sizing: border-box;
         }
-      }
-
-      &:has(li) {
-        --mask: linear-gradient(
-            to bottom,
-            rgba(0, 0, 0, 1) 0,
-            rgba(0, 0, 0, 1) 80%,
-            rgba(0, 0, 0, 0) 96%,
-            rgba(0, 0, 0, 0) 0
-          )
-          100% 50% / 100% 100% repeat-x;
-        -webkit-mask: var(--mask);
-        mask: var(--mask);
       }
 
       @media (max-width: $md) {

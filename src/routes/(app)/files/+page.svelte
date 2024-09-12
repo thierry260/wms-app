@@ -1372,8 +1372,16 @@
                     file.client_id.achternaam
                   : "Onbekend"}
               </td>
-              <td>{file.dossierstatus}</td>
-              <td>{file.administratiestatus}</td>
+              <td class="limit_width"
+                ><span class="label" data-status={file.dossierstatus}
+                  >{file.dossierstatus}</span
+                ></td
+              >
+              <td class="limit_width"
+                ><span class="label" data-status={file.administratiestatus}
+                  >{file.administratiestatus}</span
+                ></td
+              >
               <td class="hide_mobile">
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
