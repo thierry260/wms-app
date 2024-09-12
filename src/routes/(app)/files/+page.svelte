@@ -56,7 +56,7 @@
   let searchEl = "";
 
   const specs = derived(currentFile, ($currentFile) => {
-    const rate = $currentFile.uurtarief;
+    const rate = $currentFile.uurtarief || 250;
     const taxRate = 0.21;
     const kmRate = 0.4;
 
@@ -105,6 +105,12 @@
       totalTax: total + tax,
     };
   });
+
+  $: {
+    if (specs) {
+      console.log(specs);
+    }
+  }
 
   let proposedFileId;
 
@@ -657,6 +663,7 @@
     if (file) {
       currentFile.set({
         ...file,
+        uurtarief: file.uurtarief || 250,
         fileId: file.id,
         opvolgdatum: file.opvolgdatum
           ? format(
