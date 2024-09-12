@@ -917,14 +917,16 @@
                       </div>
                     {/if}
                     {#if task.priority}
-                      <div class="priority" data-priority={task.priority}>
-                        {#if task.priority == "High"}
+                      {#if task.priority == "High"}
+                        <div class="priority" data-priority={task.priority}>
                           <Warning size={18} weight="fill" />
-                        {/if}
-                        {#if task.priority == "Low"}
+                        </div>
+                      {/if}
+                      {#if task.priority == "Low"}
+                        <div class="priority" data-priority={task.priority}>
                           <ArrowDown size={18} />
-                        {/if}
-                      </div>
+                        </div>
+                      {/if}
                     {/if}
                   </div>
                 </div>
@@ -1313,7 +1315,7 @@
     grid-template-rows: minmax(0, 1fr);
     cursor: grab;
     @media (max-width: $sm) {
-      grid-auto-columns: max(75vw, 300px);
+      grid-auto-columns: max(calc(100vw - 60px), 300px);
       margin-inline: -30px;
       // margin-bottom: 0;
       padding-inline: 30px;
@@ -1443,7 +1445,13 @@
             border-right: 1px solid #f1f1f1;
           }
           .main {
-            padding: 20px;
+            padding: 12px 14px;
+            flex-grow: 1;
+            display: block;
+            max-width: 100%;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
           }
         }
 
@@ -1504,6 +1512,16 @@
           gap: 10px;
           margin-top: 20px;
 
+          @media (max-width: $md) {
+            margin-top: 10px;
+            gap: 5px;
+          }
+
+          &:not(:has(div)),
+          &:empty {
+            display: none;
+          }
+
           &:has(> .priority:first-child:last-child) {
             justify-content: flex-end;
           }
@@ -1543,8 +1561,12 @@
           gap: 4px;
           padding: 3px 0;
           border-radius: 5px;
-          font-size: 13px;
+          font-size: 1.3rem;
           color: var(--text-light);
+
+          @media (max-width: $xs) {
+            font-size: 1.2rem;
+          }
         }
 
         &.today .task-deadline {

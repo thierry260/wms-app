@@ -823,3 +823,21 @@ dialog {
     }
   }
 }
+
+small:has(span) {
+  font-weight: 300;
+  span {
+    font-weight: 400;
+  }
+}
+
+.result-count {
+  @media (max-width: $xs) {
+    small:has(span) {
+      font-size: 0;
+      span {
+        font-size: 1.3rem;
+      }
+    }
+  }
+}

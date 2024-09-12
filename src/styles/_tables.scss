@@ -97,6 +97,45 @@ table {
   tbody tr {
     cursor: pointer;
 
+    .label {
+      --notice-hs: 214.29deg, 20%;
+      --success-hs: 145.06deg, 63.2%;
+      --warning-hs: 36.8deg, 90.36%;
+      --error-hs: 5.96deg, 78.08%;
+
+      --response-color: var(
+        --notice-hs
+      ); // Standaard response kleur voor notice
+
+      background-color: hsl(var(--response-color), 93%);
+      color: hsl(var(--response-color), 50%);
+      // border: 1px solid hsl(var(--response-color), 75%);
+
+      margin-bottom: 0;
+      padding: 4px 6px;
+      width: max-content;
+      border-radius: 4px;
+      font-weight: 400;
+      font-size: 1.2rem;
+      text-transform: none;
+
+      &[data-status="Betaald"],
+      &[data-status="Actief"] {
+        --response-color: var(--success-hs);
+      }
+      &[data-status="Betwist"],
+      &[data-status="Controleren"] {
+        --response-color: var(--error-hs);
+      }
+      &[data-status="Afwachten"] {
+        --response-color: var(--warning-hs);
+      }
+
+      @media (max-width: $xs) {
+        margin-left: auto;
+      }
+    }
+
     td[data-type="company_name"],
     td[data-type="contact_name"] {
       max-width: 25vw;
@@ -319,7 +358,14 @@ table {
     }
 
     @media (max-width: $sm) {
-      padding: 0 10px;
+      padding: 0 5px;
+      &:first-child {
+        padding-left: 10px;
+      }
+      &.last_mobile,
+      &:last-child {
+        padding-right: 10px;
+      }
     }
 
     &.stretch {

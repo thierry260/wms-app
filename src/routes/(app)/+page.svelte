@@ -554,8 +554,8 @@
     margin-bottom: 30px;
 
     @media (max-width: $md) {
-      padding-bottom: 15px;
-      margin-bottom: 30px;
+      padding-bottom: 0;
+      margin-bottom: 0;
     }
 
     h2 {
