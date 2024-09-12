@@ -759,12 +759,12 @@
               </div>
               <div class="log-icons">
                 {#if log.billable}
-                  <div>
+                  <div data-tooltip="Facturabel" data-flow="top">
                     <CurrencyEur size={14} color={"var(--primary)"} />
                   </div>
                 {/if}
                 {#if log.kilometers}
-                  <div>
+                  <div data-tooltip="Extern" data-flow="top">
                     <Car size={14} color={"var(--primary)"} />
                   </div>
                 {/if}
