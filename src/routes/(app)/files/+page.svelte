@@ -1358,9 +1358,9 @@
           <tr>
             <th>Dossier</th>
             <th>Contact</th>
-            <th>Status</th>
-            <th class="limit_width">Administratiestatus</th>
             <th class="hide_mobile">Opvolgdatum</th>
+            <th class="limit_width last_mobile">Administratiestatus</th>
+            <th class="hide_mobile">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -1379,16 +1379,6 @@
                     file.client_id.achternaam
                   : "Onbekend"}
               </td>
-              <td class="limit_width"
-                ><span class="label" data-status={file.dossierstatus}
-                  >{file.dossierstatus}</span
-                ></td
-              >
-              <td class="limit_width"
-                ><span class="label" data-status={file.administratiestatus}
-                  >{file.administratiestatus}</span
-                ></td
-              >
               <td class="hide_mobile">
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
@@ -1402,6 +1392,16 @@
                   Geen
                 {/if}
               </td>
+              <td class="limit_width last_mobile"
+                ><span class="label" data-status={file.administratiestatus}
+                  >{file.administratiestatus}</span
+                ></td
+              >
+              <td class="limit_width hide_mobile"
+                ><span class="label" data-status={file.dossierstatus}
+                  >{file.dossierstatus}</span
+                ></td
+              >
             </tr>
           {/each}
         </tbody>
