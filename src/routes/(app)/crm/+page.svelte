@@ -74,8 +74,12 @@
           client.telefoonnummer.toLowerCase().includes(query)
         );
       });
-    }
+    },
   );
+  // Create the resultCount derived store
+  let resultCount = derived(filteredClientsList, ($filteredClientsList) => {
+    return $filteredClientsList.length;
+  });
 
   let dialogEl = "";
 
@@ -184,7 +188,7 @@
           : geboortedatum.seconds
             ? new Date(
                 geboortedatum.seconds * 1000 +
-                  geboortedatum.nanoseconds / 1000000
+                  geboortedatum.nanoseconds / 1000000,
               ) // Plain object
             : new Date(geboortedatum); // Assuming geboortedatum is a date string or other formats
 
@@ -246,7 +250,7 @@
         updatedClientsList = updatedClientsList.map((client) =>
           client.id === clientDocRef.id
             ? { id: clientDocRef.id, ...clientData }
-            : client
+            : client,
         );
 
         // Update the workspace document
@@ -277,7 +281,7 @@
     } catch (error) {
       console.error("Error handling client data: ", error);
       errorMessage.set(
-        action === "edit" ? "Bijwerken mislukt." : "Toevoegen mislukt."
+        action === "edit" ? "Bijwerken mislukt." : "Toevoegen mislukt.",
       );
     } finally {
       submitting.set(false);
@@ -315,14 +319,14 @@
       "workspaces",
       workspaceId,
       "clients",
-      contactToDelete.id
+      contactToDelete.id,
     );
 
     try {
       await deleteDoc(clientRef);
 
       let updatedClientsList = get(clientsList).filter(
-        (client) => client.id !== contactToDelete.id
+        (client) => client.id !== contactToDelete.id,
       );
       clientsList.set(updatedClientsList);
 
@@ -331,7 +335,7 @@
         workspaceId,
         "clients",
         contactToDelete.id,
-        true
+        true,
       );
 
       successMessage.set("Contact succesvol verwijderd!");
@@ -346,17 +350,22 @@
 <main>
   <section class="client_section">
     <div class="top">
-      <h2>
-        Contacten
-        <span
-          class="refresh_data"
-          data-tooltip={refreshTooltip}
-          data-flow="top"
-          on:click={handleRefreshClick}
-        >
-          <ArrowClockwise size={16} color="var(--gray-400)" />
-        </span>
-      </h2>
+      <div class="module-info">
+        <h2>
+          Contacten
+          <span
+            class="refresh_data"
+            data-tooltip={refreshTooltip}
+            data-flow="top"
+            on:click={handleRefreshClick}
+          >
+            <ArrowClockwise size={16} color="var(--gray-400)" />
+          </span>
+        </h2>
+        <div class="result-count">
+          <small>{$resultCount} resultaten</small>
+        </div>
+      </div>
       <div class="buttons">
         <button class="mobile_icon_only" on:click={() => openModal()}
           ><Plus size={16} />Contact toevoegen</button
@@ -708,6 +717,11 @@
         }
       }
     }
+  }
+
+  .result-count {
+    font-size: 1.4rem;
+    color: var(--gray-500);
   }
 
   input.search.search {

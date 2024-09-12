@@ -70,6 +70,9 @@
 
   let dialogEl;
   let dialogElEventsAdded = false;
+
+  const resultCount = derived(logs, ($logs) => $logs.length);
+
   $: {
     if (dialogEl && !dialogElEventsAdded) {
       dialogEl.addEventListener("click", function (event) {
@@ -106,6 +109,9 @@
     console.log("Reactive logs update triggered");
   }
 
+  // Reactive declaration to automatically update the logs in the UI when `logs` changes
+  $: filteredLogs = $logs;
+
   onMount(async () => {
     dbTracker.initPage(pageName);
     try {
@@ -129,7 +135,7 @@
           name: dossier.name, // Add the dossier's name to each timetracking entry
           id: dossier.id,
           index: index,
-        }))
+        })),
       );
       allLogs = data;
       updateLogsForSearch();
@@ -164,9 +170,6 @@
     }
   }
 
-  // Reactive declaration to automatically update the logs in the UI when `logs` changes
-  $: filteredLogs = $logs;
-
   function updateLogsForSearch(data = allLogs) {
     console.log("update logs");
     const searchValue = get(searchQuery).trim().toLowerCase();
@@ -176,7 +179,7 @@
     if (searchValue) {
       data = data.filter((log) => {
         const dossier = dossiersData.find(
-          (dossier) => dossier.id === log.id // Adjusted to use log.id to find the dossier
+          (dossier) => dossier.id === log.id, // Adjusted to use log.id to find the dossier
         );
         const dossierName = dossier?.name?.toLowerCase() || "";
         const dossierId = dossier?.id?.toLowerCase() || "";
@@ -297,7 +300,7 @@
     if (!dossier.timetracking || dossier.timetracking.length === 0) {
       console.error(
         "Timetracking array not found or empty for dossier ID:",
-        dossier.id
+        dossier.id,
       );
       return;
     }
@@ -308,13 +311,13 @@
         entry.date.isEqual(log.date) &&
         entry.description === log.description &&
         entry.assignee === log.assignee &&
-        entry.location === log.location
+        entry.location === log.location,
     );
 
     if (index === -1) {
       console.error(
         "Log entry not found in dossier's timetracking array for dossier ID:",
-        dossier.id
+        dossier.id,
       );
       return;
     }
@@ -379,7 +382,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "files",
-        dossierId
+        dossierId,
       );
       const newDocSnap = await getDoc(newDossierRef);
 
@@ -416,7 +419,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      originalDossierId
+      originalDossierId,
     );
 
     const newDossierRef = doc(
@@ -424,7 +427,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      dossierId
+      dossierId,
     );
 
     try {
@@ -436,7 +439,7 @@
 
         if (originalDossierId !== dossierId) {
           originalTimetracking = originalTimetracking.filter(
-            (entry, index) => index !== editedLog.index
+            (entry, index) => index !== editedLog.index,
           );
 
           await updateDoc(originalDossierRef, {
@@ -453,7 +456,7 @@
       }
 
       const existingIndex = newTimetracking.findIndex(
-        (entry, idx) => idx === editedLog.index
+        (entry, idx) => idx === editedLog.index,
       );
 
       // Fetch the correct dossier from dossiersData to get its name or label
@@ -514,7 +517,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      logToDelete.dossierId.id // Access the id property of dossierId
+      logToDelete.dossierId.id, // Access the id property of dossierId
     );
 
     try {
@@ -526,7 +529,7 @@
 
         // Remove the specific log entry by filtering out the one that matches the index
         timetracking = timetracking.filter(
-          (entry, index) => index !== logToDelete.index
+          (entry, index) => index !== logToDelete.index,
         );
 
         // Update the Firestore document with the updated timetracking array
@@ -541,7 +544,7 @@
             !(
               log.id === logToDelete.dossierId.id &&
               log.index === logToDelete.index
-            )
+            ),
         );
 
         // Update the logs store to reflect the deletion
@@ -565,7 +568,7 @@
   function formatDateWithTodayOrYesterday(date) {
     const logDate = date.toDate();
     if (isToday(logDate)) {
-      return ""; // Skip "Today (date)" for the first entry
+      return `Vandaag (${format(logDate, "dd-MM-yyyy")})`; // Skip "Today (date)" for the first entry
     } else if (isYesterday(logDate)) {
       return `Gisteren (${format(logDate, "dd-MM-yyyy")})`;
     } else {
@@ -631,7 +634,12 @@
 
 <section class="timetracking_section">
   <div class="top floating">
-    <h2>Uren<span class="hide_mobile">registratie</span></h2>
+    <div class="module-info">
+      <h2>Uren<span class="hide_mobile">registratie</span></h2>
+      <div class="result-count">
+        <small>{$resultCount} resultaten</small>
+      </div>
+    </div>
     <div class="buttons">
       <div class="task-search">
         <input
@@ -1121,6 +1129,12 @@
       min-width: 48px;
     }
   }
+
+  .result-count {
+    font-size: 1.4rem;
+    color: var(--gray-500);
+  }
+
   .search_filter input {
     flex-grow: 1;
     // font-size: 1.4rem;
