@@ -123,13 +123,11 @@ table {
       &[data-status="Actief"] {
         --response-color: var(--success-hs);
       }
-      &[data-status="Inactief"],
-      &[data-status="Inactief"] {
+      &[data-status="Betwist"],
+      &[data-status="Controleren"] {
         --response-color: var(--error-hs);
       }
-      &[data-status="Betwist"],
-      &[data-status="Afwachten"],
-      &[data-status="Controleren"] {
+      &[data-status="Afwachten"] {
         --response-color: var(--warning-hs);
       }
 
