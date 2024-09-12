@@ -91,7 +91,7 @@
         minutes:
           parseInt(record["Min"] || 0) + parseInt(record["Uur"] || 0) * 60,
         billable: record["Billable"] === "Ja",
-        assignee: record["Uitvoerder"],
+        assignee: record["Uitvoerder"] || "Toon",
         isExternal: Boolean(record["Locatie"] || record["KM"]),
         location: record["Locatie"] || "",
         kilometers: record["KM"] ? parseInt(record["KM"]) : "",
@@ -119,6 +119,7 @@
       const fileSnapshot = await getDoc(fileRef);
 
       if (fileSnapshot.exists()) {
+        console.log("EXISTING | processing file: ", fileId);
         const fileData = fileSnapshot.data();
         const existingTimetracking = fileData.timetracking || [];
 
@@ -142,6 +143,7 @@
         // Update the document with the new timetracking array
         batch.update(fileRef, { timetracking: existingTimetracking });
       } else {
+        console.warn("NEW | processing file: ", fileId);
         // If document doesn't exist, create it with the timetracking array
         // Fetch client ID
         const clientName = timetrackingItems[0].dossierId.name;
@@ -158,6 +160,7 @@
         batch.set(fileRef, {
           timetracking: timetrackingItems,
           name: clientName,
+          dossierstatus: "Controleren",
           client_id: { id: clientId },
         });
       }
