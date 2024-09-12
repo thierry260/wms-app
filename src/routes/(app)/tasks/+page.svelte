@@ -122,7 +122,7 @@
             !isEdited ||
             isExitIntent ||
             confirm(
-              "Weet je zeker dat je deze taak wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              "Weet je zeker dat je deze taak wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
             )
           ) {
             isEdited = false;
@@ -145,7 +145,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files"
+      "files",
     );
     const fileSnapshots = await getDocs(filesRef);
     files.set(
@@ -154,7 +154,7 @@
         .map((doc) => ({
           id: doc.id,
           label: `${doc.id} - ${doc.data().name}`,
-        }))
+        })),
     );
 
     // Fetch task statuses
@@ -197,7 +197,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const taskSnapshots = await getDocs(tasksRef);
 
@@ -234,10 +234,10 @@
             "workspaces",
             localStorage.getItem("workspace"),
             "files",
-            fileId
-          )
-        )
-      )
+            fileId,
+          ),
+        ),
+      ),
     );
 
     // Map file data to file IDs
@@ -272,7 +272,7 @@
         // Check if task includes at least one of the selected assignees
         const matchesAnyAssignee = activeFilters.assignees.some(
           (filterAssignee) =>
-            taskAssignees.includes(filterAssignee.toLowerCase())
+            taskAssignees.includes(filterAssignee.toLowerCase()),
         );
 
         // Return true if it matches any assignee
@@ -305,7 +305,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -321,7 +321,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "tasks",
-      taskId
+      taskId,
     );
     await setDoc(taskRef, { status_id: newStatusId }, { merge: true });
   }
@@ -330,12 +330,12 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
     const updatedStatuses = workspaceData.taskStatuses.map((status) =>
-      status.id === statusId ? { ...status, name: newName } : status
+      status.id === statusId ? { ...status, name: newName } : status,
     );
     await updateDoc(workspaceRef, { taskStatuses: updatedStatuses });
   }
@@ -345,7 +345,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "tasks"
+      "tasks",
     );
     const q = query(tasksRef, where("status_id", "==", statusId));
     const taskSnapshots = await getDocs(q);
@@ -360,12 +360,12 @@
       const workspaceRef = doc(
         db,
         "workspaces",
-        localStorage.getItem("workspace")
+        localStorage.getItem("workspace"),
       );
       const workspaceSnap = await getDoc(workspaceRef);
       const workspaceData = workspaceSnap.data();
       const updatedStatuses = workspaceData.taskStatuses.filter(
-        (status) => status.id !== statusId
+        (status) => status.id !== statusId,
       );
 
       if (taskSnapshots.size > 0) {
@@ -467,7 +467,7 @@
           const workspaceRef = doc(
             db,
             "workspaces",
-            localStorage.getItem("workspace")
+            localStorage.getItem("workspace"),
           );
           const workspaceSnap = await getDoc(workspaceRef);
           const workspaceData = workspaceSnap.data();
@@ -475,7 +475,7 @@
           // Update column order in the workspace document
           await updateDoc(workspaceRef, {
             taskStatuses: newOrder.map((id) =>
-              workspaceData.taskStatuses.find((status) => status.id === id)
+              workspaceData.taskStatuses.find((status) => status.id === id),
             ),
           });
         },
@@ -537,7 +537,7 @@
       taskData.assignees = taskData.assignees.map((item) =>
         typeof item === "object" && item !== null && "value" in item
           ? item.value
-          : item
+          : item,
       );
     }
 
@@ -552,7 +552,7 @@
         "workspaces",
         localStorage.getItem("workspace"),
         "tasks",
-        taskData.id
+        taskData.id,
       );
       await updateDoc(taskRef, {
         ...taskData,
@@ -571,7 +571,7 @@
           db,
           "workspaces",
           localStorage.getItem("workspace"),
-          "tasks"
+          "tasks",
         );
         await addDoc(tasksRef, {
           ...taskData,
@@ -602,7 +602,7 @@
           "workspaces",
           localStorage.getItem("workspace"),
           "tasks",
-          taskData.id
+          taskData.id,
         );
 
         // Delete the document
@@ -650,7 +650,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const newStatus = { id: newStatusId, name: statusName };
 
@@ -741,7 +741,7 @@
     const sortedTasks = sortAndFilterTasks(
       filteredTasks,
       get(sortType),
-      get(sortOrder)
+      get(sortOrder),
     );
     tasks.set(sortedTasks);
   }
@@ -880,7 +880,7 @@
           data-status={status.id}
         >
           {#if Array.isArray($tasks)}
-            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder ) as task (task.id)}
+            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder, ) as task (task.id)}
               <li
                 class="kanban-task {getDeadlineStatus(task.deadline)}"
                 data-id={task.id}
@@ -994,7 +994,7 @@
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
               )
             ) {
               dialogEl.close();
@@ -1013,7 +1013,7 @@
           if (
             !isEdited ||
             confirm(
-              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
             )
           ) {
             dialogEl.close();
@@ -1101,7 +1101,7 @@
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
               )
             ) {
               dialogEl.close();

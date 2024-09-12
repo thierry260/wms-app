@@ -23,6 +23,7 @@
   export let id = ""; // Unique ID for the dropdown
   export let open = false;
   export let file_id = null;
+  export let href = null;
 
   const toggleDropdown = () => {
     open = !open;
@@ -40,6 +41,13 @@
       window.open(`/files?id=${file_id}`, "_blank");
       closeDropdown();
     } else if (action === "cat_delete") {
+      closeDropdown();
+    } else if (action === "open_drive") {
+      console.log(href);
+      window.open(
+        `https://drive.google.com/drive/search?q=%22${href}.%22`,
+        "_blank",
+      ); // Open Google Drive link
       closeDropdown();
     }
   }

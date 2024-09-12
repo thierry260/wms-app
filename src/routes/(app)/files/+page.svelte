@@ -16,16 +16,25 @@
   import { onMount } from "svelte";
   import { writable, get, derived } from "svelte/store";
   import Select from "svelte-select";
-  import { X, TrashSimple, Plus, Clock, ArrowSquareOut } from "phosphor-svelte";
+  import {
+    X,
+    TrashSimple,
+    Plus,
+    Clock,
+    ArrowSquareOut,
+    DotsThreeVertical,
+  } from "phosphor-svelte";
   import { format } from "date-fns";
   import Tabs from "$lib/components/Tabs.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   import Log from "$lib/components/Log.svelte";
   import { debounce } from "$lib/utils/debounce.js";
   import { browser } from "$app/environment";
-  const pageName = "Files";
+  import Dropdown from "$lib/components/Dropdown.svelte";
 
+  const pageName = "Files";
   let html2pdf;
+  let dropdownState = false;
 
   $: console.log("isEdited: ", isEdited);
 
@@ -68,7 +77,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0
+      0,
     );
 
     // Convert total minutes to hours
@@ -81,7 +90,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0
+      0,
     );
 
     // Calculate mileage allowance
@@ -144,13 +153,13 @@
             .includes(query)
         );
       });
-    }
+    },
   );
   let dialogEl = "";
   let dialogElEventsAdded = false;
   const resultCount = derived(
     filteredFiles,
-    ($filteredFiles) => $filteredFiles.length
+    ($filteredFiles) => $filteredFiles.length,
   );
   $: {
     if (dialogEl && !dialogElEventsAdded) {
@@ -175,7 +184,7 @@
             !isEdited ||
             isExitIntent ||
             confirm(
-              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
             )
           ) {
             isEdited = false;
@@ -197,7 +206,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients"
+      "clients",
     );
     const clientSnapshots = await getDocs(clientsRef);
 
@@ -227,7 +236,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files"
+      "files",
     );
     const filesSnapshots = await getDocs(filesRef);
 
@@ -257,7 +266,7 @@
     // Calculate and set the proposed file ID
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0
+      0,
     );
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
 
@@ -307,7 +316,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace")
+      localStorage.getItem("workspace"),
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -327,7 +336,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks"
+        "tasks",
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -339,7 +348,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id
+          (status) => status.id === task.status_id,
         )?.name;
 
         if (statusName) {
@@ -364,7 +373,7 @@
       filterText = filterText.toLowerCase().trim();
       // Check if the input matches any existing client
       const existingClient = clients.some(
-        (client) => client.label.toLowerCase() === filterText
+        (client) => client.label.toLowerCase() === filterText,
       );
 
       // If the filter text is not empty and no match is found, add the new item
@@ -386,7 +395,7 @@
   // Create a debounced version of handleFilter
   const debouncedHandleFilter = debounce(
     (e, filterText) => handleFilter(e, filterText),
-    400
+    400,
   ); // 400ms delay
 
   // Bind the debounced function to the filter event
@@ -540,7 +549,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files"
+        "files",
       );
 
       let timetracking = [];
@@ -549,7 +558,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString)
+          where("__name__", "==", fileIdString),
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -615,8 +624,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
-          )
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
+          ),
         );
       }
 
@@ -670,7 +679,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd"
+              "yyyy-MM-dd",
             )
           : "",
       });
@@ -711,7 +720,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id // Access the id property of dossierId
+      fileToDelete.id, // Access the id property of dossierId
     );
 
     try {
@@ -720,7 +729,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id)
+        currentFiles.filter((file) => file.id !== fileToDelete.id),
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -751,8 +760,16 @@
       return; // Exit if html2pdf is not loaded
     }
 
-    // Create a container for the PDF content
     const pdfContent = document.querySelector(".spec");
+    const now = new Date();
+    const formattedDate = `${String(now.getDate()).padStart(2, "0")}-${String(
+      now.getMonth() + 1,
+    ).padStart(2, "0")}-${now.getFullYear()} ${String(now.getHours()).padStart(
+      2,
+      "0",
+    )}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    const fileName = `Specificatie dossier ${$currentFile.fileId} | ${$currentFile.name || "document"} | ${formattedDate}.pdf`;
 
     // Generate the PDF
     const options = {
@@ -772,18 +789,19 @@
       .set(options)
       .outputPdf("blob")
       .then((blob) => {
-        // Create a URL for the blob
         const pdfUrl = URL.createObjectURL(blob);
-
-        // Open the PDF in a new tab for preview
         const previewWindow = window.open(pdfUrl, "_blank");
-
-        // Optionally, you can add a button to allow the user to save the PDF from the preview window
-        if (previewWindow) {
-          previewWindow.focus();
-        } else {
-          alert("Please allow popups for this website to preview the PDF.");
-        }
+        previewWindow.onload = () => {
+          previewWindow.document.title = fileName;
+        };
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pdfUrl;
+        downloadLink.download = fileName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+      })
+      .catch((error) => {
+        console.error("Error generating PDF:", error);
       });
   }
 
@@ -815,6 +833,31 @@
     {#if $currentFile.id}
       <div class="top">
         <h6>Dossier bewerken</h6>
+
+        <button
+          class="basic open_ddown"
+          type="button"
+          on:click={(event) => {
+            event.stopPropagation();
+            dropdownState = !dropdownState;
+          }}
+        >
+          <DotsThreeVertical size={18} data-action="options" />
+          <Dropdown
+            open={dropdownState}
+            items={[
+              {
+                label: "Open Google Drive",
+                class: "",
+                action: "open_drive",
+                icon: "link",
+              },
+            ]}
+            id={`options_${$currentFile.fileId}`}
+            href={$currentFile.fileId}
+          />
+        </button>
+
         <button
           class="basic"
           on:click={() => {
@@ -822,12 +865,14 @@
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
               )
             ) {
               dialogEl.close();
             }
-          }}><X size="16" /></button
+          }}
+        >
+          <X size="16" /></button
         >
       </div>
     {:else}
@@ -840,7 +885,7 @@
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
               )
             ) {
               dialogEl.close();
@@ -1062,7 +1107,7 @@
                         <span
                           ><Clock size="18" />{format(
                             task.deadline.toDate(),
-                            "dd-MM-yyyy"
+                            "dd-MM-yyyy",
                           )}</span
                         >
                       </div>
@@ -1099,7 +1144,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy"
+                      "dd-MM-yyyy",
                     )}
                   </p>
                 </li>
@@ -1191,7 +1236,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate
+                          $specs.kmRate,
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -1309,7 +1354,7 @@
                 if (
                   !isEdited ||
                   confirm(
-                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
+                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
                   )
                 ) {
                   dialogEl.close();
@@ -1393,7 +1438,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000
+                      file.opvolgdatum.seconds * 1000,
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
@@ -1413,6 +1458,15 @@
 </main>
 
 <style lang="scss">
+  button.open_ddown {
+    overflow: unset;
+    border: none;
+    box-shadow: none;
+    &:hover {
+      box-shadow: none;
+    }
+  }
+
   .files_section {
     .top {
       display: flex;
@@ -1679,14 +1733,6 @@
       vertical-align: top;
     }
   }
-
-  //   .contact-row button {
-  //     background: red;
-  //     color: white;
-  //     border: none;
-  //     padding: 5px;
-  //     cursor: pointer;
-  //   }
 
   .spec {
     display: flex;
