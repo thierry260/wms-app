@@ -954,7 +954,7 @@
         padding-block: 20px;
         justify-content: flex-end;
 
-        h2 {
+        .module-info {
           position: absolute;
           left: 0;
         }
