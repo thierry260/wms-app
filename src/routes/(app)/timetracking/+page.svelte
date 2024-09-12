@@ -737,11 +737,17 @@
           {#each $visibleLogs as log, index}
             {#if index === 0 || (index !== 0 && format(log.date.toDate(), "dd-MM-yyyy") !== format($logs[index - 1].date.toDate(), "dd-MM-yyyy"))}
               <div class="date-divider">
-                <hr class="date-line" />
+                <hr
+                  class="date-line"
+                  class:is-today={isToday(log.date.toDate())}
+                />
                 <span class="date-text"
                   >{formatDateWithTodayOrYesterday(log.date)}</span
                 >
-                <hr class="date-line" />
+                <hr
+                  class="date-line"
+                  class:is-today={isToday(log.date.toDate())}
+                />
               </div>
             {/if}
             <li on:click={() => handleLongPress(log, index)}>
@@ -1165,6 +1171,10 @@
     background-color: var(--border);
     border: none;
 
+    &.is-today {
+      display: none;
+    }
+
     &:first-child {
       margin-inline: 0 15px;
     }
@@ -1177,6 +1187,7 @@
     font-weight: light;
     color: var(--text);
     font-size: 1.4rem;
+    margin: 0 auto;
   }
 
   .billable-icon {
