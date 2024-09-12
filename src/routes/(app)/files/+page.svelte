@@ -128,7 +128,8 @@
         return (
           file.id.toLowerCase().includes(query) ||
           file.name.toLowerCase().includes(query) ||
-          file.dossierstatus.toLowerCase().includes(query) ||
+          (file.dossierstatus &&
+            file.dossierstatus.toLowerCase().includes(query)) ||
           (file.administratiestatus &&
             file.administratiestatus.toLowerCase().includes(query)) ||
           clients
@@ -1542,8 +1543,8 @@
   }
 
   .file_logs {
-    cursor: unset;
     li {
+      cursor: unset;
       position: relative;
       gap: 5px;
       display: flex;

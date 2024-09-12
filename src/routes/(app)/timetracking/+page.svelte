@@ -1018,7 +1018,7 @@
         white-space: nowrap;
 
         h2 {
-          font-size: 1.5rem;
+          font-size: 1.4rem;
           margin-bottom: 0;
 
           display: block;
@@ -1078,7 +1078,7 @@
         column-gap: 5px;
         row-gap: 2px;
         align-items: center;
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         flex-direction: column-reverse;
         align-items: center;
         gap: 5px;

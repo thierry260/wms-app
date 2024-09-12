@@ -14,7 +14,8 @@
   import { db } from "$lib/firebase";
   import Papa from "papaparse";
 
-  let csvInput = ""; // Variable to bind to the textarea input
+  let csvInput =
+    "Dossiernaam,Datum,Omschrijving,Min,Uur,Totaal,Billable,Uitvoerder,Locatie,KM,Gefactureerd,Opmerking,ID,WMS App"; // Variable to bind to the textarea input
   let isSubmitting = false;
   let importError = null;
 
@@ -53,7 +54,7 @@
       }
     }
 
-    return null;
+    return "";
   }
 
   // Function to process the parsed CSV data
