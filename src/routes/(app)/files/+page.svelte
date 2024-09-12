@@ -68,7 +68,7 @@
     // Calculate total minutes
     const totalMinutes = timetracking.reduce(
       (acc, entry) => acc + entry.minutes,
-      0,
+      0
     );
 
     // Convert total minutes to hours
@@ -81,7 +81,7 @@
     const km = timetracking.reduce(
       (acc, entry) =>
         acc + (entry.kilometers ? parseFloat(entry.kilometers) : 0),
-      0,
+      0
     );
 
     // Calculate mileage allowance
@@ -138,13 +138,13 @@
             .includes(query)
         );
       });
-    },
+    }
   );
   let dialogEl = "";
   let dialogElEventsAdded = false;
   const resultCount = derived(
     filteredFiles,
-    ($filteredFiles) => $filteredFiles.length,
+    ($filteredFiles) => $filteredFiles.length
   );
   $: {
     if (dialogEl && !dialogElEventsAdded) {
@@ -169,7 +169,7 @@
             !isEdited ||
             isExitIntent ||
             confirm(
-              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
+              "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
             )
           ) {
             isEdited = false;
@@ -191,7 +191,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "clients",
+      "clients"
     );
     const clientSnapshots = await getDocs(clientsRef);
 
@@ -221,7 +221,7 @@
       db,
       "workspaces",
       localStorage.getItem("workspace"),
-      "files",
+      "files"
     );
     const filesSnapshots = await getDocs(filesRef);
 
@@ -251,7 +251,7 @@
     // Calculate and set the proposed file ID
     const lastFileId = filesSnapshots.docs.reduce(
       (max, doc) => Math.max(max, parseInt(doc.id)),
-      0,
+      0
     );
     proposedFileId = (lastFileId + 1).toString().padStart(4, "0");
 
@@ -301,7 +301,7 @@
     const workspaceRef = doc(
       db,
       "workspaces",
-      localStorage.getItem("workspace"),
+      localStorage.getItem("workspace")
     );
     const workspaceSnap = await getDoc(workspaceRef);
     const workspaceData = workspaceSnap.data();
@@ -321,7 +321,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "tasks",
+        "tasks"
       );
       const q = query(tasksRef, where("file_id.id", "==", $currentFile.fileId));
       const querySnapshot = await getDocs(q);
@@ -333,7 +333,7 @@
       // Combine mapping and grouping in one step
       const groupedTasks = fetchedTasks.reduce((acc, task) => {
         const statusName = $taskStatuses.find(
-          (status) => status.id === task.status_id,
+          (status) => status.id === task.status_id
         )?.name;
 
         if (statusName) {
@@ -358,7 +358,7 @@
       filterText = filterText.toLowerCase().trim();
       // Check if the input matches any existing client
       const existingClient = clients.some(
-        (client) => client.label.toLowerCase() === filterText,
+        (client) => client.label.toLowerCase() === filterText
       );
 
       // If the filter text is not empty and no match is found, add the new item
@@ -380,7 +380,7 @@
   // Create a debounced version of handleFilter
   const debouncedHandleFilter = debounce(
     (e, filterText) => handleFilter(e, filterText),
-    400,
+    400
   ); // 400ms delay
 
   // Bind the debounced function to the filter event
@@ -534,7 +534,7 @@
         db,
         "workspaces",
         localStorage.getItem("workspace"),
-        "files",
+        "files"
       );
 
       let timetracking = [];
@@ -543,7 +543,7 @@
       if (action === "create") {
         const existingFileQuery = query(
           filesRef,
-          where("__name__", "==", fileIdString),
+          where("__name__", "==", fileIdString)
         );
         const existingFileSnap = await getDocs(existingFileQuery);
 
@@ -609,8 +609,8 @@
       } else if (action === "edit") {
         files.update((currentFiles) =>
           currentFiles.map((file) =>
-            file.id === fileIdString ? { id: fileIdString, ...fileData } : file,
-          ),
+            file.id === fileIdString ? { id: fileIdString, ...fileData } : file
+          )
         );
       }
 
@@ -663,7 +663,7 @@
               file.opvolgdatum instanceof Timestamp
                 ? file.opvolgdatum.toDate()
                 : file.opvolgdatum,
-              "yyyy-MM-dd",
+              "yyyy-MM-dd"
             )
           : "",
       });
@@ -704,7 +704,7 @@
       "workspaces",
       localStorage.getItem("workspace"),
       "files",
-      fileToDelete.id, // Access the id property of dossierId
+      fileToDelete.id // Access the id property of dossierId
     );
 
     try {
@@ -713,7 +713,7 @@
 
       // Update $files store locally
       files.update((currentFiles) =>
-        currentFiles.filter((file) => file.id !== fileToDelete.id),
+        currentFiles.filter((file) => file.id !== fileToDelete.id)
       );
       dbTracker.trackDelete(pageName);
       errorMessage.set("");
@@ -815,7 +815,7 @@
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
               )
             ) {
               dialogEl.close();
@@ -833,7 +833,7 @@
             if (
               !isEdited ||
               confirm(
-                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
+                "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
               )
             ) {
               dialogEl.close();
@@ -928,6 +928,7 @@
               <option value="Factureren">Factureren</option>
               <option value="Controleren">Controleren</option>
               <option value="Gefactureerd">Gefactureerd</option>
+              <option value="Openstaand">Openstaand</option>
               <option value="Onder handen">Onder handen</option>
               <option value="Betwist">Betwist</option>
               <option value="Pro bono">Pro bono</option>
@@ -1054,7 +1055,7 @@
                         <span
                           ><Clock size="18" />{format(
                             task.deadline.toDate(),
-                            "dd-MM-yyyy",
+                            "dd-MM-yyyy"
                           )}</span
                         >
                       </div>
@@ -1091,7 +1092,7 @@
                   <p class="date">
                     {format(
                       log.date instanceof Date ? log.date : log.date.toDate(),
-                      "dd-MM-yyyy",
+                      "dd-MM-yyyy"
                     )}
                   </p>
                 </li>
@@ -1183,7 +1184,7 @@
                       <td></td>
                       <td class="align_right"
                         >Kilometervergoeding (a {formatToEuro(
-                          $specs.kmRate,
+                          $specs.kmRate
                         )})</td
                       >
                       <td>{formatToEuro($specs.mileageAllowance)}</td>
@@ -1301,7 +1302,7 @@
                 if (
                   !isEdited ||
                   confirm(
-                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen.",
+                    "Weet je zeker dat je dit dossier wilt sluiten? De wijzigingen zijn nog niet opgeslagen."
                   )
                 ) {
                   dialogEl.close();
@@ -1377,7 +1378,7 @@
                 {#if file.opvolgdatum}
                   {#if file.opvolgdatum instanceof Timestamp}
                     {new Date(
-                      file.opvolgdatum.seconds * 1000,
+                      file.opvolgdatum.seconds * 1000
                     ).toLocaleDateString()}
                   {:else}
                     {new Date(file.opvolgdatum).toLocaleDateString()}
