@@ -30,6 +30,14 @@ dialog {
   .open_ddown:hover {
     background-color: transparent;
   }
+
+  input,
+  select,
+  textarea {
+    &[disabled][disabled] {
+      background-color: var(--background);
+    }
+  }
 }
 
 .input_wrapper {

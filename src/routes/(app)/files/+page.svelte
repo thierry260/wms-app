@@ -1117,7 +1117,9 @@
               </div>
             {/each}
           {:else}
-            <p>Geen taken aan dit dossier gekoppeld.</p>
+            <p class="empty">
+              Er zijn nog geen taken aan dit dossier gekoppeld
+            </p>
           {/if}
         </div>
 
@@ -1149,7 +1151,7 @@
               {/each}
             </ul>
           {:else}
-            <p>Geen tijdregistratie gevonden.</p>
+            <p class="empty">Geen tijdregistratie gevonden</p>
           {/if}
         </div>
 
@@ -1322,7 +1324,7 @@
               }}><ArrowSquareOut size={20} />PDF aanmaken</button
             >
           {:else}
-            <p>Geen specificatie beschikbaar</p>
+            <p class="empty">Geen specificatie beschikbaar</p>
           {/if}
         </div>
         <div slot="tab-5">
@@ -1450,7 +1452,7 @@
         </tbody>
       </table>
     {:else}
-      <p>Geen resultaten</p>
+      <p class="empty">Geen resultaten</p>
     {/if}
   </section>
 </main>

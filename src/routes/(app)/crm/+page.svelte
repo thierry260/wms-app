@@ -426,7 +426,7 @@
         {/each}
       </div>
     {:else}
-      <p>Geen resultaten</p>
+      <p class="empty">Geen resultaten</p>
     {/if}
   </section>
 

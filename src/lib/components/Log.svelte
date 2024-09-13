@@ -180,7 +180,7 @@
           gap: 20px 5px;
           font-size: 1.4rem;
           line-height: 1.5;
-          min-height: 213px;
+          min-height: 150px;
           box-sizing: border-box;
         }
       }
@@ -223,6 +223,7 @@
         gap: 5px;
         position: relative;
         padding-top: 1px;
+        z-index: 1;
 
         &::before {
           content: "";
