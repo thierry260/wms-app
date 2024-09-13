@@ -176,7 +176,7 @@
 
 <!-- Bottom Navigation for Mobile -->
 {#if isMobile}
-  <nav class="sidebar-mobile">
+  <nav class="sidebar-mobile slick">
     <div class="main_nav">
       <div class="main_nav_items">
         {#each menuItems.slice(0, 5) as item}
@@ -185,9 +185,13 @@
             href={item.route}
           >
             {#if item.route === $page.url.pathname}
-              <svelte:component this={item.icon} size={18} weight="fill" />
+              <div class="icon">
+                <svelte:component this={item.icon} size={18} weight="fill" />
+              </div>
             {:else}
-              <svelte:component this={item.icon} size={18} />
+              <div class="icon">
+                <svelte:component this={item.icon} size={18} />
+              </div>
             {/if}
             {item.mobile_label ? item.mobile_label : item.label}
           </a>
@@ -460,7 +464,7 @@
         background-color 0.2s ease-out,
         border-color 0.2s ease-out,
         padding 0.2s ease-out;
-      font-size: 1rem;
+      font-size: 1.1rem;
       overflow: hidden;
 
       padding: 5px;
@@ -497,6 +501,7 @@
         background: transparent;
         padding: 5px 0;
         gap: 10px;
+        color: inherit;
       }
 
       .more_item {
@@ -504,9 +509,72 @@
         align-items: center;
         gap: 10px;
         padding: 5px 0;
-        color: #fff;
+        color: inherit;
         text-decoration: none;
         font-size: 1.4rem;
+      }
+    }
+
+    &.slick {
+      color: var(--gray-600);
+      background: #fff;
+      border-top: 1px solid var(--border);
+      box-shadow: 0 0 16px rgba(0, 0, 0, 0.09);
+
+      .nav_item {
+        color: inherit;
+        opacity: 1;
+        .icon {
+          padding: 1px 15px;
+          border-radius: 30px;
+          position: relative;
+          transition: color 0.2s ease-out;
+          z-index: 0;
+          &::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: 22px;
+            opacity: 0;
+            border-radius: inherit;
+            background-color: var(--primary);
+            transition:
+              width 0.2s ease-out,
+              opacity 0.2s ease-out;
+            z-index: -1;
+          }
+        }
+
+        &.active {
+          animation: reColor 0.4s ease forwards;
+          .icon {
+            color: #fff;
+            &::after {
+              animation: fadeIn 0.4s ease forwards;
+            }
+          }
+        }
+        @keyframes reColor {
+          from {
+            color: inherit;
+          }
+          to {
+            color: var(--primary);
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            width: 22px;
+            opacity: 0;
+          }
+          to {
+            width: 100%;
+            opacity: 1;
+          }
+        }
       }
     }
   }

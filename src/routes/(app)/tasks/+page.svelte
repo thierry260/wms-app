@@ -4,7 +4,7 @@
   import { db } from "$lib/firebase";
   import { onMount, tick } from "svelte";
   import Sortable from "sortablejs";
-  import { writable, get } from "svelte/store";
+  import { writable, derived, get } from "svelte/store";
   import Select from "svelte-select"; // Import svelte-select
   import { format } from "date-fns";
   import {
@@ -32,13 +32,17 @@
     ArrowDown,
     Funnel,
     DotsThreeVertical,
+    Plus,
   } from "phosphor-svelte";
   import Dropdown from "$lib/components/Dropdown.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
+  import Header from "$lib/components/Header.svelte";
+
   const pageName = "Tasks";
 
   let taskStatuses = writable([]);
   let tasks = writable({});
+  const resultCount = derived(tasks, ($tasks) => $tasks.length);
   let currentTask = writable({
     id: undefined,
     title: "",
@@ -703,6 +707,42 @@
     filterAndSortTasks(); // Trigger the filtering and sorting logic
   }
 
+  // Reactive statement that runs whenever $searchQuery changes
+  $: if ($searchQuery || $searchQuery == "") {
+    filterAndSortTasks();
+  }
+
+  async function filterTasks() {
+    filters.update((f) => {
+      let updatedFilters;
+      if (e.target.checked) {
+        // Add assignee to the filters
+        updatedFilters = {
+          ...f,
+          assignees: [...f.assignees, assignee],
+        };
+      } else {
+        // Remove assignee from the filters
+        updatedFilters = {
+          ...f,
+          assignees: f.assignees.filter((a) => a !== assignee),
+        };
+      }
+      return updatedFilters;
+    });
+
+    // Wait for the state to update before sorting and filtering
+    await tick();
+
+    // Always start from the full list of tasks
+    const filteredAndSortedTasks =
+      get(filters).assignees.length === 0
+        ? allTasks // Show all tasks if no filters are selected
+        : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
+
+    tasks.set(filteredAndSortedTasks);
+  }
+
   function filterAndSortTasks() {
     const query = get(searchQuery).toLowerCase();
 
@@ -749,216 +789,225 @@
   // $: console.log("$currentTask.assignees: ", $currentTask.assignees);
 </script>
 
-<div class="filter-sort-controls">
-  <!-- Button to toggle filters on mobile -->
-  <button class="filter-toggle basic" on:click={toggleFilters}>
-    {#if $filtersVisible}
-      <X size={16} />
-    {:else}
-      <Funnel size={16} />
-    {/if}
-    Filters
-  </button>
+<section class="tasks_section">
+  <Header
+    title="Taken"
+    {resultCount}
+    {searchQuery}
+    bind:showFilters={$filtersVisible}
+    showFilterButton={true}
+    searchPlaceholder={"Zoek op urenregistratie..."}
+  >
+    <button slot="action" class="mobile_icon_only" on:click={openModal}>
+      <Plus size={16} />Taak toevoegen
+    </button>
+  </Header>
+  <div class="filter-sort-controls">
+    <!-- Container for the filters -->
+    <div class="filters-container" class:visible={$filtersVisible}>
+      <div class="assignee-filters">
+        {#each $assignees as assignee}
+          <label>
+            <input
+              type="checkbox"
+              value={assignee}
+              name="[]"
+              on:change={async (e) => {
+                filters.update((f) => {
+                  let updatedFilters;
+                  if (e.target.checked) {
+                    // Add assignee to the filters
+                    updatedFilters = {
+                      ...f,
+                      assignees: [...f.assignees, assignee],
+                    };
+                  } else {
+                    // Remove assignee from the filters
+                    updatedFilters = {
+                      ...f,
+                      assignees: f.assignees.filter((a) => a !== assignee),
+                    };
+                  }
+                  return updatedFilters;
+                });
 
-  <!-- Container for the filters -->
-  <div class="filters-container" class:visible={$filtersVisible}>
-    <div class="assignee-filters">
-      {#each $assignees as assignee}
-        <label>
-          <input
-            type="checkbox"
-            value={assignee}
-            name="[]"
-            on:change={async (e) => {
-              filters.update((f) => {
-                let updatedFilters;
-                if (e.target.checked) {
-                  // Add assignee to the filters
-                  updatedFilters = {
-                    ...f,
-                    assignees: [...f.assignees, assignee],
-                  };
-                } else {
-                  // Remove assignee from the filters
-                  updatedFilters = {
-                    ...f,
-                    assignees: f.assignees.filter((a) => a !== assignee),
-                  };
-                }
-                return updatedFilters;
-              });
+                // Wait for the state to update before sorting and filtering
+                await tick();
 
-              // Wait for the state to update before sorting and filtering
-              await tick();
+                // Always start from the full list of tasks
+                const filteredAndSortedTasks =
+                  get(filters).assignees.length === 0
+                    ? allTasks // Show all tasks if no filters are selected
+                    : sortAndFilterTasks(
+                        allTasks,
+                        get(sortType),
+                        get(sortOrder)
+                      );
 
-              // Always start from the full list of tasks
-              const filteredAndSortedTasks =
-                get(filters).assignees.length === 0
-                  ? allTasks // Show all tasks if no filters are selected
-                  : sortAndFilterTasks(allTasks, get(sortType), get(sortOrder));
-
-              tasks.set(filteredAndSortedTasks);
-            }}
-          />
-          <figure>
-            <img
-              src="/img/people/{assignee.toLowerCase()}.jpg"
-              width="25px"
-              height="25px"
+                tasks.set(filteredAndSortedTasks);
+              }}
             />
-          </figure>
-          {assignee}
-        </label>
+            <figure>
+              <img
+                src="/img/people/{assignee.toLowerCase()}.jpg"
+                width="25px"
+                height="25px"
+              />
+            </figure>
+            {assignee}
+          </label>
+        {/each}
+      </div>
+
+      <div class="sorting">
+        <label for="sortTypeDropdown">Sorteer op:</label>
+        <select
+          id="sortTypeDropdown"
+          on:change={(e) => {
+            sortType.set(e.target.value);
+            sortAndFilterTasks($tasks, e.target.value, $sortOrder);
+          }}
+        >
+          <option value="deadline" selected>Deadline</option>
+          <option value="priority">Prioriteit</option>
+        </select>
+        <button
+          class="basic sort-order-toggle"
+          on:click={() => {
+            const newOrder = $sortOrder === "asc" ? "desc" : "asc";
+            sortOrder.set(newOrder); // Update the sortOrder store
+            sortAndFilterTasks($tasks, $sortType, $sortOrder);
+          }}
+        >
+          {#if $sortOrder === "asc"}
+            ↑
+          {:else}
+            ↓
+          {/if}
+        </button>
+      </div>
+
+      <!-- <div class="task-search">
+        <input
+          type="text"
+          class="search"
+          placeholder="Zoek taken..."
+          bind:this={searchEl}
+          on:input={handleSearchInput}
+        />
+      </div> -->
+    </div>
+  </div>
+  <div
+    class="kanban-board"
+    on:mousedown={handleMouseDown}
+    on:mouseup={handleMouseUp}
+    on:mousemove={handleMouseMove}
+  >
+    {#if $taskStatuses.length > 0}
+      {#each $taskStatuses as status (status.id)}
+        <div class="kanban-column" data-id={status.id} data-name={status.name}>
+          <div class="kanban-column-header">
+            <div class="drag-column"><DotsSixVertical size="18" /></div>
+            <h3
+              on:keydown={handleKeyDown}
+              on:blur={handleBlur}
+              contenteditable="true"
+            >
+              {status.name}
+            </h3>
+            <div on:click={handleEditClick}><PencilSimple size={16} /></div>
+            <div on:click={() => deleteTaskStatus(status.id)}>
+              <TrashSimple size={16} />
+            </div>
+          </div>
+          <ul
+            id={status.id}
+            class="kanban-column-content"
+            data-status={status.id}
+          >
+            {#if Array.isArray($tasks)}
+              {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder ) as task (task.id)}
+                <li
+                  class="kanban-task {getDeadlineStatus(task.deadline)}"
+                  data-id={task.id}
+                  data-priority={task.priority}
+                  on:click={() => openModal(task.id)}
+                >
+                  <div class="drag-handle"><DotsSixVertical size="16" /></div>
+                  <div class="main">
+                    <div class="top">
+                      <div class="text">
+                        <h4>{task.title}</h4>
+                        <span class="subtitle"
+                          >{task.file_id
+                            ? task.file_id.label
+                            : "Geen dossier"}</span
+                        >
+                      </div>
+                      <div class="assignees">
+                        {#each task.assignees as assignee}
+                          <img
+                            width="30px"
+                            height="30px"
+                            src={getImageSrc(assignee)}
+                            alt="{assignee} profielfoto"
+                            on:error={() =>
+                              (src = "/img/people/placeholder.jpg")}
+                          />
+                        {/each}
+                      </div>
+                    </div>
+                    <div class="bottom">
+                      {#if task.deadline}
+                        <div class="task-deadline">
+                          <Clock size="18" />{formatDate(task.deadline)}
+                        </div>
+                      {/if}
+                      {#if task.priority}
+                        {#if task.priority == "High"}
+                          <div class="priority" data-priority={task.priority}>
+                            <Warning size={18} weight="fill" />
+                          </div>
+                        {/if}
+                        {#if task.priority == "Low"}
+                          <div class="priority" data-priority={task.priority}>
+                            <ArrowDown size={18} />
+                          </div>
+                        {/if}
+                      {/if}
+                    </div>
+                  </div>
+                </li>
+              {/each}
+            {/if}
+          </ul>
+          <button
+            class="kanban-task-add basic"
+            data-status={status.id}
+            on:click={() => openModal(null, status.id)}
+          >
+            + Taak toevoegen
+          </button>
+        </div>
       {/each}
-    </div>
-
-    <div class="sorting">
-      <label for="sortTypeDropdown">Sorteer op:</label>
-      <select
-        id="sortTypeDropdown"
-        on:change={(e) => {
-          sortType.set(e.target.value);
-          sortAndFilterTasks($tasks, e.target.value, $sortOrder);
-        }}
-      >
-        <option value="deadline" selected>Deadline</option>
-        <option value="priority">Prioriteit</option>
-      </select>
-      <button
-        class="basic sort-order-toggle"
-        on:click={() => {
-          const newOrder = $sortOrder === "asc" ? "desc" : "asc";
-          sortOrder.set(newOrder); // Update the sortOrder store
-          sortAndFilterTasks($tasks, $sortType, $sortOrder);
-        }}
-      >
-        {#if $sortOrder === "asc"}
-          ↑
-        {:else}
-          ↓
-        {/if}
-      </button>
-    </div>
-
-    <div class="task-search">
+    {/if}
+    <div
+      class="kanban-column new-column-placeholder"
+      on:click={() => {
+        document.querySelector(".new-column-placeholder input").focus();
+      }}
+    >
       <input
-        type="text"
-        class="search"
-        placeholder="Zoek taken..."
-        bind:this={searchEl}
-        on:input={handleSearchInput}
+        bind:value={$newStatusName}
+        placeholder="+ Nieuwe status toevoegen"
+        on:keydown={(e) => e.key === "Enter" && addNewStatus()}
+        on:blur={addNewStatus}
+        on:click={(e) => e.stopPropagation()}
       />
     </div>
   </div>
-</div>
-<div
-  class="kanban-board"
-  on:mousedown={handleMouseDown}
-  on:mouseup={handleMouseUp}
-  on:mousemove={handleMouseMove}
->
-  {#if $taskStatuses.length > 0}
-    {#each $taskStatuses as status (status.id)}
-      <div class="kanban-column" data-id={status.id} data-name={status.name}>
-        <div class="kanban-column-header">
-          <div class="drag-column"><DotsSixVertical size="18" /></div>
-          <h3
-            on:keydown={handleKeyDown}
-            on:blur={handleBlur}
-            contenteditable="true"
-          >
-            {status.name}
-          </h3>
-          <div on:click={handleEditClick}><PencilSimple size={16} /></div>
-          <div on:click={() => deleteTaskStatus(status.id)}>
-            <TrashSimple size={16} />
-          </div>
-        </div>
-        <ul
-          id={status.id}
-          class="kanban-column-content"
-          data-status={status.id}
-        >
-          {#if Array.isArray($tasks)}
-            {#each sortAndFilterTasks( $tasks.filter((task) => task.status_id === status.id), $sortType, $sortOrder ) as task (task.id)}
-              <li
-                class="kanban-task {getDeadlineStatus(task.deadline)}"
-                data-id={task.id}
-                data-priority={task.priority}
-                on:click={() => openModal(task.id)}
-              >
-                <div class="drag-handle"><DotsSixVertical size="16" /></div>
-                <div class="main">
-                  <div class="top">
-                    <div class="text">
-                      <h4>{task.title}</h4>
-                      <span class="subtitle"
-                        >{task.file_id
-                          ? task.file_id.label
-                          : "Geen dossier"}</span
-                      >
-                    </div>
-                    <div class="assignees">
-                      {#each task.assignees as assignee}
-                        <img
-                          width="30px"
-                          height="30px"
-                          src={getImageSrc(assignee)}
-                          alt="{assignee} profielfoto"
-                          on:error={() => (src = "/img/people/placeholder.jpg")}
-                        />
-                      {/each}
-                    </div>
-                  </div>
-                  <div class="bottom">
-                    {#if task.deadline}
-                      <div class="task-deadline">
-                        <Clock size="18" />{formatDate(task.deadline)}
-                      </div>
-                    {/if}
-                    {#if task.priority}
-                      {#if task.priority == "High"}
-                        <div class="priority" data-priority={task.priority}>
-                          <Warning size={18} weight="fill" />
-                        </div>
-                      {/if}
-                      {#if task.priority == "Low"}
-                        <div class="priority" data-priority={task.priority}>
-                          <ArrowDown size={18} />
-                        </div>
-                      {/if}
-                    {/if}
-                  </div>
-                </div>
-              </li>
-            {/each}
-          {/if}
-        </ul>
-        <button
-          class="kanban-task-add basic"
-          data-status={status.id}
-          on:click={() => openModal(null, status.id)}
-        >
-          + Taak toevoegen
-        </button>
-      </div>
-    {/each}
-  {/if}
-  <div
-    class="kanban-column new-column-placeholder"
-    on:click={() => {
-      document.querySelector(".new-column-placeholder input").focus();
-    }}
-  >
-    <input
-      bind:value={$newStatusName}
-      placeholder="+ Nieuwe status toevoegen"
-      on:keydown={(e) => e.key === "Enter" && addNewStatus()}
-      on:blur={addNewStatus}
-      on:click={(e) => e.stopPropagation()}
-    />
-  </div>
-</div>
+</section>
 
 <dialog bind:this={dialogEl} class="task-modal">
   {#if $currentTask && $currentTask.id}
@@ -1126,6 +1175,9 @@
 </dialog>
 
 <style lang="scss">
+  .tasks_section {
+    display: contents;
+  }
   button.open_ddown {
     overflow: unset;
     border: none;
@@ -1139,7 +1191,6 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 30px;
     flex-wrap: wrap;
     gap: 20px 20px;
 
@@ -1148,6 +1199,7 @@
       flex-wrap: wrap;
       gap: 15px 30px;
       width: 100%;
+      margin-bottom: 30px;
 
       @media (max-width: $xlm) {
         display: none;
@@ -1323,11 +1375,15 @@
     grid-column-gap: 2rem;
     grid-template-rows: minmax(0, 1fr);
     cursor: grab;
+    @media (max-width: $md) {
+      padding-bottom: 80px;
+    }
     @media (max-width: $sm) {
       grid-auto-columns: max(calc(100vw - 60px), 300px);
       margin-inline: -30px;
       // margin-bottom: 0;
       padding-inline: 30px;
+      padding-bottom: 60px;
     }
   }
 
@@ -1341,6 +1397,7 @@
     gap: 15px;
     cursor: default;
     user-select: none;
+    max-height: 100%;
 
     .kanban-column-header {
       display: flex;
@@ -1386,13 +1443,6 @@
       list-style: none;
       padding: 0;
       flex-grow: 1;
-
-      max-height: calc(100vh - 300px);
-      max-height: calc(100dvh - 300px);
-      @media (max-width: $sm) {
-        max-height: calc(100vh - 400px);
-        max-height: calc(100dvh - 400px);
-      }
       overflow-y: auto;
       /* Chrome, Edge, and Safari */
       &::-webkit-scrollbar {

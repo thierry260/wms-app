@@ -28,6 +28,7 @@
     getCachedDocs,
   } from "$lib/utils/cache"; // Import cache functions
   import { page } from "$app/stores";
+  import Header from "$lib/components/Header.svelte";
 
   const pageName = "Contacts";
   let refreshTooltip = "Data vernieuwen";
@@ -349,37 +350,17 @@
 
 <main>
   <section class="client_section">
-    <div class="top">
-      <div class="module-info">
-        <h2>
-          Contacten
-          <span
-            class="refresh_data"
-            data-tooltip={refreshTooltip}
-            data-flow="top"
-            on:click={handleRefreshClick}
-          >
-            <ArrowClockwise size={16} color="var(--gray-400)" />
-          </span>
-        </h2>
-        <div class="result-count">
-          <small><span>{$resultCount}</span> resultaten</small>
-        </div>
-      </div>
-      <div class="buttons">
-        <button class="mobile_icon_only" on:click={() => openModal()}
-          ><Plus size={16} />Contact toevoegen</button
-        >
-      </div>
-    </div>
+    <Header
+      title="Contacten"
+      {resultCount}
+      {searchQuery}
+      searchPlaceholder={"Zoek contacten..."}
+    >
+      <button slot="action" class="mobile_icon_only" on:click={openModal}>
+        <Plus size={16} />Contact toevoegen
+      </button>
+    </Header>
 
-    <input
-      type="text"
-      class="search"
-      placeholder="Zoek contacten..."
-      bind:this={searchEl}
-      on:input={(e) => searchQuery.set(e.target.value)}
-    />
     {#if $filteredClientsList.length}
       <div class="contact_items">
         {#each $filteredClientsList as client}

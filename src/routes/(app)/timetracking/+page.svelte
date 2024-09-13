@@ -10,17 +10,12 @@
     arrayUnion,
   } from "firebase/firestore";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
+  import Header from "$lib/components/Header.svelte";
   import ToggleSwitch from "$lib/components/ToggleSwitch.svelte";
   import { auth, db } from "$lib/firebase";
   import {
-    parse,
     startOfWeek,
     endOfWeek,
-    isAfter,
-    isBefore,
-    isValid,
-    addWeeks,
-    subWeeks,
     format,
     isSameWeek,
     isToday,
@@ -31,7 +26,6 @@
     CurrencyEur,
     Car,
     TrashSimple,
-    SlidersHorizontal,
     X,
     Plus,
   } from "phosphor-svelte";
@@ -59,6 +53,11 @@
   const searchQueryFrom = writable("");
   const searchQueryTo = writable("");
 
+  // Reactive statement that runs whenever $searchQuery changes
+  $: if ($searchQuery || $searchQuery == "") {
+    updateLogsForSearch();
+  }
+
   const logs = writable([]);
   const totalRevenue = writable(0);
   const loading = writable(true);
@@ -66,8 +65,6 @@
   let allLogs = [];
   let longPressTimer;
   let showFilters = false;
-
-  export let updateLogs; // Receive the updateLogs prop
 
   let dialogEl;
   let dialogElEventsAdded = false;
@@ -112,11 +109,6 @@
     $currentTimetracking.date = new Date($currentTimetracking.date)
       .toISOString()
       .split("T")[0];
-  }
-
-  $: if (updateLogs) {
-    console.log("updateLogs triggered"); // Add this for debugging
-    updateLogsForSearch(); // Re-fetch and update the logs when updateLogs changes
   }
 
   onMount(async () => {
@@ -272,11 +264,6 @@
     });
 
     logs.set(data);
-  }
-
-  function handleSearchInput(event) {
-    searchQuery.set(event.target.value);
-    updateLogsForSearch();
   }
 
   function handleSearchInputFrom() {
@@ -678,38 +665,20 @@
 </script>
 
 <section class="timetracking_section">
-  <div class="top floating">
-    <div class="module-info">
-      <h2>Uren<span class="hide_mobile">registratie</span></h2>
-      <div class="result-count">
-        <small><span>{$resultCount}</span> resultaten</small>
-      </div>
-    </div>
-    <div class="buttons">
-      <div class="task-search">
-        <input
-          type="text"
-          class="search"
-          placeholder="Zoek op urenregistratie..."
-          on:input={handleSearchInput}
-          bind:this={searchEl}
-          bind:value={$searchQuery}
-        />
-      </div>
-      <button class="basic" on:click={() => (showFilters = !showFilters)}>
-        {#if !showFilters}
-          <SlidersHorizontal size="20" />
-        {:else}
-          <X size="18" />
-        {/if}
-      </button>
-      <button class="mobile_icon_only" on:click={() => openModal()}
-        ><Plus size={16} />Uren registreren</button
-      >
-    </div>
-  </div>
+  <Header
+    title="Urenregistratie"
+    {resultCount}
+    {searchQuery}
+    bind:showFilters
+    showFilterButton={true}
+    searchPlaceholder={"Zoek op urenregistratie..."}
+  >
+    <button slot="action" class="mobile_icon_only" on:click={openModal}>
+      <Plus size={16} />Uren registreren
+    </button>
+  </Header>
   {#if $loading}
-    <p class="loading-text">Laden...</p>
+    <p class="loading-text empty">Laden...</p>
   {:else}
     {#if showFilters}
       <div class="columns" data-col="2">
@@ -784,7 +753,7 @@
             </li>
           {/each}
         {:else}
-          Geen logs gevonden
+          <p class="empty">Geen logs gevonden</p>
         {/if}
       </ul>
       {#if $loadingMore}
@@ -901,7 +870,7 @@
       margin-bottom: 10px;
     }
     .legend {
-      margin-bottom: 0;
+      margin-block: 0;
     }
   }
   @media (max-width: $md) {
@@ -969,11 +938,6 @@
       h2 {
         margin-bottom: 0;
       }
-
-      // position: sticky;
-      // top: 0px;
-      // z-index: 1;
-      // background-color: #f8f8f8;
     }
   }
   .legend {
@@ -1237,6 +1201,10 @@
     align-items: center;
     gap: 10px;
     margin-top: 15px;
+
+    input[type="date"] {
+      -webkit-min-logical-width: unset;
+    }
   }
   .date_input label {
     margin-bottom: 0;

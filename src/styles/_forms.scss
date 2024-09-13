@@ -31,9 +31,10 @@ dialog {
     background-color: transparent;
   }
 
-  input,
+  input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {
+    -webkit-min-logical-width: 100%;
     &[disabled][disabled] {
       background-color: var(--background);
     }

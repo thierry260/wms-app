@@ -31,6 +31,7 @@
   import { debounce } from "$lib/utils/debounce.js";
   import { browser } from "$app/environment";
   import Dropdown from "$lib/components/Dropdown.svelte";
+  import Header from "$lib/components/Header.svelte";
 
   const pageName = "Files";
   let html2pdf;
@@ -1267,54 +1268,6 @@
                   </tr>
                 </tfoot>
               </table>
-              <!-- Facturatie
-                <table class="specs">
-                  <tbody>
-                    <tr>
-                      <td>Uren conform specificatie</td>
-                      <td>{formatMinutesToHHMM($specs.minutes)}</td>
-                      <td>uur</td>
-                    </tr>
-                    <tr>
-                      <td>Uurtarief</td>
-                      <td>{formatToEuro($specs.rate)}</td>
-                      <td>x</td>
-                    </tr>
-                    <tr>
-                      <td>Subtotaal</td>
-                      <td class="border">{formatToEuro($specs.subtotal)}</td>
-                      <td class="border">Exclusief BTW</td>
-                    </tr>
-                    {#if $specs.km > 0}
-                      <tr>
-                        <td
-                          >Kilometervergoeding (a {formatToEuro(
-                            $specs.kmRate,
-                          )})</td
-                        >
-                        <td>{formatToEuro($specs.mileageAllowance)}</td>
-                        <td>Exclusief BTW</td>
-                      </tr>
-                    {/if}
-                    <tr>
-                      <td>Totaal</td>
-                      <td class="border">{formatToEuro($specs.total)}</td>
-                      <td class="border">Exclusief BTW</td>
-                    </tr>
-                    <tr>
-                      <td>BTW ({$specs.taxRate * 100}%)</td>
-                      <td>{formatToEuro($specs.tax)}</td>
-                      <td>+</td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td>Totaal</td>
-                      <td class="border">{formatToEuro($specs.totalTax)}</td>
-                      <td class="border">Inclusief BTW</td>
-                    </tr>
-                  </tfoot>
-                </table> -->
             </div>
             <button
               type="button"
@@ -1375,28 +1328,16 @@
   </dialog>
 
   <section class="files_section">
-    <div class="top">
-      <div class="module-info">
-        <h2>Dossiers</h2>
-        <div class="result-count">
-          <small><span>{$resultCount}</span> resultaten</small>
-        </div>
-      </div>
-
-      <div class="buttons">
-        <button class="mobile_icon_only" on:click={() => openModal()}
-          ><Plus size={16} />Dossier toevoegen</button
-        >
-      </div>
-    </div>
-
-    <input
-      type="text"
-      class="search"
-      placeholder="Zoek dossiers..."
-      bind:this={searchEl}
-      bind:value={$searchQuery}
-    />
+    <Header
+      title="Dossiers"
+      {resultCount}
+      {searchQuery}
+      searchPlaceholder={"Zoek dossiers..."}
+    >
+      <button slot="action" class="mobile_icon_only" on:click={openModal}>
+        <Plus size={16} />Dossier toevoegen
+      </button>
+    </Header>
     {#if $filteredFiles.length}
       <table>
         <thead>
