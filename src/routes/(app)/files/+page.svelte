@@ -1764,7 +1764,8 @@
       border-radius: 0;
       margin-block: 30px;
       tr {
-        height: 30px;
+        min-height: 30px;
+        height: auto;
         cursor: unset;
         background-color: transparent;
         &:nth-of-type(even) {
@@ -1772,9 +1773,14 @@
         }
         td {
           font-size: 1.3rem;
-          padding: 0 10px;
+          padding: 10px;
+          line-height: normal;
+          &:first-child {
+            white-space: nowrap;
+          }
         }
       }
+
       thead {
         * {
           font-weight: 600;
