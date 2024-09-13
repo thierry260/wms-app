@@ -37,6 +37,7 @@
   import Dropdown from "$lib/components/Dropdown.svelte";
   import { dbTracker } from "$lib/utils/dbTracker";
   import Header from "$lib/components/Header.svelte";
+  import Filters from "$lib/components/Filters.svelte";
 
   const pageName = "Tasks";
 
@@ -78,27 +79,12 @@
 
   let filtersVisible = writable(false);
   let dropdownState = false;
+  let showFilters = false;
 
-  function closeDropdown() {
-    const event = new CustomEvent("close-dropdown", {
-      bubbles: true,
-      composed: true,
-    });
-    window.dispatchEvent(event);
-  }
-
-  function triggerDropdown(id) {
-    console.log("Dispatching toggle-dropdown event with id:", id);
-    const event = new CustomEvent("toggle-dropdown", {
-      detail: id,
-      bubbles: true,
-      composed: true,
-    });
-    window.dispatchEvent(event);
-  }
-
-  function toggleFilters() {
-    filtersVisible.update((visible) => !visible);
+  $: {
+    if (showFilters || !showFilters) {
+      console.log("showFilters", showFilters);
+    }
   }
 
   let isEdited = false;
@@ -794,17 +780,55 @@
     title="Taken"
     {resultCount}
     {searchQuery}
-    bind:showFilters={$filtersVisible}
     showFilterButton={true}
+    bind:showFilters
     searchPlaceholder={"Zoek op urenregistratie..."}
   >
+    <div slot="filter-content">
+      <label>
+        <input type="checkbox" name="category1" />
+      </label>
+      <label>
+        <input type="checkbox" name="category2" />
+      </label>
+    </div>
     <button slot="action" class="mobile_icon_only" on:click={openModal}>
       <Plus size={16} />Taak toevoegen
     </button>
   </Header>
-  <div class="filter-sort-controls">
-    <!-- Container for the filters -->
-    <div class="filters-container" class:visible={$filtersVisible}>
+  <Filters bind:showFilters>
+    <slot>
+      <div class="sorting">
+        <label for="sortTypeDropdown" class="legend">Sorteer op</label>
+        <div>
+          <select
+            id="sortTypeDropdown"
+            on:change={(e) => {
+              sortType.set(e.target.value);
+              sortAndFilterTasks($tasks, e.target.value, $sortOrder);
+            }}
+          >
+            <option value="deadline" selected>Deadline</option>
+            <option value="priority">Prioriteit</option>
+          </select>
+          <button
+            class="basic sort-order-toggle"
+            on:click={() => {
+              const newOrder = $sortOrder === "asc" ? "desc" : "asc";
+              sortOrder.set(newOrder); // Update the sortOrder store
+              sortAndFilterTasks($tasks, $sortType, $sortOrder);
+            }}
+          >
+            {#if $sortOrder === "asc"}
+              ↑
+            {:else}
+              ↓
+            {/if}
+          </button>
+        </div>
+      </div>
+      <br />
+      <label class="legend">Uitvoerders</label>
       <div class="assignee-filters">
         {#each $assignees as assignee}
           <label>
@@ -858,46 +882,9 @@
           </label>
         {/each}
       </div>
-
-      <div class="sorting">
-        <label for="sortTypeDropdown">Sorteer op:</label>
-        <select
-          id="sortTypeDropdown"
-          on:change={(e) => {
-            sortType.set(e.target.value);
-            sortAndFilterTasks($tasks, e.target.value, $sortOrder);
-          }}
-        >
-          <option value="deadline" selected>Deadline</option>
-          <option value="priority">Prioriteit</option>
-        </select>
-        <button
-          class="basic sort-order-toggle"
-          on:click={() => {
-            const newOrder = $sortOrder === "asc" ? "desc" : "asc";
-            sortOrder.set(newOrder); // Update the sortOrder store
-            sortAndFilterTasks($tasks, $sortType, $sortOrder);
-          }}
-        >
-          {#if $sortOrder === "asc"}
-            ↑
-          {:else}
-            ↓
-          {/if}
-        </button>
-      </div>
-
-      <!-- <div class="task-search">
-        <input
-          type="text"
-          class="search"
-          placeholder="Zoek taken..."
-          bind:this={searchEl}
-          on:input={handleSearchInput}
-        />
-      </div> -->
-    </div>
-  </div>
+    </slot>
+    <!-- Forward named slot -->
+  </Filters>
   <div
     class="kanban-board"
     on:mousedown={handleMouseDown}
@@ -1175,6 +1162,16 @@
 </dialog>
 
 <style lang="scss">
+  .sorting {
+    > div {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      button {
+        min-width: 40px;
+      }
+    }
+  }
   .tasks_section {
     display: contents;
   }
@@ -1186,6 +1183,76 @@
       box-shadow: none;
     }
   }
+
+  .assignee-filters {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: 10px;
+    label {
+      padding: 10px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background-color: #fff;
+      font-size: 1.3rem;
+      user-select: none;
+      cursor: pointer;
+      input[type="checkbox"] {
+        display: none;
+      }
+      figure {
+        margin: 0;
+        border-radius: 50%;
+        display: inline-flex;
+        position: relative;
+
+        &::before {
+          content: "";
+          position: absolute;
+          border-radius: inherit;
+          inset: -0.99px;
+          background-color: rgba(5, 2, 41, 0.3);
+          backdrop-filter: blur(1px);
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23ffffff' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23ffffff' viewBox='0 0 256 256'%3E%3Cpath d='M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z'%3E%3C/path%3E%3C/svg%3E");
+
+          // background-color: $success;
+          // background-color: hsl(120, 58%, 92%);
+          // background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234ccf4c' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
+
+          background-repeat: no-repeat;
+          background-size: 12px;
+          background-position: center;
+          opacity: 0;
+          transition: opacity 0.1s ease-out;
+        }
+      }
+      img {
+        border-radius: inherit;
+      }
+
+      &:has(:checked) {
+        figure::before {
+          opacity: 1;
+        }
+      }
+    }
+    @media (max-width: $xs) {
+      overflow-x: auto;
+      white-space: nowrap;
+      -ms-overflow-style: none; /* Internet Explorer 10+ */
+      scrollbar-width: none; /* Firefox */
+      margin-inline: -30px;
+      padding-inline: 30px;
+
+      &::-webkit-scrollbar {
+        display: none; /* Safari and Chrome */
+      }
+    }
+  }
   .filter-sort-controls {
     display: flex;
     flex-direction: row;
@@ -1193,85 +1260,6 @@
     align-items: flex-end;
     flex-wrap: wrap;
     gap: 20px 20px;
-
-    .filters-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px 30px;
-      width: 100%;
-      margin-bottom: 30px;
-
-      @media (max-width: $xlm) {
-        display: none;
-      }
-    }
-
-    .assignee-filters {
-      flex-grow: 1;
-      label {
-        padding: 5px 10px 5px 6px;
-        border-radius: 55px;
-        border: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        background-color: #fff;
-        font-size: 1.3rem;
-        user-select: none;
-        cursor: pointer;
-        input[type="checkbox"] {
-          display: none;
-        }
-        figure {
-          margin: 0;
-          border-radius: 50%;
-          display: inline-flex;
-          position: relative;
-
-          &::before {
-            content: "";
-            position: absolute;
-            border-radius: inherit;
-            inset: -0.99px;
-            background-color: rgba(5, 2, 41, 0.3);
-            backdrop-filter: blur(1px);
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23ffffff' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23ffffff' viewBox='0 0 256 256'%3E%3Cpath d='M232.49,80.49l-128,128a12,12,0,0,1-17,0l-56-56a12,12,0,1,1,17-17L96,183,215.51,63.51a12,12,0,0,1,17,17Z'%3E%3C/path%3E%3C/svg%3E");
-
-            // background-color: $success;
-            // background-color: hsl(120, 58%, 92%);
-            // background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%234ccf4c' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z'%3E%3C/path%3E%3C/svg%3E");
-
-            background-repeat: no-repeat;
-            background-size: 12px;
-            background-position: center;
-            opacity: 0;
-            transition: opacity 0.1s ease-out;
-          }
-        }
-        img {
-          border-radius: inherit;
-        }
-
-        &:has(:checked) {
-          figure::before {
-            opacity: 1;
-          }
-        }
-      }
-      @media (max-width: $xs) {
-        overflow-x: auto;
-        white-space: nowrap;
-        -ms-overflow-style: none; /* Internet Explorer 10+ */
-        scrollbar-width: none; /* Firefox */
-        margin-inline: -30px;
-        padding-inline: 30px;
-
-        &::-webkit-scrollbar {
-          display: none; /* Safari and Chrome */
-        }
-      }
-    }
 
     select {
       font-size: 1.4rem;

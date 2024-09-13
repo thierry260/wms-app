@@ -14,9 +14,9 @@
   export let title = "Default Title";
   export let resultCount = 0;
   export let searchQuery = writable("");
-  export let showFilters = false;
   export let showSearch = true;
   export let showFilterButton = false; // Control visibility of filter button
+  export let showFilters = false;
   export let searchPlaceholder = "Zoeken..."; // Control visibility of filter button
 
   let searchEl;
@@ -70,11 +70,7 @@
 
     {#if showFilterButton}
       <button class="basic" on:click={() => (showFilters = !showFilters)}>
-        {#if !showFilters}
-          <SlidersHorizontal size="20" />
-        {:else}
-          <X size="18" />
-        {/if}
+        <SlidersHorizontal size="20" />
       </button>
     {/if}
 
