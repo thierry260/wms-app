@@ -283,6 +283,8 @@
             justify-content: flex-end;
             align-items: flex-end;
             flex-grow: 1;
+            -webkit-min-logical-width: unset;
+            background: inherit !important;
           }
 
           input[type="datetime-local"]::-webkit-calendar-picker-indicator {
@@ -328,7 +330,7 @@
           justify-content: space-between;
           align-items: center;
           gap: 10px;
-          background: var(--background);
+          background: #fff;
           padding: 12px 15px;
           border-radius: 5px;
           border: 1px solid var(--border);

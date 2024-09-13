@@ -220,8 +220,21 @@ button,
 
 :global(.svelte-select.svelte-select) {
   --background: #fff;
+  // --multi-item-bg: #fff;
+  --multi-item-padding: 0px 8px 0px 10px;
+  --multi-item-border-radius: 40px;
+  --multi-item-outline: 1px solid var(--gray-300);
+  --multi-item-bg: var(--gray-100);
+  --clear-icon-width: 16px;
+  --internal-padding: 0 0 0 14px;
+  --placeholder-opacity: 0.75;
   border-style: solid !important;
   border-width: 1px !important;
+  border-color: var(--gray-300) !important;
+
+  .multi-item-text {
+    font-size: 1.5rem;
+  }
 }
 
 input[type="number"],
@@ -247,6 +260,7 @@ select {
   outline-offset: -1px;
   outline-width: 2px;
   transition: outline-color ease-out 0.2s, margin-bottom ease-out 0.6s;
+  -webkit-min-logical-width: 100%;
 
   &:not(:focus),
   &:not(:focus-within),
@@ -382,6 +396,14 @@ fieldset legend {
   font-weight: 500;
   color: var(--text);
   display: inline-block;
+}
+
+dialog .legend {
+  text-transform: none;
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--gray-800);
+  margin-top: 0.75em;
 }
 
 .settings_page fieldset:not(.dont_space) {

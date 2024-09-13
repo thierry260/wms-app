@@ -119,16 +119,33 @@ table {
       font-size: 1.2rem;
       text-transform: none;
 
-      &[data-status="Betaald"],
       &[data-status="Actief"] {
         --response-color: var(--success-hs);
       }
-      &[data-status="Betwist"],
-      &[data-status="Controleren"] {
-        --response-color: var(--error-hs);
+
+      &[data-status="Betaald"] {
+        --response-color: 122.42deg, 57%;
       }
-      &[data-status="Afwachten"] {
-        --response-color: var(--warning-hs);
+      &[data-status="Factureren"] {
+        --response-color: 198.67deg, 99%;
+      }
+      &[data-status="Controleren"] {
+        --response-color: 53.88deg, 77%;
+      }
+      &[data-status="Gefactureerd"] {
+        --response-color: 234.6deg, 79%;
+      }
+      &[data-status="Openstaand"] {
+        --response-color: 35.76deg, 100%;
+      }
+      &[data-status="Onder handen"] {
+        // --response-color: 200deg, 11%;
+      }
+      &[data-status="Betwist"] {
+        --response-color: 4.11deg, 78%;
+      }
+      &[data-status="Pro bono"] {
+        --response-color: 87.77deg, 62%;
       }
 
       @media (max-width: $xs) {

@@ -61,7 +61,7 @@
 <style lang="scss">
   .tabs {
     display: flex;
-    border-bottom: 2px solid var(--gray-200);
+    border-bottom: 2px solid var(--gray-250, hsl(0, 0%, 88%));
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;

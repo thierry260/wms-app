@@ -272,6 +272,13 @@
     const filename = `${assignee.toLowerCase()}.jpg`;
     return `/img/people/${filename}`; // Update with the correct path to your images
   }
+
+  Object.defineProperty(String.prototype, "capitalize", {
+    value: function () {
+      return this.charAt(0).toUpperCase() + this.slice(1);
+    },
+    enumerable: false,
+  });
 </script>
 
 <section class="dashboard">
@@ -370,8 +377,7 @@
     <div class="card timetracking">
       <div class="top">
         <h2>
-          Omzet {$selectedPeriod && $selectedPeriod == "jaar" ? "dit" : "deze"}
-          {$selectedPeriod}
+          {$selectedPeriod.capitalize()}omzet
           {#if percentualChange}
             <div>
               <span class="turnover" data-turnover={currentTurnover}>
