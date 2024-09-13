@@ -911,35 +911,37 @@
       >
         <div slot="tab-0">
           <!-- Algemeen -->
-          <label>
-            {#if $currentFile.id}
-              <span class="legend">Dossiernummer</span>
-              <input
-                type="number"
-                bind:value={$currentFile.fileId}
-                placeholder="Dossiernummer"
-                disabled
-              />
-            {:else}
-              <span class="legend"
-                >Dossiernummer (Voorstel: {$currentFile.proposedFileId})</span
-              >
-              <input
-                type="number"
-                bind:value={$currentFile.fileId}
-                placeholder="Dossiernummer"
-              />
-            {/if}
-          </label>
+          <div class="modal_columns">
+            <label>
+              {#if $currentFile.id}
+                <span class="legend">Dossiernummer</span>
+                <input
+                  type="number"
+                  bind:value={$currentFile.fileId}
+                  placeholder="Dossiernummer"
+                  disabled
+                />
+              {:else}
+                <span class="legend"
+                  >Dossiernummer (Voorstel: {$currentFile.proposedFileId})</span
+                >
+                <input
+                  type="number"
+                  bind:value={$currentFile.fileId}
+                  placeholder="Dossiernummer"
+                />
+              {/if}
+            </label>
 
-          <label>
-            <span class="legend">Dossiernaam</span>
-            <input
-              type="text"
-              bind:value={$currentFile.name}
-              placeholder="Dossiernaam"
-            />
-          </label>
+            <label>
+              <span class="legend">Dossiernaam</span>
+              <input
+                type="text"
+                bind:value={$currentFile.name}
+                placeholder="Dossiernaam"
+              />
+            </label>
+          </div>
 
           <div class="modal_columns">
             <label>
@@ -951,8 +953,18 @@
               </select>
             </label>
             <label>
-              <span class="legend">Opvolgdatum</span>
-              <input type="date" bind:value={$currentFile.opvolgdatum} />
+              <span class="legend">Administratiestatus</span>
+              <select bind:value={$currentFile.administratiestatus}>
+                <option value="" disabled selected>Selecteer een status</option>
+                <option value="Betaald">Betaald</option>
+                <option value="Factureren">Factureren</option>
+                <option value="Controleren">Controleren</option>
+                <option value="Gefactureerd">Gefactureerd</option>
+                <option value="Openstaand">Openstaand</option>
+                <option value="Onder handen">Onder handen</option>
+                <option value="Betwist">Betwist</option>
+                <option value="Pro bono">Pro bono</option>
+              </select>
             </label>
             <label>
               <span class="legend">Uurtarief</span>
@@ -972,21 +984,6 @@
               />
             </label>
           </div>
-
-          <label>
-            <span class="legend">Administratiestatus</span>
-            <select bind:value={$currentFile.administratiestatus}>
-              <option value="" disabled selected>Selecteer een status</option>
-              <option value="Betaald">Betaald</option>
-              <option value="Factureren">Factureren</option>
-              <option value="Controleren">Controleren</option>
-              <option value="Gefactureerd">Gefactureerd</option>
-              <option value="Openstaand">Openstaand</option>
-              <option value="Onder handen">Onder handen</option>
-              <option value="Betwist">Betwist</option>
-              <option value="Pro bono">Pro bono</option>
-            </select>
-          </label>
 
           <label>
             <span class="legend">Administratieafspraak</span>

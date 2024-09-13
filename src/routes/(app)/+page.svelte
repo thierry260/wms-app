@@ -273,12 +273,14 @@
     return `/img/people/${filename}`; // Update with the correct path to your images
   }
 
-  Object.defineProperty(String.prototype, "capitalize", {
-    value: function () {
-      return this.charAt(0).toUpperCase() + this.slice(1);
-    },
-    enumerable: false,
-  });
+  if (typeof String.prototype.capitalize === "undefined") {
+    Object.defineProperty(String.prototype, "capitalize", {
+      value: function () {
+        return this.charAt(0).toUpperCase() + this.slice(1);
+      },
+      enumerable: false,
+    });
+  }
 </script>
 
 <section class="dashboard">
@@ -560,8 +562,7 @@
     margin-bottom: 30px;
 
     @media (max-width: $md) {
-      padding-bottom: 0;
-      margin-bottom: 0;
+      margin-bottom: 30px;
     }
 
     h2 {
@@ -629,6 +630,10 @@
           justify-content: space-between;
           align-items: center;
           gap: 15px;
+          margin-bottom: 30px;
+          @media (max-width: $md) {
+            margin-bottom: 0;
+          }
         }
 
         h2 {
