@@ -32,6 +32,7 @@
   import { browser } from "$app/environment";
   import Dropdown from "$lib/components/Dropdown.svelte";
   import Header from "$lib/components/Header.svelte";
+  import Filters from "$lib/components/Filters.svelte";
 
   const pageName = "Files";
   let html2pdf;
@@ -64,6 +65,7 @@
   let isEdited = false;
   let isExitIntent = false;
   let searchEl = "";
+  let showFilters = false;
 
   const specs = derived(currentFile, ($currentFile) => {
     const rate = $currentFile.uurtarief || 250;
@@ -134,6 +136,7 @@
   let submitting = writable(false);
   let errorMessage = writable("");
   let successMessage = writable("");
+  let allFiles = writable([]);
   let files = writable([]);
   let searchQuery = writable("");
   let filteredFiles = derived(
@@ -173,7 +176,7 @@
         isEdited = false;
         isExitIntent = false;
       });
-      dialogEl.addEventListener("click", function (event) {
+      dialogEl.addEventListener("mousedown", function (event) {
         const rect = dialogEl.getBoundingClientRect();
         const isInDialog =
           rect.top <= event.clientY &&
@@ -263,6 +266,7 @@
 
     // Update the files reactive variable
     files.set(processedFiles);
+    allFiles.set(processedFiles);
 
     // Calculate and set the proposed file ID
     const lastFileId = filesSnapshots.docs.reduce(
@@ -1333,11 +1337,30 @@
       {resultCount}
       {searchQuery}
       searchPlaceholder={"Zoek dossiers..."}
+      showFilterButton={true}
+      bind:showFilters
     >
       <button slot="action" class="mobile_icon_only" on:click={openModal}>
         <Plus size={16} />Dossier toevoegen
       </button>
     </Header>
+    <Filters
+      bind:showFilters
+      data={$allFiles}
+      bind:filteredData={$files}
+      filters={[
+        {
+          label: "Dossierstatus",
+          key: "dossierstatus",
+          type: "checkbox",
+        },
+        {
+          label: "Administratiestatus",
+          key: "administratiestatus",
+          type: "checkbox",
+        },
+      ]}
+    />
     {#if $filteredFiles.length}
       <table>
         <thead>

@@ -34,7 +34,15 @@
       event.preventDefault(); // Prevent the default browser search
       searchEl?.focus(); // Focus on the search input element
     }
-
+    // Check if Ctrl+F (Windows/Linux) or Cmd+F (Mac) is pressed
+    else if (
+      showFilterButton &&
+      (event.ctrlKey || event.metaKey) &&
+      event.shiftKey &&
+      event.key === "F"
+    ) {
+      showFilters = !showFilters;
+    }
     // Handle Escape key
     else if (event.key === "Escape") {
       if (document.activeElement === searchEl) {
@@ -42,6 +50,8 @@
         searchEl?.dispatchEvent(new Event("input", { bubbles: true }));
         searchQuery.set("");
         searchEl?.blur(); // Remove focus from the search input element
+      } else if (showFilters) {
+        showFilters = false;
       }
     }
   }
@@ -96,7 +106,7 @@
       position: sticky;
       background-color: var(--body-background);
       top: 0;
-      margin-top: 30px;
+      margin-top: 20px;
 
       @media (max-width: $md) {
         margin-top: 0;

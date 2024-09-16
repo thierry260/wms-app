@@ -88,7 +88,7 @@
 
   $: {
     if (dialogEl && !dialogElEventsAdded) {
-      dialogEl.addEventListener("click", function (event) {
+      dialogEl.addEventListener("mousedown", function (event) {
         const rect = dialogEl.getBoundingClientRect();
         const isInDialog =
           rect.top <= event.clientY &&

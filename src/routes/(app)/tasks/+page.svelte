@@ -100,7 +100,7 @@
         isEdited = false;
         isExitIntent = false;
       });
-      dialogEl.addEventListener("click", function (event) {
+      dialogEl.addEventListener("mousedown", function (event) {
         const rect = dialogEl.getBoundingClientRect();
         const isInDialog =
           rect.top <= event.clientY &&
@@ -270,25 +270,27 @@
       });
     }
 
-    // Apply sorting
-    return filteredTasks.sort((a, b) => {
-      let aValue, bValue;
+    return filteredTasks;
 
-      if (type === "deadline") {
-        aValue = a.deadline ? a.deadline.toDate() : new Date(0);
-        bValue = b.deadline ? b.deadline.toDate() : new Date(0);
-      } else if (type === "priority") {
-        const priorityOrder = { Low: 1, Medium: 2, High: 3 };
-        aValue = priorityOrder[a.priority] || 0;
-        bValue = priorityOrder[b.priority] || 0;
-      }
+    // // Apply sorting
+    // return filteredTasks.sort((a, b) => {
+    //   let aValue, bValue;
 
-      if (order === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+    //   if (type === "deadline") {
+    //     aValue = a.deadline ? a.deadline.toDate() : new Date(0);
+    //     bValue = b.deadline ? b.deadline.toDate() : new Date(0);
+    //   } else if (type === "priority") {
+    //     const priorityOrder = { Low: 1, Medium: 2, High: 3 };
+    //     aValue = priorityOrder[a.priority] || 0;
+    //     bValue = priorityOrder[b.priority] || 0;
+    //   }
+
+    //   if (order === "asc") {
+    //     return aValue > bValue ? 1 : -1;
+    //   } else {
+    //     return aValue < bValue ? 1 : -1;
+    //   }
+    // });
   }
 
   async function fetchTaskStatuses() {
@@ -780,9 +782,9 @@
     title="Taken"
     {resultCount}
     {searchQuery}
+    searchPlaceholder={"Zoek op urenregistratie..."}
     showFilterButton={true}
     bind:showFilters
-    searchPlaceholder={"Zoek op urenregistratie..."}
   >
     <div slot="filter-content">
       <label>
@@ -796,95 +798,40 @@
       <Plus size={16} />Taak toevoegen
     </button>
   </Header>
-  <Filters bind:showFilters>
-    <slot>
-      <div class="sorting">
-        <label for="sortTypeDropdown" class="legend">Sorteer op</label>
-        <div>
-          <select
-            id="sortTypeDropdown"
-            on:change={(e) => {
-              sortType.set(e.target.value);
-              sortAndFilterTasks($tasks, e.target.value, $sortOrder);
-            }}
-          >
-            <option value="deadline" selected>Deadline</option>
-            <option value="priority">Prioriteit</option>
-          </select>
-          <button
-            class="basic sort-order-toggle"
-            on:click={() => {
-              const newOrder = $sortOrder === "asc" ? "desc" : "asc";
-              sortOrder.set(newOrder); // Update the sortOrder store
-              sortAndFilterTasks($tasks, $sortType, $sortOrder);
-            }}
-          >
-            {#if $sortOrder === "asc"}
-              ↑
-            {:else}
-              ↓
-            {/if}
-          </button>
-        </div>
-      </div>
-      <br />
-      <label class="legend">Uitvoerders</label>
-      <div class="assignee-filters">
-        {#each $assignees as assignee}
-          <label>
-            <input
-              type="checkbox"
-              value={assignee}
-              name="[]"
-              on:change={async (e) => {
-                filters.update((f) => {
-                  let updatedFilters;
-                  if (e.target.checked) {
-                    // Add assignee to the filters
-                    updatedFilters = {
-                      ...f,
-                      assignees: [...f.assignees, assignee],
-                    };
-                  } else {
-                    // Remove assignee from the filters
-                    updatedFilters = {
-                      ...f,
-                      assignees: f.assignees.filter((a) => a !== assignee),
-                    };
-                  }
-                  return updatedFilters;
-                });
-
-                // Wait for the state to update before sorting and filtering
-                await tick();
-
-                // Always start from the full list of tasks
-                const filteredAndSortedTasks =
-                  get(filters).assignees.length === 0
-                    ? allTasks // Show all tasks if no filters are selected
-                    : sortAndFilterTasks(
-                        allTasks,
-                        get(sortType),
-                        get(sortOrder)
-                      );
-
-                tasks.set(filteredAndSortedTasks);
-              }}
-            />
-            <figure>
-              <img
-                src="/img/people/{assignee.toLowerCase()}.jpg"
-                width="25px"
-                height="25px"
-              />
-            </figure>
-            {assignee}
-          </label>
-        {/each}
-      </div>
-    </slot>
-    <!-- Forward named slot -->
-  </Filters>
+  <Filters
+    bind:showFilters
+    data={allTasks}
+    bind:filteredData={$tasks}
+    sorting={[
+      { label: "Deadline", key: "deadline", type: "date" },
+      {
+        label: "Prioriteit",
+        key: "priority",
+        type: "custom",
+        order: { Low: 1, Medium: 2, High: 3 },
+      },
+    ]}
+    filters={[
+      {
+        label: "Uitvoerders",
+        key: "assignees",
+        type: "checkbox",
+        data: "array",
+      },
+      {
+        label: "Deadline",
+        key: "deadline",
+        type: "radio",
+        data: "date",
+        options: [
+          { label: "Verlopen", value: 0, operator: "<" },
+          { label: "Vandaag", value: 0, operator: "==" },
+          { label: "Morgen", value: 1, operator: "==" },
+          { label: "Aankomend", value: 0, operator: ">" },
+        ],
+      },
+    ]}
+  />
   <div
     class="kanban-board"
     on:mousedown={handleMouseDown}
@@ -896,6 +843,13 @@
         <div class="kanban-column" data-id={status.id} data-name={status.name}>
           <div class="kanban-column-header">
             <div class="drag-column"><DotsSixVertical size="18" /></div>
+            <span class="kanban-column-count"
+              >{sortAndFilterTasks(
+                $tasks.filter((task) => task.status_id === status.id),
+                $sortType,
+                $sortOrder
+              ).length}</span
+            >
             <h3
               on:keydown={handleKeyDown}
               on:blur={handleBlur}
@@ -1240,18 +1194,6 @@
         }
       }
     }
-    @media (max-width: $xs) {
-      overflow-x: auto;
-      white-space: nowrap;
-      -ms-overflow-style: none; /* Internet Explorer 10+ */
-      scrollbar-width: none; /* Firefox */
-      margin-inline: -30px;
-      padding-inline: 30px;
-
-      &::-webkit-scrollbar {
-        display: none; /* Safari and Chrome */
-      }
-    }
   }
   .filter-sort-controls {
     display: flex;
@@ -1393,6 +1335,14 @@
       align-items: center;
       gap: 10px;
       color: var(--text);
+
+      .kanban-column-count {
+        font-size: 1.3rem;
+        border-right: 1px solid var(--border);
+        padding-right: 8px;
+        margin-right: -2px;
+        font-weight: 300;
+      }
 
       &:has(h3:focus) {
       }
