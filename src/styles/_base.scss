@@ -884,6 +884,6 @@ small:has(span) {
   box-sizing: border-box;
 }
 
-// main:has(dialog[open]) {
-//   overflow-y: hidden;
-// }
+main:has(.filters-container.show) {
+  overflow-y: unset;
+}
