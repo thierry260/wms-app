@@ -33,12 +33,16 @@
   import Dropdown from "$lib/components/Dropdown.svelte";
   import Header from "$lib/components/Header.svelte";
   import Filters from "$lib/components/Filters.svelte";
+  import ToggleSwitch from "$lib/components/ToggleSwitch.svelte";
 
   const pageName = "Files";
   let html2pdf;
   let dropdownState = false;
+  let timetrackingEdited = false;
+  let timetrackingEditingIndex = -1;
 
   $: console.log("isEdited: ", isEdited);
+  $: console.log("timetrackingEdited: ", timetrackingEdited);
 
   if (typeof window !== "undefined") {
     // Import html2pdf.js only in a browser environment
@@ -175,6 +179,8 @@
         window.history.replaceState({}, "", url);
         isEdited = false;
         isExitIntent = false;
+        timetrackingEdited = false;
+        timetrackingEditingIndex = -1;
       });
       dialogEl.addEventListener("mousedown", function (event) {
         const rect = dialogEl.getBoundingClientRect();
@@ -496,6 +502,9 @@
     // Prevent form submission
     event.preventDefault();
 
+    // console.log("currentFile.timetracking: ", $currentFile.timetracking);
+    // return;
+
     // Find the clicked button
     const button = event.submitter; // This gives the clicked submit button
 
@@ -573,16 +582,18 @@
           return;
         }
       } else if (action === "edit") {
-        const fileDocRef = doc(filesRef, fileIdString);
-        const fileDocSnap = await getDoc(fileDocRef);
-        if (fileDocSnap.exists()) {
-          timetracking = fileDocSnap.data().timetracking || [];
+        if (!timetrackingEdited) {
+          const fileDocRef = doc(filesRef, fileIdString);
+          const fileDocSnap = await getDoc(fileDocRef);
+          if (fileDocSnap.exists()) {
+            timetracking = fileDocSnap.data().timetracking || [];
+          }
+        } else {
+          timetracking = $currentFile.timetracking.map(
+            ({ editing, ...rest }) => rest
+          );
         }
       }
-
-      const opvolgdatumTimestamp = fileData.opvolgdatum
-        ? Timestamp.fromDate(new Date(fileData.opvolgdatum))
-        : null;
 
       const active =
         fileData.dossierstatus !== "Afgewikkeld" &&
@@ -602,9 +613,6 @@
       const updatedFileData = {
         ...fileData,
         timetracking, // Ensure timetracking is set
-        opvolgdatum: fileData.opvolgdatum
-          ? Timestamp.fromDate(new Date(fileData.opvolgdatum))
-          : null,
         gekoppelde_facturen:
           typeof fileData.gekoppelde_facturen === "string"
             ? fileData.gekoppelde_facturen.split("\n")
@@ -830,6 +838,18 @@
 
     // Return formatted date in dd-mm-yyyy format
     return `${day}-${month}-${year}`;
+  }
+
+  // Functie om een Date-object om te zetten naar een yyyy-MM-dd formaat
+  function formatDateToInput(value) {
+    if (!value) return "";
+    const date = value instanceof Date ? value : value.toDate();
+    return date.toISOString().split("T")[0];
+  }
+
+  // Functie om een yyyy-MM-dd formaat om te zetten naar een Date-object
+  function parseDateFromInput(value) {
+    return value ? new Date(value) : null;
   }
 </script>
 
@@ -1132,8 +1152,17 @@
           <!-- Tijdregistratie -->
           {#if $currentFile.timetracking && $currentFile.timetracking.length > 0}
             <ul class="file_tasks file_logs">
-              {#each $currentFile.timetracking as log}
-                <li>
+              {#each $currentFile.timetracking as log, index}
+                <li
+                  on:click={() => {
+                    if (
+                      timetrackingEditingIndex == -1 ||
+                      timetrackingEditingIndex != index
+                    ) {
+                      timetrackingEditingIndex = index;
+                    }
+                  }}
+                >
                   <div class="log-header">
                     <h6>{log.description}</h6>
                     <div class="total-revenue">
@@ -1152,6 +1181,93 @@
                       "dd-MM-yyyy"
                     )}
                   </p>
+                  {#if timetrackingEditingIndex >= 0 && timetrackingEditingIndex == index}
+                    <!-- Bewerkt formulier -->
+                    <div>
+                      <label class="legend">Datum</label>
+                      <input
+                        type="date"
+                        value={formatDateToInput(log.date)}
+                        on:change={(e) => {
+                          log.date = parseDateFromInput(e.target.value);
+                          timetrackingEdited = true;
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label class="legend">Omschrijving</label>
+                      <textarea
+                        bind:value={log.description}
+                        on:input={() => (timetrackingEdited = true)}
+                      ></textarea>
+                    </div>
+                    <div class="modal_columns" data-col="2">
+                      <div>
+                        <label class="legend">Uitvoerder</label>
+                        <select
+                          bind:value={log.assignee}
+                          on:change={() => (timetrackingEdited = true)}
+                        >
+                          <option value="Michel">Michel</option>
+                          <option value="Toon">Toon</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="legend">Tijdsduur</label>
+                        <input
+                          type="time"
+                          bind:value={log.hhmm}
+                          on:change={() => (timetrackingEdited = true)}
+                        />
+                      </div>
+                    </div>
+                    <label class="toggle_outer">
+                      <ToggleSwitch
+                        bind:checked={log.isExternal}
+                        on:change={(e) => {
+                          timetrackingEdited = true;
+                          if (e.detail.checked === false) {
+                            log.location = "";
+                            log.kilometers = "";
+                          }
+                        }}
+                      />
+                      <span class="legend">Extern?</span>
+                    </label>
+                    {#if log.isExternal || log.location || log.kilometers}
+                      <div class="columns" data-col="2">
+                        <div>
+                          <label class="legend">Locatie</label>
+                          <input
+                            type="text"
+                            bind:value={log.location}
+                            on:change={() => (timetrackingEdited = true)}
+                          />
+                        </div>
+                        <div>
+                          <label class="legend">Kilometers</label>
+                          <input
+                            type="number"
+                            bind:value={log.kilometers}
+                            on:change={() => (timetrackingEdited = true)}
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                    {/if}
+                    <label class="toggle_outer">
+                      <ToggleSwitch bind:checked={log.billable} />
+                      <span class="legend">Facturabel</span>
+                    </label>
+                    <button
+                      type="button"
+                      class="basic"
+                      on:click={(event) => {
+                        event.stopPropagation();
+                        timetrackingEditingIndex = -1;
+                      }}>Sluiten</button
+                    >
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -1561,7 +1677,7 @@
       justify-content: space-between;
       align-items: center;
 
-      > div:not(.log-header) {
+      > div:not(.log-header):not(.columns) {
         gap: 5px;
         display: flex;
         flex-direction: column;
@@ -1581,7 +1697,7 @@
 
   .file_logs {
     li {
-      cursor: unset;
+      // cursor: unset;
       position: relative;
       gap: 5px;
       display: flex;
@@ -1602,6 +1718,32 @@
           text-overflow: ellipsis;
           overflow: hidden;
           white-space: nowrap;
+        }
+      }
+
+      button[type="button"]:last-child {
+        margin-top: 20px;
+      }
+
+      &:has(input) {
+        .billable-icon {
+          display: none;
+        }
+      }
+
+      .toggle_outer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-block: 8px;
+        &:first-of-type {
+          margin-top: 10px;
+        }
+        &:last-of-type {
+          margin-bottom: 10px;
+        }
+        .legend {
+          margin-block: 0;
         }
       }
     }
