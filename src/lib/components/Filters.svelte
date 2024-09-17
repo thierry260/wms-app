@@ -1,5 +1,6 @@
 <script>
   import { X, TrashSimple, ArrowCounterClockwise } from "phosphor-svelte";
+  import filter from "svelte-select/filter";
   import { writable } from "svelte/store";
 
   export let showFilters = false;
@@ -16,6 +17,7 @@
   const closeFilters = () => (showFilters = false);
 
   // Function to handle filter changes
+  // Function to handle filter change
   const handleFilterChange = (
     key,
     value,
@@ -24,10 +26,20 @@
     operator = null
   ) => {
     activeFilters.update((currentFilters) => {
+      console.log(key, value);
       if (type === "date") {
         // Date-based filter logic
-        currentFilters[key] = { value, operator };
-      } else if (checked !== null) {
+        currentFilters[key] = { value, operator, type };
+        console.log("date");
+      } else if (type === "date-range") {
+        // Date-based filter logic
+        currentFilters[key] = {
+          ...currentFilters[key],
+          [operator]: value,
+          type,
+        };
+      } else if (Array.isArray(currentFilters[key])) {
+        // Handle array fields, such as assignees
         const existing = currentFilters[key] || [];
         currentFilters[key] = checked
           ? [...existing, value]
@@ -37,9 +49,24 @@
         if (currentFilters[key].length === 0) {
           delete currentFilters[key];
         }
+        console.log("Array.isArray(currentFilters[key])");
+      } else if (checked !== null) {
+        // Regular checkbox/radio button filters
+        const existing = currentFilters[key] || [];
+        currentFilters[key] = checked
+          ? [...existing, value]
+          : existing.filter((item) => item !== value);
+
+        // If no items are selected, remove the key
+        if (currentFilters[key].length === 0) {
+          delete currentFilters[key];
+        }
+        console.log("checked !== null");
       } else {
         currentFilters[key] = value;
+        console.log("else");
       }
+      console.log(currentFilters);
       return currentFilters;
     });
   };
@@ -60,14 +87,18 @@
       // Uncheck only checkboxes associated with the specific key
       document
         .querySelectorAll(
-          `.filters-container .filter-options[data-key="${key}"] input:checked`
+          `.filters-container .filter-options[data-key="${key}"] input`
         )
-        .forEach((input) => (input.checked = false));
+        .forEach((input) => {
+          input.value = "";
+          input.checked = false;
+        });
     } else {
       // Uncheck all checkboxes if no key is provided
-      document
-        .querySelectorAll(".filters-container input:checked")
-        .forEach((input) => (input.checked = false));
+      document.querySelectorAll(".filters-container input").forEach((input) => {
+        input.value = "";
+        input.checked = false;
+      });
     }
   };
 
@@ -149,33 +180,73 @@
 
   // Function to check if item matches active filters
   const filtersMatch = (item, filters) => {
+    // console.log("item", item);
+    // console.log("filters", filters);
     for (const key in filters) {
       const filterValue = filters[key];
-      if (typeof filterValue === "object" && filterValue.operator) {
-        // Handle date comparison
-        const itemDate = new Date(item[key].seconds * 1000);
-        const currentDate = new Date();
-        const comparisonDate = new Date(currentDate);
-        comparisonDate.setDate(currentDate.getDate() + filterValue.value);
 
-        // Set the time of both itemDate and comparisonDate to 00:00
-        itemDate.setHours(0, 0, 0, 0);
-        comparisonDate.setHours(0, 0, 0, 0);
+      if (!Array.isArray(filterValue) && typeof filterValue === "object") {
+        // console.log(item[key]);
 
-        // console.log("itemDate", itemDate);
-        // console.log("comparisonDate", comparisonDate);
-        // console.log("item[key]", item[key]);
-        // console.log("filterValue.value", filterValue.value);
+        if (filterValue.type == "date") {
+          // Handle date comparison
+          const itemDate = new Date(item[key].seconds * 1000);
+          const currentDate = new Date();
+          const comparisonDate = new Date(currentDate);
+          comparisonDate.setDate(currentDate.getDate() + filterValue.value);
 
-        if (!compareDates(itemDate, comparisonDate, filterValue.operator)) {
-          return false;
+          // Set the time of both itemDate and comparisonDate to 00:00
+          itemDate.setHours(0, 0, 0, 0);
+          comparisonDate.setHours(0, 0, 0, 0);
+
+          if (!compareDates(itemDate, comparisonDate, filterValue.operator)) {
+            return false;
+          }
+        } else if (filterValue.type === "date-range") {
+          const itemDate = new Date(item[key].seconds * 1000);
+          itemDate.setHours(0, 0, 0, 0);
+
+          const fromDate = filterValue.from ? new Date(filterValue.from) : null;
+          const toDate = filterValue.to ? new Date(filterValue.to) : null;
+
+          // If both dates are provided, check if itemDate is within the range
+          if (fromDate && toDate) {
+            fromDate.setHours(0, 0, 0, 0);
+            toDate.setHours(0, 0, 0, 0);
+            if (itemDate < fromDate || itemDate > toDate) {
+              return false;
+            }
+          }
+          // If only fromDate is provided, check if itemDate is after fromDate
+          else if (fromDate) {
+            fromDate.setHours(0, 0, 0, 0);
+            if (itemDate < fromDate) {
+              return false;
+            }
+          }
+          // If only toDate is provided, check if itemDate is before toDate
+          else if (toDate) {
+            toDate.setHours(0, 0, 0, 0);
+            if (itemDate > toDate) {
+              return false;
+            }
+          }
         }
       } else if (Array.isArray(filterValue)) {
         // Handle array filtering (e.g., assignees)
-        if (!filterValue.some((v) => item[key]?.includes(v))) {
-          return false;
+        if (Array.isArray(item[key])) {
+          // Field is an array (e.g., assignees) -> check if any match
+          if (!filterValue.some((v) => item[key]?.includes(v))) {
+            return false;
+          }
+        } else {
+          // Field is not an array -> check for exact match with any filter value
+          if (!filterValue.includes(item[key])) {
+            return false;
+          }
         }
       } else if (item[key] !== filterValue) {
+        // Regular filtering for non-array fields
         return false;
       }
     }
@@ -234,7 +305,7 @@
       <div class="filter-section">
         <span class="legend"
           >{filter.label}
-          {#if $activeFilters[filter.key]}
+          {#if $activeFilters[filter.key] || $activeFilters[filter.key] === false}
             <button class="basic clear" on:click={clearFilters(filter.key)}
               ><TrashSimple size={14} /></button
             >
@@ -242,15 +313,42 @@
         >
         <div class="filter-options" data-key={filter.key}>
           {#if filter.type === "checkbox"}
-            {#if filter.data && filter.data === "array"}
+            <!-- Checkbox -->
+            {#if filter.options}
+              {#each filter.options as option}
+                <label>
+                  <input
+                    type="radio"
+                    name={filter.key}
+                    on:change={(e) => {
+                      if (e.target.checked) {
+                        handleFilterChange(
+                          filter.key,
+                          option.value,
+                          null,
+                          filter.data,
+                          option.operator
+                        );
+                      }
+                    }}
+                  />
+                  {option.label}
+                </label>
+              {/each}
+            {:else if filter.data && filter.data === "array"}
               {#each getUniqueArrayItems(data, filter.key) as option}
                 <label>
                   <input
                     type="checkbox"
                     on:change={(e) =>
-                      handleFilterChange(filter.key, option, e.target.checked)}
+                      handleFilterChange(
+                        filter.key,
+                        option,
+                        e.target.checked,
+                        "array"
+                      )}
                   />
-                  {#if filter.key === "assignees"}
+                  {#if filter.key === "assignees" || filter.key === "assignee"}
                     <figure>
                       <img
                         src={getImageSrc(option)}
@@ -270,7 +368,7 @@
                     on:change={(e) =>
                       handleFilterChange(filter.key, option, e.target.checked)}
                   />
-                  {#if filter.key === "assignees"}
+                  {#if filter.key === "assignees" || filter.key === "assignee"}
                     <figure>
                       <img
                         src={getImageSrc(option)}
@@ -283,10 +381,26 @@
                 </label>
               {/each}
             {/if}
-          {/if}
-
-          {#if filter.type === "radio"}
-            {#if filter.options}
+          {:else if filter.type === "radio"}
+            <!-- Radio -->
+            {#if filter.data === "boolean"}
+              <label>
+                <input
+                  type="radio"
+                  name={filter.key}
+                  on:change={(e) => handleFilterChange(filter.key, true)}
+                />
+                Ja
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name={filter.key}
+                  on:change={(e) => handleFilterChange(filter.key, false)}
+                />
+                Nee
+              </label>
+            {:else if filter.options}
               {#each filter.options as option}
                 <label>
                   <input
@@ -350,6 +464,33 @@
                 </label>
               {/each}
             {/if}
+          {:else if filter.type === "date" && filter.data === "date-range"}
+            <!-- Date range -->
+            <div class="date-range">
+              <input
+                type="date"
+                on:change={(e) =>
+                  handleFilterChange(
+                    filter.key,
+                    e.target.value,
+                    null,
+                    "date-range",
+                    "from"
+                  )}
+              />
+              <span>t/m</span>
+              <input
+                type="date"
+                on:change={(e) =>
+                  handleFilterChange(
+                    filter.key,
+                    e.target.value,
+                    null,
+                    "date-range",
+                    "to"
+                  )}
+              />
+            </div>
           {/if}
         </div>
       </div>
@@ -520,6 +661,43 @@
             &:has(:checked) {
               figure::before {
                 opacity: 1;
+              }
+            }
+          }
+          .date-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+
+            span {
+              font-size: 1.2rem;
+            }
+            input {
+              font-size: 1.4rem;
+              width: min-content;
+              flex-grow: 1;
+            }
+
+            @media (max-width: $sm) {
+              flex-direction: column;
+              gap: 8px;
+              span {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                gap: 6px;
+                &::before,
+                &::after {
+                  content: "";
+                  height: 1px;
+                  width: 100%;
+                  flex-grow: 1;
+                  background-color: var(--border);
+                }
+              }
+              input {
+                width: 100%;
               }
             }
           }

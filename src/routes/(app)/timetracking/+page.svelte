@@ -11,6 +11,7 @@
   } from "firebase/firestore";
   import { fetchWorkspaceFilesData } from "$lib/utils/get";
   import Header from "$lib/components/Header.svelte";
+  import Filters from "$lib/components/Filters.svelte";
   import ToggleSwitch from "$lib/components/ToggleSwitch.svelte";
   import { auth, db } from "$lib/firebase";
   import {
@@ -677,10 +678,34 @@
       <Plus size={16} />Uren registreren
     </button>
   </Header>
+  <Filters
+    bind:showFilters
+    data={allLogs}
+    bind:filteredData={$logs}
+    filters={[
+      {
+        label: "Datum",
+        key: "date",
+        type: "date",
+        data: "date-range",
+      },
+      {
+        label: "Uitvoerder",
+        key: "assignee",
+        type: "checkbox",
+      },
+      {
+        label: "Facturabel",
+        key: "billable",
+        type: "radio",
+        data: "boolean",
+      },
+    ]}
+  />
   {#if $loading}
     <p class="loading-text empty">Laden...</p>
   {:else}
-    {#if showFilters}
+    <!-- {#if showFilters}
       <div class="columns" data-col="2">
         <div class="date_input">
           <label class="legend">Van</label>
@@ -699,7 +724,7 @@
           />
         </div>
       </div>
-    {/if}
+    {/if} -->
     <div class="logs-container">
       <ul>
         {#if $visibleLogs.length > 0}
@@ -756,7 +781,7 @@
           <p class="empty">Geen logs gevonden</p>
         {/if}
       </ul>
-      {#if $loadingMore}
+      {#if $loadingMore && $visibleLogs < $logs}
         <div class="loading-spinner">
           <span class="rotating"><CircleNotch size={16} /></span>Meer aan het
           laden...
