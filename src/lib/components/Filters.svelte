@@ -318,7 +318,7 @@
               {#each filter.options as option}
                 <label>
                   <input
-                    type="radio"
+                    type="checkbox"
                     name={filter.key}
                     on:change={(e) => {
                       if (e.target.checked) {

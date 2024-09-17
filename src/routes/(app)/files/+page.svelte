@@ -1734,8 +1734,11 @@
         &:nth-of-type(even) {
           background-color: #f3f5f9;
         }
+        th {
+          padding: 8px 10px;
+        }
         td {
-          font-size: 1.3rem;
+          font-size: 1.2rem;
           padding: 10px;
           line-height: normal;
           &:first-child {
@@ -1755,7 +1758,7 @@
           background-color: var(--gray-350, #eaedf0);
           border-radius: 0;
           color: var(--gray-600);
-          font-size: 1.4rem;
+          font-size: 1.3rem;
         }
       }
       .totals.totals {

@@ -819,6 +819,11 @@
         data: "array",
       },
       {
+        label: "Prioriteit",
+        key: "priority",
+        type: "checkbox",
+      },
+      {
         label: "Deadline",
         key: "deadline",
         type: "radio",
