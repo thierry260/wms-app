@@ -122,6 +122,23 @@
     };
   });
 
+  const sortedTimetracking = derived(currentFile, ($currentFile) => {
+    // Ensure timetracking exists and is an array
+    if ($currentFile.timetracking && Array.isArray($currentFile.timetracking)) {
+      return $currentFile.timetracking.slice().sort((a, b) => {
+        // Convert Firestore timestamp to JavaScript Date
+        const dateA = new Date(a.date.seconds * 1000);
+        const dateB = new Date(b.date.seconds * 1000);
+        return dateA - dateB; // Sort in chronological order
+      });
+    }
+    return []; // Return an empty array if timetracking is not available
+  });
+
+  $: {
+    console.log("$currentFile.timetracking: ", $currentFile.timetracking);
+  }
+
   $: {
     if (specs) {
       console.log(specs);
@@ -1152,9 +1169,9 @@
 
         <div slot="tab-3">
           <!-- Tijdregistratie -->
-          {#if $currentFile.timetracking && $currentFile.timetracking.length > 0}
+          {#if $sortedTimetracking && $sortedTimetracking.length > 0}
             <ul class="file_tasks file_logs">
-              {#each $currentFile.timetracking as log, index}
+              {#each $sortedTimetracking as log, index}
                 <li
                   on:click={() => {
                     if (
@@ -1306,14 +1323,14 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {#each $currentFile.timetracking as item}
+                  {#each $sortedTimetracking as item}
                     <tr>
                       <td>{formatDate(item.date)}</td>
                       <td>{item.description || ""}</td>
                       <td
                         >{item.minutes
                           ? formatMinutesToHHMM(item.minutes)
-                          : "0,00"}</td
+                          : "0:00"}</td
                       >
                       <td>{item.location || ""}</td>
                       <td>{item.kilometers || ""}</td>
