@@ -13,6 +13,7 @@
 
   export let title = "Default Title";
   export let resultCount = 0;
+  export let activeFiltersAmount = 0;
   export let searchQuery = writable("");
   export let showSearch = true;
   export let showFilterButton = false; // Control visibility of filter button
@@ -55,6 +56,13 @@
       }
     }
   }
+
+  function handleCloseSearch(event) {
+    if (searchEl) searchEl.value = "";
+    searchEl?.dispatchEvent(new Event("input", { bubbles: true }));
+    searchQuery.set("");
+    searchEl?.blur(); // Remove focus from the search input element
+  }
 </script>
 
 <div class="top floating">
@@ -75,11 +83,18 @@
           bind:this={searchEl}
           bind:value={$searchQuery}
         />
+        <span class="reset_search" on:click={handleCloseSearch}>
+          <X size={16} />
+        </span>
       </div>
     {/if}
 
     {#if showFilterButton}
-      <button class="basic" on:click={() => (showFilters = !showFilters)}>
+      <button
+        class="basic filter_button"
+        on:click={() => (showFilters = !showFilters)}
+        data-amount={activeFiltersAmount}
+      >
         <SlidersHorizontal size="20" />
       </button>
     {/if}
@@ -124,6 +139,39 @@
         background-color: #f1f1f1;
       }
 
+      .filter_button {
+        position: relative;
+        overflow: unset;
+
+        &:not([data-amount]),
+        &[data-amount=""],
+        &[data-amount="0"] {
+          &::after {
+            display: none;
+          }
+        }
+
+        &::after {
+          content: attr(data-amount);
+          position: absolute;
+          top: 3px;
+          right: 3px;
+          transform: translate(0, -50%);
+          border-radius: 50%;
+          background-color: var(--primary);
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          aspect-ratio: 1;
+          line-height: 1;
+          width: 16px;
+          height: 16px;
+          font-size: 1rem;
+        }
+      }
+
       ::slotted(button) {
         background-color: var(--primary);
         color: white;
@@ -152,38 +200,59 @@
       color: var(--gray-500);
     }
 
-    input.search.search {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a8a8a8' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z'%3E%3C/path%3E%3C/svg%3E");
-      background-position: left 12px center;
-      background-repeat: no-repeat;
-      background-size: 16px;
-      padding-left: 35px;
-      width: 100%;
-
-      // @media (min-width: $xlm) {
-      max-width: 42px;
-      padding-inline: 18px;
-      transition: max-width 0.2s ease-out;
-      cursor: pointer;
-      &::placeholder {
+    .search {
+      position: relative;
+      .reset_search {
+        position: absolute;
+        display: flex;
+        top: 50%;
+        transform: translateY(-50%);
+        padding: 7px;
+        right: 5px;
         opacity: 0;
+        pointer-events: none;
+        background-color: #fff;
         transition: opacity 0.2s ease-out;
       }
+      input.search.search {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23a8a8a8' viewBox='0 0 256 256'%3E%3Cpath d='M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z'%3E%3C/path%3E%3C/svg%3E");
+        background-position: left 12px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding-left: 35px;
+        width: 100%;
 
-      &:focus,
-      &:not(:placeholder-shown) {
-        max-width: 300px;
-        @media (max-width: $md) {
-          max-width: 85vw;
-        }
-        padding-inline: 40px 20px;
-        cursor: unset;
+        // @media (min-width: $xlm) {
+        max-width: 42px;
+        padding-inline: 18px;
+        transition: max-width 0.2s ease-out;
+        cursor: pointer;
         &::placeholder {
-          opacity: 0.5;
+          opacity: 0;
+          transition: opacity 0.2s ease-out;
         }
+
+        &:focus,
+        &:not(:placeholder-shown) {
+          max-width: 300px;
+          @media (max-width: $md) {
+            max-width: 85vw;
+          }
+          padding-inline: 40px 20px;
+          cursor: unset;
+          &::placeholder {
+            opacity: 0.5;
+          }
+
+          + .reset_search {
+            opacity: 0.6;
+            pointer-events: auto;
+          }
+        }
+        // }
       }
-      // }
     }
+
     @media (max-width: $xs) {
       .hide_mobile {
         display: none;

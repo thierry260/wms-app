@@ -17,6 +17,7 @@
   main {
     flex: 1;
     padding: 60px;
+    overflow-x: hidden;
     @media (max-width: $sm) {
       padding: 30px;
       padding-bottom: 100px;

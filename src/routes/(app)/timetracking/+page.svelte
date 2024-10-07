@@ -76,6 +76,8 @@
   const batchSize = 50; // Number of logs to load per batch
   let loadingMore = writable(false); // Track if more logs are being loaded
 
+  let activeFiltersAmount = 0;
+
   $: console.log(currentBatch);
 
   // visibleLogs is derived from the logs array and the currentBatch
@@ -677,6 +679,7 @@
 <section class="timetracking_section">
   <Header
     title="Urenregistratie"
+    {activeFiltersAmount}
     {resultCount}
     {searchQuery}
     bind:showFilters
@@ -688,6 +691,7 @@
     </button>
   </Header>
   <Filters
+    bind:activeFiltersAmount
     bind:showFilters
     data={allLogs}
     bind:filteredData={$logs}

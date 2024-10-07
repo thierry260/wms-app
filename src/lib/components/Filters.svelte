@@ -1,15 +1,19 @@
 <script>
   import { X, TrashSimple, ArrowCounterClockwise } from "phosphor-svelte";
   import filter from "svelte-select/filter";
-  import { writable } from "svelte/store";
+  import { writable, derived } from "svelte/store";
 
   export let showFilters = false;
+  export let activeFiltersAmount = 0;
   export let data = [];
   export let filteredData = [];
   export let filters = [];
   export let sorting = [];
 
   let activeFilters = writable({}); // To store the active filters
+  $: activeFiltersAmount = Object.keys($activeFilters).length;
+  $: console.log("activeFiltersAmount", activeFiltersAmount);
+
   let selectedSortingKey = sorting.length > 0 ? sorting[0].key : null;
   let sortDirection = "asc"; // Default sorting direction
 

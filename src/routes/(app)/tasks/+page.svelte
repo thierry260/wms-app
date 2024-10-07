@@ -125,6 +125,8 @@
     }
   }
 
+  let activeFiltersAmount = 0;
+
   onMount(async () => {
     dbTracker.initPage("Tasks");
     // Fetch assignees (Example: hardcoded, adjust based on your structure)
@@ -780,6 +782,7 @@
 <section class="tasks_section">
   <Header
     title="Taken"
+    {activeFiltersAmount}
     {resultCount}
     {searchQuery}
     searchPlaceholder={"Zoek op urenregistratie..."}
@@ -799,6 +802,7 @@
     </button>
   </Header>
   <Filters
+    bind:activeFiltersAmount
     bind:showFilters
     data={allTasks}
     bind:filteredData={$tasks}

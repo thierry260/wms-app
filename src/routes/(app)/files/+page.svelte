@@ -130,6 +130,8 @@
 
   let proposedFileId;
 
+  let activeFiltersAmount = 0;
+
   let clients = [];
 
   let tasks = writable([]);
@@ -1450,6 +1452,7 @@
   <section class="files_section">
     <Header
       title="Dossiers"
+      {activeFiltersAmount}
       {resultCount}
       {searchQuery}
       searchPlaceholder={"Zoek dossiers..."}
@@ -1461,6 +1464,7 @@
       </button>
     </Header>
     <Filters
+      bind:activeFiltersAmount
       bind:showFilters
       data={$allFiles}
       bind:filteredData={$files}
