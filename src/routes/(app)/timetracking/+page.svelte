@@ -394,7 +394,7 @@
     if (isToday) {
       dateObj = new Date();
     } else {
-      dateObj = new Date(year, month - 1, day, 23, 59, 59);
+      dateObj = new Date(year, month - 1, day, 23, 59, 0);
 
       const newDossierRef = doc(
         db,
@@ -422,8 +422,7 @@
           const lastLogTime = lastLog.date.toDate();
           if (
             lastLogTime.getHours() === 23 &&
-            lastLogTime.getMinutes() === 59 &&
-            lastLogTime.getSeconds() === 59
+            lastLogTime.getMinutes() === 59
           ) {
             dateObj.setSeconds(dateObj.getSeconds() + 1);
           }
@@ -489,8 +488,16 @@
         name: dossier.name || "", // Assign the name or label correctly
       };
 
+      console.log("(new) logEntry: ", logEntry);
+
       if (existingIndex !== -1) {
         // If log exists, update it
+
+        console.log(
+          "(old) newTimetracking[existingIndex]",
+          newTimetracking[existingIndex]
+        );
+
         newTimetracking[existingIndex] = logEntry;
       } else {
         // Add as a new entry
@@ -511,8 +518,10 @@
         $currentTimetracking.allLogsIndex !== -1
       ) {
         allLogs[$currentTimetracking.allLogsIndex] = logEntry;
+        console.log("index found and updated");
       } else {
         allLogs.push(logEntry); // Add new log to allLogs if it doesn't exist
+        console.log("new item added");
       }
 
       logs.set([...allLogs]);
