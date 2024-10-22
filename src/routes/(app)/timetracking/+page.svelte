@@ -22,6 +22,7 @@
     isToday,
     isYesterday,
   } from "date-fns";
+  import { nl } from "date-fns/locale"; // Voeg deze regel toe
   import {
     CircleNotch,
     CurrencyEur,
@@ -129,6 +130,7 @@
         id: dossier.id,
         name: dossier.name, // Ensure that name is set correctly
         label: `${dossier.id} - ${dossier.name}`, // Use both id and name for display in the dropdown
+        status: dossier.dossierstatus,
       }));
 
       const data = dossiersData.flatMap((dossier) =>
@@ -599,12 +601,14 @@
 
   function formatDateWithTodayOrYesterday(date) {
     const logDate = date.toDate();
+
     if (isToday(logDate)) {
       return `Vandaag`;
     } else if (isYesterday(logDate)) {
       return `Gisteren (${format(logDate, "dd-MM-yyyy")})`;
     } else {
-      return format(logDate, "dd-MM-yyyy");
+      const dayOfWeek = format(logDate, "EEEE", { locale: nl }); // Maakt afkorting met hoofdletter
+      return `${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)} ${format(logDate, "dd-MM-yyyy")}`; // Hoofdletter en output
     }
   }
 
@@ -649,6 +653,7 @@
     const newDefaults = {
       ...defaults,
       date: new Date().toISOString().split("T")[0], // Set today's date as default
+      new: true,
     };
 
     console.log("Setting defaults for modal:", newDefaults); // Debugging line
@@ -802,7 +807,11 @@
 <dialog id="timetrackingDialog" bind:this={dialogEl}>
   {#if $currentTimetracking}
     <div class="top">
-      <h6>Log bewerken</h6>
+      {#if $currentTimetracking.new}
+        <h6>Log toevoegen</h6>
+      {:else}
+        <h6>Log bewerken</h6>
+      {/if}
       <button class="basic" on:click={closeDialog}><X size="16" /></button>
     </div>
     <div class="content">
@@ -815,10 +824,18 @@
           getOptionValue={(option) => option.id}
           getSelectionLabel={(option) =>
             option?.label || $currentTimetracking.name}
-          placeholder="Select dossier"
+          placeholder="Selecteer dossier"
           itemId="id"
           clearable={false}
-        />
+        >
+          <div slot="item" let:item>
+            <div class="select_item_slot">
+              {item.label}{@html item.status
+                ? `<span class="file_status" data-status="${item.status}">${item.status}</span>`
+                : ""}
+            </div>
+          </div>
+        </Select>
       </div>
       <div>
         <label class="legend">Datum</label>
@@ -1376,6 +1393,53 @@
       -o-animation: rotating 2s linear infinite;
       animation: rotating 2s linear infinite;
     }
+  }
+
+  :global(.select_item_slot) {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+  }
+  :global(.file_status) {
+    --notice-hs: 214.29deg, 20%;
+    --success-hs: 145.06deg, 63.2%;
+    --warning-hs: 36.8deg, 90.36%;
+    --error-hs: 5.96deg, 78.08%;
+
+    --response-color: var(--notice-hs); // Standaard response kleur voor notice
+
+    background-color: hsl(var(--response-color), 93%);
+    color: hsl(var(--response-color), 50%);
+    display: inline-block;
+    height: min-content;
+    // border: 1px solid hsl(var(--response-color), 75%);
+
+    margin-bottom: 0;
+    padding: 2px 5px;
+    line-height: 1;
+    width: max-content;
+    min-width: 58px;
+    text-align: center;
+    border-radius: 4px;
+    font-weight: 400;
+    font-size: 1.1rem;
+    text-transform: none;
+
+    &[data-status="Actief"] {
+      --response-color: var(--success-hs);
+    }
+
+    @media (max-width: $xs) {
+      margin-left: auto;
+    }
+  }
+  :global(.file_status[data-status="Actief"]) {
+    --response-color: var(--success-hs);
+  }
+  :global(.file_status::before) {
+    content: "• ";
   }
 
   @-webkit-keyframes rotating /* Safari and Chrome */ {

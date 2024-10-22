@@ -179,7 +179,7 @@
   <nav class="sidebar-mobile slick">
     <div class="main_nav">
       <div class="main_nav_items">
-        {#each menuItems.slice(0, 5) as item}
+        {#each menuItems.slice(0, 4) as item}
           <a
             class="nav_item {item.route === $page.url.pathname ? 'active' : ''}"
             href={item.route}
@@ -210,7 +210,7 @@
         <button class="logout-button" on:click={logout}
           ><SignOut size={18} />Uitloggen</button
         >
-        {#each menuItems.slice(5) as item}
+        {#each menuItems.slice(4) as item}
           <a
             class="more_item {item.route === $page.url.pathname
               ? 'active'
@@ -431,7 +431,7 @@
       justify-content: space-between;
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      grid-template-columns: 1fr 1fr 1fr 1fr 1fr min-content;
+      grid-template-columns: 1fr 1fr 1fr 1fr min-content;
     }
 
     .main_nav_items {

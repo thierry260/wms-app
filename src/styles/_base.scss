@@ -887,3 +887,7 @@ small:has(span) {
 main:has(.filters-container.show) {
   overflow-y: unset;
 }
+
+:global(section.timetracking_section .top button[slot="action"]) {
+  order: -1;
+}

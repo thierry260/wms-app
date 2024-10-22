@@ -792,7 +792,14 @@
       return; // Exit if html2pdf is not loaded
     }
 
-    const pdfContent = document.querySelector(".spec");
+    const pdfContent = document.querySelector("dialog .spec");
+
+    // Check if pdfContent exists
+    if (!pdfContent) {
+      console.error("Error: No element found with the class '.spec'");
+      return; // Exit if the element is not found
+    }
+
     const now = new Date();
     const formattedDate = `${String(now.getDate()).padStart(2, "0")}-${String(
       now.getMonth() + 1
@@ -813,6 +820,12 @@
         format: "letter",
         orientation: "portrait",
         compress: true,
+      },
+      css: {
+        // Ensure CSS rule to avoid page breaks inside table rows
+        "table tr": {
+          "page-break-inside": "avoid",
+        },
       },
     };
 
@@ -876,7 +889,7 @@
   <dialog id="addDossier" bind:this={dialogEl}>
     {#if $currentFile.id}
       <div class="top">
-        <h6>Dossier bewerken</h6>
+        <h6>{$currentFile.fileId}. {$currentFile.name}</h6>
 
         <button
           class="basic open_ddown"
@@ -1610,6 +1623,14 @@
     align-items: center;
     h6 {
       flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 1.6rem;
+      padding-bottom: 1px;
+      @media (max-width: $sm) {
+        font-size: 1.5rem;
+      }
     }
   }
 
@@ -1889,6 +1910,7 @@
       padding: 0;
       border-radius: 0;
       margin-block: 30px;
+      page-break-inside: avoid;
       tr {
         min-height: 30px;
         height: auto;
@@ -1978,6 +2000,7 @@
         height: 30px;
         background-color: transparent;
         cursor: unset;
+        page-break-inside: avoid;
 
         td:first-child {
           text-align: right;

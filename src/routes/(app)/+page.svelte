@@ -281,6 +281,29 @@
       enumerable: false,
     });
   }
+
+  let gmailUrl;
+  let calendarUrl;
+  let driveUrl;
+  let docsUrl;
+
+  // Function to detect if the device is mobile
+  const isMobileDevice = () => {
+    return /Mobi|Android|iPhone/i.test(navigator.userAgent);
+  };
+
+  // Initialize URLs based on whether it's a mobile device
+  if (isMobileDevice()) {
+    gmailUrl = "googlegmail://";
+    calendarUrl = "googlecalendar://";
+    driveUrl = "googledrive://";
+    docsUrl = "googledocs://";
+  } else {
+    gmailUrl = "https://mail.google.com/mail/";
+    calendarUrl = "https://calendar.google.com/calendar/";
+    driveUrl = "https://drive.google.com/drive/my-drive";
+    docsUrl = "https://docs.google.com/document/";
+  }
 </script>
 
 <section class="dashboard">
@@ -495,43 +518,43 @@
       <div class="main">
         <ul class="linktree-items">
           <li class="linktree-item">
-            <a target="_blank" href="https://mail.google.com/mail/u/0/">
+            <a href={gmailUrl}>
               <img
                 src="/img/linktree/gmail.svg"
                 alt="Gmail logo"
                 width="50px"
                 height="50px"
               />
-              <span class="">Gmail</span>
+              <span>Gmail</span>
               <CaretRight size={16} />
             </a>
           </li>
           <li class="linktree-item">
-            <a target="_blank" href="https://calendar.google.com/calendar/u/0/">
+            <a href={calendarUrl}>
               <img
                 src="/img/linktree/calendar.svg"
                 alt="Calendar logo"
                 width="50px"
                 height="50px"
               />
-              <span class="">Agenda</span>
+              <span>Agenda</span>
               <CaretRight size={16} />
             </a>
           </li>
           <li class="linktree-item">
-            <a target="_blank" href="https://drive.google.com/drive/my-drive">
+            <a href={driveUrl}>
               <img
                 src="/img/linktree/drive.svg"
                 alt="Drive logo"
                 width="50px"
                 height="50px"
               />
-              <span class="">Drive</span>
+              <span>Drive</span>
               <CaretRight size={16} />
             </a>
           </li>
           <li class="linktree-item">
-            <a target="_blank" href="https://docs.google.com/document/u/0/">
+            <a href={docsUrl}>
               <img
                 src="/img/linktree/docs.svg"
                 alt="Docs logo"
@@ -539,7 +562,7 @@
                 height="40px"
                 style="margin-inline: 10px;"
               />
-              <span class="">Docs</span>
+              <span>Docs</span>
               <CaretRight size={16} />
             </a>
           </li>

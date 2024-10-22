@@ -679,8 +679,13 @@
             }
             input {
               font-size: 1.4rem;
+              width: 100%;
               width: min-content;
               flex-grow: 1;
+
+              &[type="date"] {
+                -webkit-min-logical-width: unset;
+              }
             }
 
             @media (max-width: $sm) {
